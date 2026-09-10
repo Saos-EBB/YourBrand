@@ -2,8 +2,8 @@ import { Injectable, ConflictException, UnauthorizedException, ForbiddenExceptio
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, MoreThan, ILike } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { hashPassword, comparePassword } from '../../../common/bcrypt/bcrypt-pool.helper';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConsentItemDto } from './dto/consent.dto';
@@ -75,7 +75,7 @@ export class AuthService {
         });
         if (exists) throw new ConflictException('Email bereits registriert');
 
-        const passwordHash = await bcrypt.hash(dto.password, 12);
+        const passwordHash = await hashPassword(dto.password, 12);
 
         const user = this.userRepository.create({
             email_search_hash: emailHash,
@@ -132,7 +132,7 @@ export class AuthService {
             }
         }
 
-        const passwordValid = await bcrypt.compare(dto.password, user.password_hash ?? '');
+        const passwordValid = await comparePassword(dto.password, user.password_hash ?? '');
         if (!passwordValid) throw new UnauthorizedException('Ungültige Zugangsdaten');
 
         if (user.deleted_at) {
@@ -296,7 +296,7 @@ export class AuthService {
 
         if (!user) throw new NotFoundException('Token ungültig oder abgelaufen');
 
-        user.password_hash = await bcrypt.hash(newPassword, 12);
+        user.password_hash = await hashPassword(newPassword, 12);
         user.password_reset_token = null;
         user.password_reset_expires_at = null;
         await this.userRepository.save(user);
@@ -325,13 +325,13 @@ export class AuthService {
         const user = await this.userRepository.findOne({ where: { id: userId } });
         if (!user) throw new NotFoundException('User nicht gefunden');
 
-        const valid = await bcrypt.compare(currentPassword, user.password_hash ?? '');
+        const valid = await comparePassword(currentPassword, user.password_hash ?? '');
         if (!valid) throw new UnauthorizedException('Aktuelles Passwort ist falsch');
 
-        const same = await bcrypt.compare(newPassword, user.password_hash ?? '');
+        const same = await comparePassword(newPassword, user.password_hash ?? '');
         if (same) throw new BadRequestException('Neues Passwort muss sich vom aktuellen unterscheiden');
 
-        user.password_hash = await bcrypt.hash(newPassword, 12);
+        user.password_hash = await hashPassword(newPassword, 12);
         await this.userRepository.save(user);
 
         return { message: 'Passwort erfolgreich geändert' };
@@ -341,7 +341,7 @@ export class AuthService {
         const user = await this.userRepository.findOne({ where: { id: userId } });
         if (!user) throw new NotFoundException('User nicht gefunden');
 
-        const valid = await bcrypt.compare(currentPassword, user.password_hash ?? '');
+        const valid = await comparePassword(currentPassword, user.password_hash ?? '');
         if (!valid) throw new UnauthorizedException('Passwort ist falsch');
 
         const newEmailHash = this.hashEmail(newEmail);

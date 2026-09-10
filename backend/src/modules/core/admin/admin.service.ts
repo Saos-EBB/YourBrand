@@ -6,7 +6,7 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../../../common/bcrypt/bcrypt-pool.helper';
 import * as crypto from 'crypto';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -402,7 +402,7 @@ export class AdminService {
         const nicknameTaken = await this.profileRepo.findOne({ where: { nickname: dto.nickname } });
         if (nicknameTaken) throw new ConflictException('Nickname bereits vergeben');
 
-        const passwordHash = await bcrypt.hash(dto.password, 12);
+        const passwordHash = await hashPassword(dto.password, 12);
         const public_id = await this.generatePublicId();
 
         const user = this.userRepo.create({

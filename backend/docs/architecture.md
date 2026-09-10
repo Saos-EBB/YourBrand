@@ -76,7 +76,7 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | ~~GDPR-Export~~ | ~~15 Queries + synchrones `pdfkit` auf dem Event-Loop~~ | **Erledigt 2026-09-10:** `GdprExportProcessor` (BullMQ, nur `WorkerModule`) übernimmt Queries + PDF-Build wortwörtlich unverändert. `GET /gdpr/export` antwortet sofort mit Bestätigung statt PDF-Stream (API-Vertragsänderung), Mail mit PDF-Anhang statt Link. `last_gdpr_export_at` wird erst nach erfolgreichem Mailversand gesetzt — ein fehlgeschlagener Job verbrennt nicht das 30-Tage-Fenster. |
 | ~~`checkAutoSuspend`~~ | ~~Non-transaktionale Fire-and-forget-Chain mit `.catch(()=>{})`~~ | **Erledigt 2026-09-10:** `AutoSuspendProcessor` (BullMQ, nur `WorkerModule`), Ban/Strike-Schritte einzeln idempotent (Retry überspringt bereits erledigte Schritte statt alles neu zu machen oder alles zu überspringen). Dabei `migrations/002_seed_system_user.sql` gefunden+gefixt (siehe Entscheidungen). |
 | ~~`createImageTicket`~~ (media-ticket-dispatch) | ~~`.catch(() => {})` ganz ohne Logging~~ | **Erledigt 2026-09-10:** `MediaTicketProcessor` (BullMQ, nur `WorkerModule`). Aus `ProfanityService` entfernt (war deren einziger Aufrufer), `ModerationModule`-Import aus `media.module.ts` damit auch überflüssig geworden. |
-| bcrypt | Läuft im geteilten libuv-Threadpool, gleicher Pool wie `sharp` | Worker-Thread / eigener Pfad, isoliert vom Media-Threadpool |
+| ~~bcrypt~~ | ~~Lief im geteilten libuv-Threadpool, gleicher Pool wie `sharp`~~ | **Erledigt 2026-09-10:** eigener `piscina`-Worker-Thread-Pool (`common/bcrypt/`), alle `hash`/`compare`-Aufrufe (auth, admin, setup) laufen jetzt darüber statt direkt über das `bcrypt`-Package. Verifiziert per Loadtest: Ceiling von ~20–30 req/s auf ~70–90 req/s (≈3×). |
 | `beef.scheduler.ts` — alle `@Cron`-Jobs | Jede Instanz führt jeden Cron unabhängig aus — bei N Instanzen verarbeitet jede denselben abgelaufenen Beef parallel, kein verteilter Lock (gefunden 2026-09-10 beim Beef-Game-State-Rework, nicht Teil dieses Punkts) | Verteilter Lock (z.B. Redis `SET NX`) oder nur eine Instanz führt Crons aus |
 | ~~Redis~~ | ~~Existiert nicht~~ | **Infra erledigt 2026-09-10:** globales `RedisModule` (`ioredis`, `REDIS_CLIENT`-Token) in `AppModule`; `redis`-Service in `docker-compose.yml` (Demo) und `XXX_redis_load` in `docker-compose.loadtest.yml` (eigenes Netzwerk, analog zur Loadtest-DB). Noch kein Verbraucher — startet mit Beef-Game-State (nächster Punkt). |
 | Queue / Object Storage | Existiert nicht | Neu: BullMQ `QueueModule`, S3-kompatibler Client, Worker-Entrypoint `start:worker` (Phase 2) |
@@ -129,6 +129,11 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
   die im Plan genannte Threadpool-Konkurrenz mit `sharp` verschwindet automatisch, sobald `sharp`
   mit der Media-Pipeline in den Worker-Prozess wandert — ob dedizierte bcrypt-Isolierung danach
   noch etwas bringt, ist eine Messfrage, keine Annahme.
+- 2026-09-10 — bcrypt-Isolierung: `piscina`-Worker-Thread-Pool statt `UV_THREADPOOL_SIZE`-Env-Var.
+  Grund: User-Entscheidung gegen die empfohlene einfachere Variante — Rechnung (bcrypt-Kosten
+  ~250ms × Pool-Groesse 4 ≈ gemessene ~20-30/s-Grenze) sprach zwar fuer die Env-Var, `piscina`
+  entspricht aber dem urspruenglichen Plan-Wortlaut woertlicher und isoliert bcrypt vollstaendig
+  von allem anderen im geteilten Threadpool (DNS, zlib, fs), nicht nur von `sharp`.
 
 ## Phase-3-Messung (2026-09-10)
 
@@ -225,10 +230,9 @@ Vollständige Liste, damit nichts aus dem ursprünglichen Plan verloren geht —
 nur in der Plan-Nachricht, nie explizit im Repo. Neue Funde aus Phase 0–2 sind ergänzt. Reihenfolge
 innerhalb einer Gruppe ist keine Priorität, nur Herkunft.
 
-**Phase 2, Rest — jetzt durch Phase-3-Messung bestätigt, nicht mehr nur Verdacht:**
-- [ ] bcrypt-Isolierung (Worker-Thread/`piscina` oder `UV_THREADPOOL_SIZE`) — Phase-3-Messung
-  zeigt ~20–30 req/s-Deckel für Login, unverändert seit dem Media-Pipeline-Umzug. Klarer
-  Kandidat für den nächsten Schritt, sobald gewünscht.
+**Phase 2, Rest:**
+- [x] bcrypt-Isolierung — **erledigt 2026-09-10** (`piscina`-Worker-Pool, siehe Entscheidungen +
+  "Was neu / umgebaut werden muss" oben). Ceiling ~20–30 → ~70–90 req/s.
 
 **Phase 3 — Messen & hochrechnen:** ✅ erledigt — siehe "Phase-3-Messung" unten.
 

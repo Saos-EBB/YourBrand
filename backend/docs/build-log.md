@@ -1,3 +1,28 @@
+## 2026-09-10 — feat(bcrypt): dedizierter piscina-Worker-Thread-Pool
+**Was:** `src/common/bcrypt/` neu — `bcrypt.worker.ts` (laeuft in piscina-Worker-Threads, nutzt
+`bcrypt.hashSync`/`compareSync` da bereits im eigenen Thread) + `bcrypt-pool.helper.ts` (plain
+functions `hashPassword`/`comparePassword`, kein DI — Singleton-Pool via `getPool()`, gleiche
+`.ts`/`.js`-Dualmode-Aufloesung wie TypeORMs Entity-Glob in `app.module.ts`/`worker.module.ts`).
+Alle 9 echten API-Call-Sites (`auth.service.ts` ×7, `admin.service.ts`, `setup.service.ts`) auf
+die neuen Funktionen umgestellt, direkter `bcrypt`-Import dort entfernt. Seed-Skripte
+(`demo-seed.ts`, `seed-extra-users.ts`) bewusst NICHT angefasst — laufen ausserhalb des
+API-Prozesses, kein Konkurrenz-Problem dort.
+**User-Entscheidung:** `piscina` statt der von mir empfohlenen `UV_THREADPOOL_SIZE`-Env-Var
+(Begruendung + Rechnung dazu unter Entscheidungen in `docs/architecture.md`).
+**Verifiziert:** Standalone-Test zeigte echte Parallelitaet (8 gleichzeitige Hashes in 226ms statt
+seriell ~2000ms). End-to-End gegen echte App: Register/Login/falsches-Passwort alle korrekt,
+20 gleichzeitige Logins gegen denselben User in 323ms. Sauberer Vorher/Nachher-Vergleich mit
+derselben Methodik wie Phase 3 (`login-capacity.sh` gegen den Loadtest-Stack, 1000 User):
+**Ceiling ~20-30 req/s → ~70-90 req/s (grob 3x)**, 100%-Erfolgsrate haelt jetzt bis 70/s statt
+vorher bis 20/s.
+**Stolperstein:** `docker compose up --build` reicht nicht, wenn ein Service ein `- /app/node_modules`
+Anonymous-Volume aus einem frueheren Lauf hat — das Volume ueberlebt den Image-Rebuild und
+verdeckt die frisch installierte Dependency (`piscina` fehlte trotz `--build` im Container).
+Gefixt mit `docker exec ... npm install piscina` + Container-Neustart; `XXX_backend_load`/
+`XXX_worker_load` waren davon nicht betroffen (frisch von Grund auf entfernt seit Phase 3).
+**Nicht gebaut:** kein Anfassen der Seed-Skripte (siehe oben), keine Aenderung an der
+Kostenfaktor-Konstante (12) selbst — nur die Ausfuehrung isoliert, nicht die Kosten reduziert.
+
 ## 2026-09-10 — chore(loadtest): minio-load-Hostname-Bug gefixt + Phase-3-Messung durchgeführt
 **Was:** Beim Aufsetzen des Loadtest-Stacks fuer Phase 3 (frischer `XXX_load_pgdata`, war 2 Wochen
 alt und pre-Baseline-Migration) einen echten Bug gefunden: `mc` (Go) lehnt den Hostnamen
