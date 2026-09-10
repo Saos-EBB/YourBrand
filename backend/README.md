@@ -646,7 +646,7 @@ npm run start:dev
 npm run start:prod
 ```
 
-Migrations are plain SQL files in `migrations/`. Run them in order against your PostgreSQL database before starting the server. `schema_v4.sql` is a consolidated snapshot — it does **not** include every migration since; prefer running the individual `migrations/*.sql` files in order for a fully up-to-date schema.
+Migrations are plain SQL files in `migrations/`, starting from `001_baseline.sql` — a consolidated schema snapshot. Run any migrations after it in order against your PostgreSQL database before starting the server. Older per-change migrations (pre-baseline) live in `migrations/_archive/` for history only.
 
 ---
 

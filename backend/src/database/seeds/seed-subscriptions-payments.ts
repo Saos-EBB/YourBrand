@@ -38,8 +38,8 @@ const SEED_RESET = (process.env.SEED_RESET ?? 'false').toLowerCase() === 'true';
 const SUBSCRIPTION_SHARE = 0.35;
 const PLANS = ['monthly', 'yearly', 'lifetime'] as const;
 const PROVIDERS = ['paypal', 'sepa'] as const;
-// Fallback, falls migrations/020_subscription_prices.sql (System-Settings-Daten,
-// nicht Teil von db/schema.sql) noch nicht eingespielt wurde.
+// Fallback, falls migrations/_archive/020_subscription_prices.sql (System-Settings-Daten,
+// nicht Teil von migrations/001_baseline.sql) noch nicht eingespielt wurde.
 const DEFAULT_PRICES: Record<string, number> = {
     monthly: 9.99,
     yearly: 49.99,

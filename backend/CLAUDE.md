@@ -21,7 +21,7 @@ npm run migration:run    # run TypeORM migrations via data-source.ts
 npm run backfill:locations  # backfill PostGIS location column on profiles
 ```
 
-Migrations are plain SQL files in `migrations/`, numbered sequentially (e.g. `022_hidden_beef_feature.sql`). They are **not** auto-run on startup — run them manually against PostgreSQL in order. `migration:run` uses TypeORM's data source at `src/database/data-source.ts`.
+Migrations are plain SQL files in `migrations/`, starting from a consolidated baseline `001_baseline.sql` (a `pg_dump --schema-only` snapshot — see its header). Migrations that predate the baseline (`002`–`043`) live in `migrations/_archive/` for history only and must never be replayed against a DB provisioned from the baseline. New migrations continue numbering from `002` in the active `migrations/` directory. They are **not** auto-run on startup — run them manually against PostgreSQL in order. `migration:run` uses TypeORM's data source at `src/database/data-source.ts` (a separate mechanism, used only for the cities table).
 
 All routes are prefixed `/api/v1` (set globally in `main.ts`). Frontend runs on port 3001.
 

@@ -1,3 +1,11 @@
+-- 001_baseline.sql
+-- Consolidated schema baseline (`pg_dump --schema-only` of a fully-migrated dev DB).
+-- Replaces migrations 002-043 and schema_v4.sql as the single schema source of
+-- truth — those files now live in migrations/_archive/ for history only, do not
+-- run them against a DB provisioned from this baseline. New migrations continue
+-- from 002 in this directory. See docs/architecture.md for the consolidation
+-- rationale.
+
 --
 -- PostgreSQL database dump
 --

@@ -6,7 +6,7 @@
  * SEED_TX_PER_USER zufaellige coin_transactions an und pflegt user_coin_balance
  * exakt nach: balance = bisheriger Wert + Summe der neu generierten Betraege.
  *
- * type kommt zufaellig aus der chk_coin_tx_type-Liste (db/schema.sql), amount
+ * type kommt zufaellig aus der chk_coin_tx_type-Liste (migrations/001_baseline.sql), amount
  * ist positiv fuer purchase, alle earned_-Typen, starting_bonus und
  * lottery_win, negativ fuer alle spent_-Typen und house_cut. beef_id bleibt
  * immer NULL (keine Beef-Verknuepfung fuer Seed-Daten).
@@ -43,7 +43,7 @@ const ds = new DataSource({
 const SEED_TX_PER_USER = parseInt(process.env.SEED_TX_PER_USER ?? '0', 10);
 const SEED_RESET = (process.env.SEED_RESET ?? 'false').toLowerCase() === 'true';
 
-// Muss exakt der CHECK-Constraint chk_coin_tx_type aus db/schema.sql entsprechen.
+// Muss exakt der CHECK-Constraint chk_coin_tx_type aus migrations/001_baseline.sql entsprechen.
 const COIN_TX_TYPES = [
     'purchase', 'earned_beef_open', 'earned_comment', 'earned_win', 'earned_vote_win',
     'spent_vote', 'house_cut', 'lottery_win', 'starting_bonus',
