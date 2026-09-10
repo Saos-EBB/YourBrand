@@ -70,7 +70,7 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | ~~`optional-jwt.guard.ts`~~ | ~~Duplizierte Logik gegenüber `jwt.guard`~~ | **Erledigt 2026-09-10:** Token-Extraktion + gecachter Exists-Check jetzt in `common/guards/jwt-verify.helper.ts` geteilt (plain functions), beide Guards nutzen dieselbe Logik. `JwtModule.registerAsync`-Duplikat über 14 Module bleibt bewusst — das ist der separate Roadmap-Punkt "Shared Auth-Modul". |
 | `hashEmail` | Zwei lokale Kopien neben `crypto.helper.ts` | Nur noch `crypto.helper.ts` |
 | `JwtModule.registerAsync` | ~12 Zeilen kopiert in jedem Modul | Ein importierbares Shared-Auth-Modul |
-| system-settings-Cache | Cacht nur Hits | Auch Misses cachen (Redis) |
+| ~~system-settings-Cache~~ | ~~Cacht nur Hits (Prozess-lokaler `Map`)~~ | **Erledigt 2026-09-10:** Ganzer Cache nach Redis (`settings:{key}`, 60s TTL), Misses über `MISS_SENTINEL` mitgecacht — vorher ging jeder Call für einen nie gesetzten Key (z.B. Fallback-Defaults) bei jedem Request gegen Postgres. Nebeneffekt: `set()` invalidiert jetzt den geteilten Cache, alle Instanzen sehen die neue Config sofort statt jede für sich bis zu 60s zu warten. |
 | Media-Pipeline (`sharp`) | Synchron im Request | Rohdatei sofort in Object Storage, Job in Queue, Worker resized async |
 | GDPR-Export | 15 Queries + synchrones `pdfkit` auf dem Event-Loop | Background-Job (BullMQ), Link per Mail |
 | Notification-/Mail-Fanout (`checkAutoSuspend`, media-ticket-dispatch) | Non-transaktionale Fire-and-forget-Chain mit `.catch(()=>{})` | Job, retry-bar |
@@ -107,7 +107,7 @@ immer fragen).
   `Dockerfile.railway` Multi-Stage/non-root.
 - **Phase 1 — Stateless (Redis + Object Storage):** Reihenfolge laut Plan: (1) Redis aufsetzen ✅,
   (2) Beef-Game-State → Redis ✅, (3) Rate-Limiting → Redis ✅, (4) Media → Object Storage ✅,
-  (5) `jwt.guard` entlasten ✅ (alle 2026-09-10), (6) system-settings-Cache Misses, (7) Shared
+  (5) `jwt.guard` entlasten ✅, (6) system-settings-Cache Misses ✅ (alle 2026-09-10), (7) Shared
   Auth-Modul. Details siehe "Was neu / umgebaut werden muss" oben.
 - **Phase 2 — Async (Worker + Queue):** danach.
 - **Phase 3 — Messen & hochrechnen:** danach.

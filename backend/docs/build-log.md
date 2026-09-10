@@ -1,3 +1,17 @@
+## 2026-09-10 — feat(system-settings): Cache nach Redis, Misses mitgecacht
+**Was:** `SystemSettingsService`s Prozess-lokaler `Map`-Cache cachte nur Hits — jeder Call fuer
+einen nie in der DB gesetzten Key (haeufig bei Fallback-Defaults, z.B.
+`game.move_timeout_seconds` aus `beef-game.service.ts`) ging bei jedem Aufruf gegen Postgres.
+Ganzer Cache nach Redis (`settings:{key}`, 60s TTL, `MISS_SENTINEL` fuer gecachte Misses).
+Nebeneffekt der Redis-Migration: `set()` invalidiert jetzt den geteilten Cache — alle Instanzen
+sehen eine geaenderte Config sofort statt jede fuer sich bis zu 60s zu warten (vorher war der Cache
+ohnehin schon prozesslokal-inkonsistent zwischen Instanzen, nur nicht explizit als Bug benannt).
+Verifiziert gegen echten Redis-Container: 5 Calls fuer einen fehlenden Key → nur 1 simulierter
+DB-Call, `set()`-Invalidierung entfernt den Cache-Eintrag korrekt. TS-Build sauber.
+**Nicht gebaut:** kein Cache-Warming, keine Pub/Sub-Invalidierung zwischen Instanzen (die
+TTL-basierte Konsistenz — max. 60s Drift zwischen Redis-Write und naechstem Read — reicht fuer
+owner-konfigurierbare Werte wie Preise/Timeouts).
+
 ## 2026-09-10 — feat(auth): jwt.guard entlastet — Redis-Cache + gebatchtes last_active
 **Was:** `SELECT EXISTS (... FROM users ...)` lief bisher auf JEDEM authentifizierten Request
 (Hot-Path von ~27 Dateien) — jetzt `user:exists:{id}` in Redis gecacht, 15-Min-TTL (akzeptiertes
