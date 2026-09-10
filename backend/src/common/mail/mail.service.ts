@@ -56,6 +56,26 @@ export class MailService {
         });
     }
 
+    // PDF as an attachment, not a link: the export contains real PII
+    // (decrypted email, Art.-9 sensitive data) and the object storage bucket
+    // profile photos use is public-read — a link there would be a data leak.
+    async sendGdprExportEmail(to: string, pdfBuffer: Buffer) {
+        await this.resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to,
+            subject: 'Dein Datenexport ist fertig – Paarship',
+            html: `
+        <h2>Dein Datenexport ist fertig</h2>
+        <p>Im Anhang findest du alle personenbezogenen Daten, die wir zu deinem Konto gespeichert haben (Art. 15 DSGVO).</p>
+      `,
+            attachments: [{
+                filename: 'paarship-daten-export.pdf',
+                content: pdfBuffer,
+                contentType: 'application/pdf',
+            }],
+        });
+    }
+
     async sendAutoSuspendEmail(to: string) {
         await this.resend.emails.send({
             from: 'onboarding@resend.dev',

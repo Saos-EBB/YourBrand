@@ -73,7 +73,7 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | ~~`JwtModule.registerAsync`~~ | ~~~12 Zeilen kopiert in 14 Modulen~~ | **Erledigt 2026-09-10:** `common/auth/shared-jwt.module.ts` — eine Registrierung, `@Global()` wie `RedisModule`/`LastActiveModule`, einmal in `AppModule` importiert. Alle 14 Feature-Module brauchen den Block seitdem nicht mehr (kein neuer Import nötig — global heißt hier wirklich global). Verifiziert per `tsc --noEmit`; vollständiger Boot-Test folgt beim nächsten `docker compose up` des Users (dieselbe Struktur wie das schon laufende `RedisModule`/`LastActiveModule`, kein neues Risiko). |
 | ~~system-settings-Cache~~ | ~~Cacht nur Hits (Prozess-lokaler `Map`)~~ | **Erledigt 2026-09-10:** Ganzer Cache nach Redis (`settings:{key}`, 60s TTL), Misses über `MISS_SENTINEL` mitgecacht — vorher ging jeder Call für einen nie gesetzten Key (z.B. Fallback-Defaults) bei jedem Request gegen Postgres. Nebeneffekt: `set()` invalidiert jetzt den geteilten Cache, alle Instanzen sehen die neue Config sofort statt jede für sich bis zu 60s zu warten. |
 | ~~Media-Pipeline (`sharp`)~~ | ~~Synchron im Request~~ | **Erledigt 2026-09-10:** Raw-Upload sofort, `MediaProcessor` (nur `WorkerModule`) resized/watermarkt async und überschreibt denselben Object-Storage-Key. |
-| GDPR-Export | 15 Queries + synchrones `pdfkit` auf dem Event-Loop | Background-Job (BullMQ), PDF als Mail-Anhang (User-Entscheidung, kein Object-Storage-Link — PII) |
+| ~~GDPR-Export~~ | ~~15 Queries + synchrones `pdfkit` auf dem Event-Loop~~ | **Erledigt 2026-09-10:** `GdprExportProcessor` (BullMQ, nur `WorkerModule`) übernimmt Queries + PDF-Build wortwörtlich unverändert. `GET /gdpr/export` antwortet sofort mit Bestätigung statt PDF-Stream (API-Vertragsänderung), Mail mit PDF-Anhang statt Link. `last_gdpr_export_at` wird erst nach erfolgreichem Mailversand gesetzt — ein fehlgeschlagener Job verbrennt nicht das 30-Tage-Fenster. |
 | ~~`checkAutoSuspend`~~ | ~~Non-transaktionale Fire-and-forget-Chain mit `.catch(()=>{})`~~ | **Erledigt 2026-09-10:** `AutoSuspendProcessor` (BullMQ, nur `WorkerModule`), Ban/Strike-Schritte einzeln idempotent (Retry überspringt bereits erledigte Schritte statt alles neu zu machen oder alles zu überspringen). Dabei `migrations/002_seed_system_user.sql` gefunden+gefixt (siehe Entscheidungen). |
 | ~~`createImageTicket`~~ (media-ticket-dispatch) | ~~`.catch(() => {})` ganz ohne Logging~~ | **Erledigt 2026-09-10:** `MediaTicketProcessor` (BullMQ, nur `WorkerModule`). Aus `ProfanityService` entfernt (war deren einziger Aufrufer), `ModerationModule`-Import aus `media.module.ts` damit auch überflüssig geworden. |
 | bcrypt | Läuft im geteilten libuv-Threadpool, gleicher Pool wie `sharp` | Worker-Thread / eigener Pfad, isoliert vom Media-Threadpool |
@@ -143,7 +143,7 @@ immer fragen).
   umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
   möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
   Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
-- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 4 von 6 erledigt, 2026-09-10).**
+- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 5 von 6 erledigt, 2026-09-10).**
   Design-Entscheidungen (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` ✅ — eigenes,
   schlankes `WorkerModule` statt `AppModule` (siehe Korrektur unten), eigene Redis-Connection.
   (2) Media-Pipeline ✅: Raw-Upload sofort unter dem finalen Object-Storage-Key (`MediaService`),
@@ -159,8 +159,11 @@ immer fragen).
   `createImageTicket` ✅ über eigene `MediaTicketProcessor`-Queue (war reines Logging-Loch, keine
   echte Chain — kleinster der sechs Punkte). End-to-End verifiziert: Upload erzeugt korrekten
   `admin_tickets`-Eintrag, unabhängig vom parallel laufenden Media-Processing-Job. (5)
-  GDPR-Export → Job, PDF als Mail-Anhang statt Object-Storage-Link (PII-Sensitivität, aktuelle
-  Buckets sind public-read), (6) bcrypt-Isolierung zurückgestellt bis nach Phase 3s Neu-Messung
-  (sharp verlässt mit Schritt 2 ohnehin den API-Prozess-Threadpool).
+  GDPR-Export ✅ → Job, PDF als Mail-Anhang statt Object-Storage-Link (PII-Sensitivität, aktuelle
+  Buckets sind public-read). End-to-End verifiziert: `GET /gdpr/export` antwortet sofort, Worker
+  baut PDF + verschickt Mail erfolgreich, `last_gdpr_export_at` korrekt gesetzt, zweiter Versuch
+  direkt danach wird korrekt mit 403 abgelehnt (Rate-Limit unverändert funktionsfähig). (6)
+  bcrypt-Isolierung zurückgestellt bis nach Phase 3s Neu-Messung (sharp verlässt mit Schritt 2
+  ohnehin den API-Prozess-Threadpool).
 - **Phase 3 — Messen & hochrechnen:** danach.
 - **Track B (Correctness + Wartbarkeit):** parallel, jederzeit.

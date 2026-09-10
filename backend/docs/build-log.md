@@ -1,3 +1,28 @@
+## 2026-09-10 — feat(gdpr): Export async, PDF als Mail-Anhang (Phase 2, Punkt 5/6)
+**Was:** `GdprService.generateExport` (15 parallele Queries + ~300 Zeilen `pdfkit`-Layout,
+synchron auf dem Event-Loop) komplett unveraendert nach `gdpr-export.processor.ts` verschoben
+(`@Processor`, nur `WorkerModule`). `GdprService` bleibt nur noch die Rate-Limit-Pruefung
+(30-Tage-Fenster, bleibt synchron — billig, soll schnell ablehnen) + Enqueue. `GET /gdpr/export`
+antwortet jetzt sofort mit einer Bestaetigung statt den PDF-Buffer zu streamen — **API-Vertrags-
+Bruch** (Response-Shape aendert sich von PDF-Blob zu JSON, Frontend muesste das anpassen, ausserhalb
+dieses Backend-Schritts). `MailService.sendGdprExportEmail` neu: PDF als Anhang (Resend
+unterstuetzt `attachments`, max. 40 MB — GDPR-Export bleibt weit darunter), User-Entscheidung
+gegen Object-Storage-Link (Bucket ist public-read, Export enthaelt echte PII).
+`last_gdpr_export_at` wird jetzt erst NACH erfolgreichem Mailversand gesetzt (vorher: nach
+PDF-Build) — ein fehlgeschlagener Job (z.B. Resend down) verbrennt das 30-Tage-Fenster nicht,
+ein Retry baut die ganze Sache neu. Kein Try/Catch um den Mailversand (anders als bei
+checkAutoSuspend/media-ticket): hier IST die Mail der gesamte Zweck des Jobs, ein Fehlschlag soll
+den ganzen Job retrybar machen, nicht verschluckt werden.
+Nebenbei: `GdprModule`s `TypeOrmModule.forFeature([User])` entfernt — der injizierte `userRepo`
+wurde in `generateExport` nie tatsaechlich benutzt (nur `dataSource.query` direkt), toter Code.
+**Verifiziert End-to-End** gegen echte Container: `GET /gdpr/export` antwortet sofort, Worker
+fuehrt alle 15 Queries aus, baut das PDF, verschickt die Mail erfolgreich (kein Fehler, `UPDATE
+last_gdpr_export_at` lief durch), zweiter Export-Versuch direkt danach korrekt mit 403
+("erst wieder moeglich ab ...") abgelehnt.
+**Nicht gebaut:** keine Deduplizierung bei mehrfachen schnellen Klicks vor Job-Abschluss (waeren
+mehrere Jobs/Mails, aber kein Korrektheitsproblem — analog zur checkAutoSuspend-Entscheidung).
+Frontend-Anpassung an die neue Response-Form nicht Teil dieses Schritts.
+
 ## 2026-09-10 — feat(moderation): createImageTicket über die Queue (Phase 2, Punkt 4/6)
 **Was:** `ProfanityService.createImageTicket` (ein INSERT + Event, aufgerufen als
 `.catch(() => {})` OHNE Logging — schlimmer als checkAutoSuspend, ein Fehlschlag verschwand
