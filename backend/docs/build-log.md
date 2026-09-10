@@ -1,3 +1,16 @@
+## 2026-09-10 — docs(architecture): Phase 2 abgeschlossen, vollständiges Backlog nachgetragen
+**Was:** Phase 2 als abgeschlossen markiert (5/6 umgesetzt, bcrypt-Isolierung bewusst auf Phase 3
+verschoben). Neue Sektion "Offene Punkte (Backlog)" in `docs/architecture.md`: alle Track-B-Punkte
+(Correctness + Wartbarkeit) aus der urspruenglichen Plan-Nachricht explizit als Checkliste
+nachgetragen — die standen bisher nur in der Chat-Nachricht, nie im Repo, mit echtem Risiko sie
+zu verlieren. Dazu die waehrend Phase 0-2 gefundenen, bewusst zurueckgestellten Punkte
+(Dockerfile.railway Multi-Stage, beef.scheduler.ts Cron-Dopplung, createNicknameTicket) an einer
+Stelle gesammelt, plus Phase 3s drei Schritte.
+**Nicht gebaut:** keine zweite Tracking-Datei — eine `docs/`-Datei mehr als die drei etablierten
+(build-log/errors/architecture) haette parallel gepflegt werden muessen und waere ueber die Zeit
+auseinandergelaufen. Backlog lebt in `architecture.md`, wird dort editiert (nicht angehaengt),
+wie der Rest der Datei.
+
 ## 2026-09-10 — feat(gdpr): Export async, PDF als Mail-Anhang (Phase 2, Punkt 5/6)
 **Was:** `GdprService.generateExport` (15 parallele Queries + ~300 Zeilen `pdfkit`-Layout,
 synchron auf dem Event-Loop) komplett unveraendert nach `gdpr-export.processor.ts` verschoben

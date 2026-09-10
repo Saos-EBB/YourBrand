@@ -143,7 +143,8 @@ immer fragen).
   umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
   möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
   Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
-- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 5 von 6 erledigt, 2026-09-10).**
+- **Phase 2 — Async (Worker + Queue): ✅ abgeschlossen 2026-09-10** (5 von 6 Punkten umgesetzt,
+  Punkt 6 bewusst zurückgestellt — siehe unten).
   Design-Entscheidungen (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` ✅ — eigenes,
   schlankes `WorkerModule` statt `AppModule` (siehe Korrektur unten), eigene Redis-Connection.
   (2) Media-Pipeline ✅: Raw-Upload sofort unter dem finalen Object-Storage-Key (`MediaService`),
@@ -167,3 +168,52 @@ immer fragen).
   ohnehin den API-Prozess-Threadpool).
 - **Phase 3 — Messen & hochrechnen:** danach.
 - **Track B (Correctness + Wartbarkeit):** parallel, jederzeit.
+
+## Offene Punkte (Backlog)
+
+Vollständige Liste, damit nichts aus dem ursprünglichen Plan verloren geht — Track B stand bisher
+nur in der Plan-Nachricht, nie explizit im Repo. Neue Funde aus Phase 0–2 sind ergänzt. Reihenfolge
+innerhalb einer Gruppe ist keine Priorität, nur Herkunft.
+
+**Phase 2, Rest:**
+- [ ] bcrypt-Isolierung (Worker-Thread/`piscina` oder `UV_THREADPOOL_SIZE`) — zurückgestellt bis
+  Phase 3 zeigt, ob der ~76/s-Deckel nach dem Media-Pipeline-Umzug noch besteht.
+
+**Phase 3 — Messen & hochrechnen:**
+- [ ] Kapazität einer API-Instanz in req/s messen (`scripts/loadtest/endpoint-rate.sh`, ohne
+  bcrypt-Engpass zu verwechseln mit Sharp-Threadpool-Konkurrenz, die jetzt weg ist).
+- [ ] Ziel-Rate aus Klick-Intervall + Concurrent-User-Definition ableiten.
+- [ ] Instanzenzahl = Ziel-Rate / Kapazität pro Instanz, DB-Last gegenchecken.
+
+**Aus Phase 0–2 zurückgestellt (kein neuer Scope, nur nicht sofort gemacht):**
+- [ ] `Dockerfile.railway` Multi-Stage + non-root (Phase 0) — bereits lokal verifiziert,
+  Umbau bräuchte Re-Verifikation.
+- [ ] `beef.scheduler.ts`: alle `@Cron`-Jobs laufen unabhängig auf jeder Instanz, kein verteilter
+  Lock — bei N API-Instanzen verarbeitet jede denselben abgelaufenen Beef parallel (gefunden beim
+  Beef-Game-State-Rework, Phase 1).
+- [ ] `createNicknameTicket` (`profanity.service.ts`) — dieselbe INSERT+Event-Struktur wie das
+  gefixte `createImageTicket`, aber nicht Teil des Plans; kein bekanntes Fire-and-forget-Problem
+  dort, nur beim Vorbeikommen aufgefallen.
+
+**Track B — Correctness:**
+- [ ] Teeth-Race: `teeth.service.ts` transform (read → check ≥15 → write) in eine Transaktion
+  mit Lock.
+- [ ] Moderation-Access-Scope: `getReports`/`getStrikes` haben `@Roles('admin')`, filtern aber auf
+  `req.user.sub` → Admin sieht nur eigene statt plattformweite Queue.
+- [x] `checkAutoSuspend` atomar machen — **erledigt** in Phase 2 (idempotenter Job).
+- [ ] Fehlende Indizes: `beef_votes(beef_id)`, `beef_comments(beef_id)`,
+  `coin_transactions(user_id)`, `teeth(owner_id)`, `badges(expires_at)`.
+- [ ] City-Search: leading-wildcard `ILIKE '%q%'` ohne Guard → Trigram-Index oder Prefix-Suche +
+  Guard.
+- [ ] Admin-`useSearch` sucht nur die geladene Seite (keine serverseitige Pagination); Debounce-
+  Timeout beim Unmount clearen.
+
+**Track B — Wartbarkeit:**
+- [ ] `profile.service.ts` (887 Z., 11-Arg-Konstruktor) — `searchProfiles` (~235 Z.) rausziehen.
+- [ ] `admin.service.ts` (Fan-out 22) — nach Concern splitten (Moderation / Settings / Reporting).
+- [ ] `VerwaltungTab.tsx` (597 Z., ~40 `useState`) — pro Datenlader eine Komponente.
+- [ ] Kopierte Konstanten (`COIN_TX_TYPES`, Package-Preise, `DEFAULT_PRICES`) aus einer Quelle
+  importieren; Coin-Preise von compile-time → `SystemSettings`.
+- [ ] Frontend-Types aus NestJS-DTOs generieren statt handkopieren.
+- [ ] Enum-as-VARCHAR (`coin_transactions.type`, `beefs.status`) → echter Enum-Typ / Lookup-Tabelle
+  (additiv, keine bestehende Spalte umbauen).
