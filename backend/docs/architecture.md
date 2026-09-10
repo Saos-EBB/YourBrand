@@ -118,10 +118,59 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
   `QueueModule` — kein HTTP, keine Controller/Guards/Gateways), Processors werden künftig nur dort
   registriert, nie in den von `AppModule` geladenen Feature-Modulen. "Ein Codebase, zwei
   Prozess-Rollen" bleibt gültig — nur eben zwei Root-Module statt einem.
+- 2026-09-10 — **Bug + Fix:** `docker-compose.loadtest.yml`s MinIO-Service hieß `XXX_minio_load`
+  (Unterstriche, analog zu `XXX_db_load`/`XXX_redis_load`) — funktionierte für `ioredis`/`pg`/
+  `aws-sdk`, aber `mc` (Go, strengere Hostname-Validierung) lehnte den Namen mit "invalid hostname"
+  ab, der `minio-load-init`-Bucket-Setup schlug fehl. Umbenannt zu `minio-load` (Bindestrich statt
+  Unterstrich, wie das Demo-Stacks funktionierendes `minio`), alle Referenzen (S3_ENDPOINT in
+  Backend + Worker, `MC_HOST_local`, `depends_on`) mitgezogen. Gefunden beim ersten echten Aufsetzen
+  des Loadtest-Stacks für die Phase-3-Messung.
 - 2026-09-10 — bcrypt-Isolierung (Phase 2) zurückgestellt bis nach der Phase-3-Neu-Messung. Grund:
   die im Plan genannte Threadpool-Konkurrenz mit `sharp` verschwindet automatisch, sobald `sharp`
   mit der Media-Pipeline in den Worker-Prozess wandert — ob dedizierte bcrypt-Isolierung danach
   noch etwas bringt, ist eine Messfrage, keine Annahme.
+
+## Phase-3-Messung (2026-09-10)
+
+Gemessen mit `scripts/loadtest/endpoint-rate.sh` (Mode 3) und `login-capacity.sh` (Mode 1) gegen
+den frisch aufgesetzten Loadtest-Stack (`docker-compose.loadtest.yml`, 1000 geseedete User,
+`nest start --watch`-Devmode — keine `start:prod`-Zahl). Client und Server liefen auf derselben
+Maschine — absolute Zahlen sind daher eine untere Schätzung, kein Produktions-Benchmark; die
+**Relation** zwischen den drei Werten (DB vs. API vs. bcrypt) ist trotzdem aussagekräftig.
+
+**Methodik-Korrekturen unterwegs** (beide vor der eigentlichen Messung gefunden und gefixt):
+- `/admin/media/pending` in der ersten Mode-3-Runde mitgetestet → 403 fürs fehlende Admin-Recht
+  bei jedem Test-User, hat `AUTO_STOP` fälschlich bei 10/s ausgelöst. Endpoint aus der Auswahl
+  raus, kein Kapazitätsproblem.
+- `login-capacity.sh` sizes `users.csv` nach `MAX_RATE × STEP_SEC`, unabhängig von der tatsächlich
+  geseedeten User-Zahl — mit `MAX_RATE=200` wuchs die Datei auf 1600 Zeilen, obwohl nur 1000 User
+  existierten. Round-Robin traf User 1001–1600, die es nicht gibt → Burst aus `401 Ungültige
+  Zugangsdaten`, sah aus wie ein Kapazitätseinbruch, war aber ein Test-Setup-Mismatch.
+  `users.csv` explizit auf 1000 Zeilen neu erzeugt, danach sauber.
+
+**Ergebnisse:**
+
+| Was | Kapazität/Instanz | Engpass |
+|---|---|---|
+| Allgemeine Endpoints (Discover, Chat, Coin-Balance, Media-Upload, Contact-Requests — kein Login) | ~250–270 req/s bei ≥97 % Erfolg, Einbruch ab ~290/s | API-Prozess-CPU (Node Event-Loop), **nicht** die DB |
+| Nur leichte Read-Endpoints (Discover, Chat-Liste, Coin-Balance) | 250/s bei 100 % Erfolg, sauber gehalten | API-CPU 90–125 % (>1 Kern ausgelastet), DB-CPU nur 45–48 % |
+| Login (`POST /auth/login`, bcrypt) | ~20–30 req/s bei ~100 %, ab 30/s bereits 94,6 % + Avg-Latenz 2,4s | bcrypt/Threadpool — deutlich enger als alles andere |
+
+**Kernaussage:** Die Datenbank ist bei keiner gemessenen Rate der Flaschenhals (44–48 % CPU auch
+bei API-Sättigung) — das bestätigt die Grundannahme des ganzen Umbaus: mehr API-Instanzen sind
+der richtige Hebel, nicht eine größere DB. bcrypt bleibt der mit Abstand engste Engpass und hat
+sich durch den Media-Pipeline-Umzug (Schritt 2, Phase 2) **nicht** verbessert — die
+Threadpool-Konkurrenz mit `sharp` war nie die Hauptursache, die zurückgestellte
+bcrypt-Isolierung (Backlog) bleibt also ein echter, durch Zahlen belegter Kandidat.
+
+**Hochrechnung (Beispiel, Annahmen explizit):** Angenommen 50.000 gleichzeitig aktive User
+(Referenzgröße aus dem ursprünglichen Plan) erzeugen im Schnitt 1 Request alle 30 s
+(≈ 1.667 req/s Gesamtlast, allgemeiner Traffic ohne Login-Sturm) → **1.667 / 260 ≈ 7 Instanzen**
+für den allgemeinen Pfad. Ein Login-Sturm (z.B. viele User melden sich gleichzeitig neu an) ist
+durch die ~20–30 req/s-bcrypt-Grenze pro Instanz der tatsächlich limitierende Fall, nicht der
+allgemeine Traffic — die Annahme über gleichzeitige Logins bestimmt hier staerker die
+Instanzenzahl als die 50k-Zahl selbst. Beide Annahmen (Request-Intervall, Login-Gleichzeitigkeit)
+sind Platzhalter — mit echten Produktzahlen ersetzen, sobald vorhanden.
 
 ## Roadmap
 
@@ -166,7 +215,8 @@ immer fragen).
   direkt danach wird korrekt mit 403 abgelehnt (Rate-Limit unverändert funktionsfähig). (6)
   bcrypt-Isolierung zurückgestellt bis nach Phase 3s Neu-Messung (sharp verlässt mit Schritt 2
   ohnehin den API-Prozess-Threadpool).
-- **Phase 3 — Messen & hochrechnen:** danach.
+- **Phase 3 — Messen & hochrechnen: ✅ abgeschlossen 2026-09-10.** Ergebnisse siehe unten
+  (eigene Sektion "Phase-3-Messung").
 - **Track B (Correctness + Wartbarkeit):** parallel, jederzeit.
 
 ## Offene Punkte (Backlog)
@@ -175,15 +225,12 @@ Vollständige Liste, damit nichts aus dem ursprünglichen Plan verloren geht —
 nur in der Plan-Nachricht, nie explizit im Repo. Neue Funde aus Phase 0–2 sind ergänzt. Reihenfolge
 innerhalb einer Gruppe ist keine Priorität, nur Herkunft.
 
-**Phase 2, Rest:**
-- [ ] bcrypt-Isolierung (Worker-Thread/`piscina` oder `UV_THREADPOOL_SIZE`) — zurückgestellt bis
-  Phase 3 zeigt, ob der ~76/s-Deckel nach dem Media-Pipeline-Umzug noch besteht.
+**Phase 2, Rest — jetzt durch Phase-3-Messung bestätigt, nicht mehr nur Verdacht:**
+- [ ] bcrypt-Isolierung (Worker-Thread/`piscina` oder `UV_THREADPOOL_SIZE`) — Phase-3-Messung
+  zeigt ~20–30 req/s-Deckel für Login, unverändert seit dem Media-Pipeline-Umzug. Klarer
+  Kandidat für den nächsten Schritt, sobald gewünscht.
 
-**Phase 3 — Messen & hochrechnen:**
-- [ ] Kapazität einer API-Instanz in req/s messen (`scripts/loadtest/endpoint-rate.sh`, ohne
-  bcrypt-Engpass zu verwechseln mit Sharp-Threadpool-Konkurrenz, die jetzt weg ist).
-- [ ] Ziel-Rate aus Klick-Intervall + Concurrent-User-Definition ableiten.
-- [ ] Instanzenzahl = Ziel-Rate / Kapazität pro Instanz, DB-Last gegenchecken.
+**Phase 3 — Messen & hochrechnen:** ✅ erledigt — siehe "Phase-3-Messung" unten.
 
 **Aus Phase 0–2 zurückgestellt (kein neuer Scope, nur nicht sofort gemacht):**
 - [ ] `Dockerfile.railway` Multi-Stage + non-root (Phase 0) — bereits lokal verifiziert,

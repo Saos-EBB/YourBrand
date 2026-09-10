@@ -1,3 +1,27 @@
+## 2026-09-10 — chore(loadtest): minio-load-Hostname-Bug gefixt + Phase-3-Messung durchgeführt
+**Was:** Beim Aufsetzen des Loadtest-Stacks fuer Phase 3 (frischer `XXX_load_pgdata`, war 2 Wochen
+alt und pre-Baseline-Migration) einen echten Bug gefunden: `mc` (Go) lehnt den Hostnamen
+`XXX_minio_load` (Unterstriche) als "invalid hostname" ab — `ioredis`/`pg`/`aws-sdk` sind da
+toleranter, darum ist das nie vorher aufgefallen. Service in `docker-compose.loadtest.yml` zu
+`minio-load` (Bindestrich) umbenannt, alle Referenzen mitgezogen. `migrations/002_seed_system_user.sql`
+manuell auf die frische Loadtest-DB angewendet (wird nicht automatisch mitgebacken).
+**Phase-3-Messung** (`scripts/loadtest/endpoint-rate.sh` Mode 3, `login-capacity.sh` Mode 1, gegen
+1000 geseedete User): zwei Methodik-Fehler unterwegs gefunden und korrigiert, bevor die Zahlen
+sauber waren — (1) `/admin/media/pending` in der Endpoint-Auswahl loeste faelschlich `AUTO_STOP`
+aus (403 wegen fehlender Admin-Rolle bei Testusern, keine Kapazitaetsgrenze), raus aus der Auswahl.
+(2) `login-capacity.sh` groesste `users.csv` nach `MAX_RATE × STEP_SEC` unabhaengig von der
+tatsaechlich geseedeten User-Zahl (1000) — bei `MAX_RATE=200` wuchs die Datei auf 1600 Zeilen,
+Round-Robin traf nicht-existente User 1001-1600, Ergebnis war ein Burst `401` der wie ein
+Kapazitaetseinbruch aussah. `users.csv` explizit neu auf 1000 Zeilen erzeugt, danach sauber.
+**Ergebnisse** (Details + Hochrechnung in `docs/architecture.md`, Sektion "Phase-3-Messung"):
+allgemeiner Traffic ~250-270 req/s/Instanz bei API-CPU-Saettigung (90-125%, >1 Kern), DB dabei nur
+bei 44-48% CPU — die DB ist kein Flaschenhals, mehr Instanzen sind der richtige Hebel. Login/bcrypt
+bleibt mit ~20-30 req/s/Instanz der mit Abstand engste Engpass, unveraendert seit dem
+Media-Pipeline-Umzug — bestaetigt, dass Sharp-Threadpool-Konkurrenz nie die Hauptursache war.
+**Nicht gebaut:** keine echte Produktions-Hochrechnung (Annahmen zu Klick-Intervall/Concurrent-
+Usern fehlen, mit Platzhaltern explizit markiert), keine bcrypt-Isolierung selbst umgesetzt — nur
+gemessen, dass sie jetzt datenbelegt sinnvoll waere.
+
 ## 2026-09-10 — docs(architecture): Phase 2 abgeschlossen, vollständiges Backlog nachgetragen
 **Was:** Phase 2 als abgeschlossen markiert (5/6 umgesetzt, bcrypt-Isolierung bewusst auf Phase 3
 verschoben). Neue Sektion "Offene Punkte (Backlog)" in `docs/architecture.md`: alle Track-B-Punkte
