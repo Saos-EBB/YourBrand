@@ -17,6 +17,7 @@ import { AdminModule } from './modules/core/admin/admin.module';
 import { MediaModule } from './modules/core/media/media.module';
 import { GdprModule } from './modules/core/gdpr/gdpr.module';
 import { CommonModule } from './common/common.module';
+import { RedisModule } from './common/redis/redis.module';
 import { SupportModule } from './modules/core/support/support.module';
 import { SetupModule } from './modules/core/setup/setup.module';
 import { CitiesModule } from './modules/core/cities/cities.module';
@@ -70,6 +71,7 @@ import databaseConfig from './config/database.config';
       inject: [ConfigService],
     }),
     SharedModule,
+    RedisModule,
     CommonModule,
     AuthModule,
     MailModule,
