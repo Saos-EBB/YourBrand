@@ -1,3 +1,33 @@
+## 2026-09-10 — feat(media): Media-Pipeline async — Raw-Upload + Worker-Processing (Phase 2, Punkt 2/6)
+**Was:** `media.service.ts`s `uploadProfilePhoto` laedt jetzt die Rohdatei sofort unter dem finalen
+Object-Storage-Key hoch (`Content-Type` = `file.mimetype`, keine Sharp-Verarbeitung mehr im
+Request-Pfad), legt die `media_uploads`-Zeile sofort mit dieser (stabilen) `file_url` an und
+enqueued einen Job auf die neue `media-processing`-Queue. Response-Shape unveraendert (kein
+API-Vertragsbruch). `MediaProcessor` (`media.processor.ts`, Provider NUR in `WorkerModule`) laedt
+die Rohdatei per neuem `downloadObject()`-Helper herunter, macht Resize+Watermark (aus
+`media.service.ts` rausgezogen — MediaService braucht `sharp`/`SystemSettingsService`/`User`-Repo
+seitdem nicht mehr) und ueberschreibt denselben Key — `file_url` bleibt stabil.
+`common/queue/queue.constants.ts` neu: `MEDIA_PROCESSING_QUEUE`-Name + geteilte
+`DEFAULT_JOB_OPTIONS` (3 Versuche, exponentielles Backoff, `removeOnComplete`/`Fail`-Limits) fuer
+alle kuenftigen Queues.
+**Gefundene Bugs unterwegs:** (1) `media.module.ts` hatte ein 15. `JwtModule.registerAsync`-
+Duplikat, das der Shared-Auth-Modul-Schritt uebersehen hatte (fiel nicht in die 14er-Suche, weil
+`JwtGuard` dort nie als eigener Provider gelistet war — funktionierte trotzdem, weil alle seine
+Dependencies inzwischen global sind) — beim Vorbeikommen entfernt. (2) `WorkerModule`s Import von
+`SystemSettingsModule` brach beim echten Boot-Test: das Modul bringt `JwtGuard` als Provider mit,
+der `JwtService` braucht — aber `WorkerModule` importiert `SharedJwtModule` nicht (bewusst, der
+Worker hat keine HTTP-Guards). Gefixt: nur `SystemSettingsService` direkt bereitstellen
+(`TypeOrmModule.forFeature([...SystemSetting])` + Provider) statt das ganze Feature-Modul mit
+seinem HTTP-Kram zu importieren.
+**Verifiziert End-to-End** gegen echte Container (Postgres, Redis, MinIO, Worker, Backend): Foto
+hochgeladen (630 KB PNG) → Response nach 98ms, `file_url` sofort gueltig. Wenige Sekunden spaeter:
+Objekt unter derselben URL ist ein gueltiges WebP (586×714, Watermark sichtbar,
+`file_size_kb` in Postgres korrekt aktualisiert auf 153). `seed-media`-erzeugte Alt-Daten im
+persistenten MinIO-Volume als Testbild wiederverwendet.
+**Nicht gebaut:** `createImageTicket` bleibt vorerst `.catch(() => {})` ohne Queue — das ist der
+separate Schritt 4. Kein Loeschen/Aufraeumen der Rohdatei-Version (gibt es nicht getrennt — Worker
+ueberschreibt direkt denselben Key, kein Zwischenobjekt uebrig).
+
 ## 2026-09-10 — feat(queue): BullMQ-Infra + eigener Worker-Prozess (Phase 2, Punkt 1/6)
 **Was:** `bullmq` + `@nestjs/bullmq` installiert, `QueueModule` (`common/queue/`) konfiguriert die
 geteilte BullMQ-Redis-Connection (`maxRetriesPerRequest: null`, wie von BullMQ verlangt — eigene

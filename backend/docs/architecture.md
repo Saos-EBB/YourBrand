@@ -135,11 +135,13 @@ immer fragen).
   umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
   möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
   Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
-- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 1 von 6 erledigt, 2026-09-10).**
+- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 2 von 6 erledigt, 2026-09-10).**
   Design-Entscheidungen (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` ✅ — eigenes,
   schlankes `WorkerModule` statt `AppModule` (siehe Korrektur unten), eigene Redis-Connection.
-  (2) Media-Pipeline: Raw-Upload sofort unter dem finalen Object-Storage-Key,
-  Worker überschreibt nach Resize/Watermark dasselbe Objekt — keine Migration, (3)
+  (2) Media-Pipeline ✅: Raw-Upload sofort unter dem finalen Object-Storage-Key (`MediaService`),
+  `MediaProcessor` (nur im `WorkerModule`) überschreibt nach Resize/Watermark dasselbe Objekt —
+  keine Migration. End-to-End verifiziert: Upload-Response 98ms, Bild erscheint verarbeitet
+  (resized + watermarkt, gültiges WebP) innerhalb weniger Sekunden unter derselben URL. (3)
   `checkAutoSuspend` → idempotenter Job (schließt Track-B "atomar machen" mit ab), (4)
   `createImageTicket` ebenfalls über die Queue (war reines Logging-Loch, keine echte Chain), (5)
   GDPR-Export → Job, PDF als Mail-Anhang statt Object-Storage-Link (PII-Sensitivität, aktuelle

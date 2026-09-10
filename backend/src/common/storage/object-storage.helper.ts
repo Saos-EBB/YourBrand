@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 let client: S3Client | undefined;
 
@@ -39,4 +39,14 @@ export async function uploadObject(key: string, body: Buffer, contentType: strin
         ContentType: contentType,
     }));
     return `${getPublicUrlBase()}/${key}`;
+}
+
+/** Downloads the object at `key` into memory. */
+export async function downloadObject(key: string): Promise<Buffer> {
+    const response = await getClient().send(new GetObjectCommand({
+        Bucket: getBucket(),
+        Key: key,
+    }));
+    const bytes = await response.Body!.transformToByteArray();
+    return Buffer.from(bytes);
 }

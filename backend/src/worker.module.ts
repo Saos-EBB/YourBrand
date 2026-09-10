@@ -1,8 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { RedisModule } from './common/redis/redis.module';
 import { QueueModule } from './common/queue/queue.module';
+import { MEDIA_PROCESSING_QUEUE, DEFAULT_JOB_OPTIONS } from './common/queue/queue.constants';
+import { SystemSettingsService } from './modules/core/system-settings/system-settings.service';
+import { SystemSetting } from './modules/core/system-settings/entities/system-setting.entity';
+import { MediaUpload } from './modules/core/media/entities/media-upload.entity';
+import { User } from './modules/core/auth/entities/user.entity';
+import { MediaProcessor } from './modules/core/media/media.processor';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 
@@ -35,8 +42,15 @@ import databaseConfig from './config/database.config';
             }),
             inject: [ConfigService],
         }),
+        TypeOrmModule.forFeature([MediaUpload, User, SystemSetting]),
         RedisModule,
         QueueModule,
+        BullModule.registerQueue({ name: MEDIA_PROCESSING_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
     ],
+    // SystemSettingsService directly instead of importing SystemSettingsModule —
+    // that module also provides SystemSettingsController/JwtGuard/OwnerGuard,
+    // and JwtGuard needs JwtService (SharedJwtModule, API-only). The worker
+    // has no HTTP surface, so it only needs the service itself.
+    providers: [MediaProcessor, SystemSettingsService],
 })
 export class WorkerModule { }

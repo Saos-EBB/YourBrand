@@ -156,11 +156,19 @@ services:
       DB_POOL_MAX: ${DB_POOL_MAX:-20}
       REDIS_HOST:  XXX_redis_load
       REDIS_PORT:  6379
+      S3_ENDPOINT: http://XXX_minio_load:9000
+      S3_REGION:   auto
+      S3_ACCESS_KEY_ID:     ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET:   yourbrand-media-load
+      S3_PUBLIC_URL_BASE: http://localhost:9500/yourbrand-media-load
     depends_on:
       XXX_db_load:
         condition: service_healthy
       XXX_redis_load:
         condition: service_healthy
+      XXX_minio_load_init:
+        condition: service_completed_successfully
     volumes:
       - ./backend:/app
       - /app/node_modules

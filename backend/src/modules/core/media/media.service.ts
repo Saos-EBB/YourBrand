@@ -1,14 +1,15 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import sharp from 'sharp';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { uploadObject } from '../../../common/storage/object-storage.helper';
+import { MEDIA_PROCESSING_QUEUE } from '../../../common/queue/queue.constants';
 import { MediaUpload, FileType, FileContext, ModerationStatus } from './entities/media-upload.entity';
 import { Profile } from '../profile/entities/profile.entity';
 import { User } from '../auth/entities/user.entity';
 import { ProfanityService } from '../moderation/profanity.service';
-import { SystemSettingsService } from '../system-settings/system-settings.service';
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -19,37 +20,11 @@ export class MediaService {
         private readonly mediaRepository: Repository<MediaUpload>,
         @InjectRepository(Profile)
         private readonly profileRepository: Repository<Profile>,
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>,
         private readonly profanityService: ProfanityService,
-        private readonly systemSettingsService: SystemSettingsService,
         private readonly eventEmitter: EventEmitter2,
+        @InjectQueue(MEDIA_PROCESSING_QUEUE)
+        private readonly mediaQueue: Queue,
     ) {}
-
-    private buildWatermarkSvg(text: string, imgWidth: number, imgHeight: number): Buffer {
-        const fontSize = 14;
-        const margin   = 12;
-        // text-anchor="end" means x is the right edge of the text — gives a clean right margin
-        const x = imgWidth - margin;
-        const y = margin + fontSize;
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${imgWidth}" height="${imgHeight}">
-  <defs>
-    <filter id="ds">
-      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.6"/>
-    </filter>
-  </defs>
-  <text x="${x}" y="${y}"
-    font-family="'Courier New',monospace"
-    font-size="${fontSize}"
-    font-weight="bold"
-    fill="white"
-    fill-opacity="0.75"
-    text-anchor="end"
-    filter="url(#ds)"
-  >${text}</text>
-</svg>`;
-        return Buffer.from(svg);
-    }
 
     private validateMagicBytes(buffer: Buffer): boolean {
         if (buffer.length < 12) return false;
@@ -72,74 +47,58 @@ export class MediaService {
         return false;
     }
 
+    // Uploads the raw file immediately under its final key so the response
+    // stays fast — resize/watermark happens in MediaProcessor (worker
+    // process), which overwrites this same object a few seconds later. No
+    // schema change: file_url is populated from the start, it just briefly
+    // points at the unprocessed image.
     async uploadProfilePhoto(
         userId: string,
         file: Express.Multer.File,
     ): Promise<{ file_url: string; id: string }> {
-        try {
-            if (file.size > MAX_SIZE_BYTES) {
-                throw new BadRequestException('Datei zu groß. Maximal 5 MB erlaubt.');
-            }
-
-            if (!this.validateMagicBytes(file.buffer)) {
-                throw new BadRequestException('Ungültiges Dateiformat');
-            }
-
-            const filename = `${userId}-${Date.now()}.webp`;
-
-            // Resize + convert to WebP buffer so we can inspect dimensions and composite the watermark.
-            const resizedBuf = await sharp(file.buffer)
-                .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-                .webp({ quality: 80 })
-                .toBuffer();
-
-            const user = await this.userRepository.findOne({ where: { id: userId } });
-            const publicId = user?.public_id;
-
-            let finalBuf: Buffer;
-            if (publicId) {
-                const prefix = await this.systemSettingsService.getString('watermark_prefix', 'ID');
-                const watermarkText = `#${prefix}-${publicId}`;
-                const { width = 800, height = 800 } = await sharp(resizedBuf).metadata();
-                const watermarkSvg = this.buildWatermarkSvg(watermarkText, width, height);
-                finalBuf = await sharp(resizedBuf)
-                    .composite([{ input: watermarkSvg, top: 0, left: 0 }])
-                    .toBuffer();
-            } else {
-                finalBuf = resizedBuf;
-            }
-
-            const fileSizeKb = Math.ceil(finalBuf.length / 1024);
-            const fileUrl = await uploadObject(`profiles/${filename}`, finalBuf, 'image/webp');
-
-            const media = this.mediaRepository.create({
-                uploaded_by: userId,
-                file_url: fileUrl,
-                file_type: FileType.IMAGE,
-                context: FileContext.PROFILE,
-                moderation_status: ModerationStatus.PENDING,
-                is_encrypted: false,
-                file_size_kb: fileSizeKb,
-                conversation_id: null,
-                org_id: null,
-                file_use_for: 'profile_photo',
-            });
-            const saved = await this.mediaRepository.save(media);
-
-            await this.profileRepository.update({ user_id: userId }, { photo_id: saved.id });
-
-            this.profanityService.createImageTicket(userId, saved.id).catch(() => {});
-
-            this.eventEmitter.emit('media.pending_review', {
-                mediaId: saved.id,
-                fileType: FileType.IMAGE,
-                uploadedAt: saved.uploaded_at,
-                uploadedBy: userId,
-            });
-
-            return { file_url: fileUrl, id: saved.id };
-        } catch (err) {
-            throw err;
+        if (file.size > MAX_SIZE_BYTES) {
+            throw new BadRequestException('Datei zu groß. Maximal 5 MB erlaubt.');
         }
+
+        if (!this.validateMagicBytes(file.buffer)) {
+            throw new BadRequestException('Ungültiges Dateiformat');
+        }
+
+        const filename = `${userId}-${Date.now()}.webp`;
+        const storageKey = `profiles/${filename}`;
+        const fileUrl = await uploadObject(storageKey, file.buffer, file.mimetype);
+
+        const media = this.mediaRepository.create({
+            uploaded_by: userId,
+            file_url: fileUrl,
+            file_type: FileType.IMAGE,
+            context: FileContext.PROFILE,
+            moderation_status: ModerationStatus.PENDING,
+            is_encrypted: false,
+            file_size_kb: Math.ceil(file.size / 1024),
+            conversation_id: null,
+            org_id: null,
+            file_use_for: 'profile_photo',
+        });
+        const saved = await this.mediaRepository.save(media);
+
+        await this.profileRepository.update({ user_id: userId }, { photo_id: saved.id });
+
+        this.profanityService.createImageTicket(userId, saved.id).catch(() => {});
+
+        this.eventEmitter.emit('media.pending_review', {
+            mediaId: saved.id,
+            fileType: FileType.IMAGE,
+            uploadedAt: saved.uploaded_at,
+            uploadedBy: userId,
+        });
+
+        await this.mediaQueue.add('resize-and-watermark', {
+            mediaId: saved.id,
+            storageKey,
+            userId,
+        });
+
+        return { file_url: fileUrl, id: saved.id };
     }
 }
