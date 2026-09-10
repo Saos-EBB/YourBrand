@@ -91,6 +91,21 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
   Email-Verschlüsselung, Coin-Ledger) unnötig riskieren.
 - 2026-09-10 — Ein Codebase, zwei Prozess-Rollen (API + Worker via `start:worker`) statt zweitem
   Projekt/Repo. Grund: geteilte Types/Services/Entities, kein Deploy-Overhead für ein zweites Repo.
+- 2026-09-10 — Media-Pipeline (Phase 2): Raw-Datei landet sofort unter dem finalen Object-Storage-
+  Key statt hinter einem neuen Processing-Status. Grund: keine DB-Migration, `file_url` bleibt
+  stabil. Akzeptierter Nachteil: ein Client, der die URL in der ersten Sekunde lädt, kann das
+  unbearbeitete Bild cachen, bis der Worker das Objekt überschrieben hat.
+- 2026-09-10 — GDPR-Export (Phase 2): PDF als Mail-Anhang statt Object-Storage-Link. Grund: die
+  Datei enthält echte PII (entschlüsselte Email, Art.-9-Daten), das bestehende Object Storage ist
+  aber public-read (siehe Media-Storage-Entscheidung) — ein Link dorthin wäre ein Datenleck. Mail
+  als einziger Transportweg vermeidet ein zweites, privates Bucket samt Presigned-URL-Dependency.
+- 2026-09-10 — `checkAutoSuspend` (Phase 2) wird beim Queue-Umbau idempotent gemacht (Check vor
+  jedem der 4 Writes), nicht nur retry-fähig. Grund: BullMQ retried die ganze Funktion von vorn —
+  ohne Idempotenz könnte ein Teilfehler zu doppeltem Bann/Strike/Mail führen.
+- 2026-09-10 — bcrypt-Isolierung (Phase 2) zurückgestellt bis nach der Phase-3-Neu-Messung. Grund:
+  die im Plan genannte Threadpool-Konkurrenz mit `sharp` verschwindet automatisch, sobald `sharp`
+  mit der Media-Pipeline in den Worker-Prozess wandert — ob dedizierte bcrypt-Isolierung danach
+  noch etwas bringt, ist eine Messfrage, keine Annahme.
 
 ## Roadmap
 
@@ -112,6 +127,14 @@ immer fragen).
   umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
   möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
   Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
-- **Phase 2 — Async (Worker + Queue):** danach.
+- **Phase 2 — Async (Worker + Queue): geplant 2026-09-10, Umsetzung läuft.** Design-Entscheidungen
+  (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` (gleicher Codebase, eigene
+  Redis-Connection), (2) Media-Pipeline: Raw-Upload sofort unter dem finalen Object-Storage-Key,
+  Worker überschreibt nach Resize/Watermark dasselbe Objekt — keine Migration, (3)
+  `checkAutoSuspend` → idempotenter Job (schließt Track-B "atomar machen" mit ab), (4)
+  `createImageTicket` ebenfalls über die Queue (war reines Logging-Loch, keine echte Chain), (5)
+  GDPR-Export → Job, PDF als Mail-Anhang statt Object-Storage-Link (PII-Sensitivität, aktuelle
+  Buckets sind public-read), (6) bcrypt-Isolierung zurückgestellt bis nach Phase 3s Neu-Messung
+  (sharp verlässt mit Schritt 2 ohnehin den API-Prozess-Threadpool).
 - **Phase 3 — Messen & hochrechnen:** danach.
 - **Track B (Correctness + Wartbarkeit):** parallel, jederzeit.

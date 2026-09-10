@@ -1,3 +1,13 @@
+## 2026-09-10 — docs(architecture): Phase 2 durchdacht, fünf Design-Entscheidungen getroffen
+**Was:** Recherche-Fork gegen `gdpr.service.ts`, `moderation.service.ts` (`checkAutoSuspend`),
+`media.service.ts` (`createImageTicket`), `MediaUpload`-Entity, bcrypt-Callsites und BullMQ-
+Kompatibilität durchgeführt, dann vier Design-Fragen dem User vorgelegt (Media-Async-Mechanismus,
+GDPR-Zustellung, AutoSuspend-Idempotenz, bcrypt-Scope) — alle vier auf die empfohlene Option
+entschieden. Fünfte, kleine Entscheidung selbst getroffen (`createImageTicket` auch über die
+Queue, da Infra ohnehin entsteht). Ergebnisse in `docs/architecture.md` (Roadmap + Entscheidungen)
+festgehalten, bevor der erste Code-Schritt beginnt.
+**Nicht gebaut:** noch kein Code — reine Planungs-Doku, analog zum ersten Schritt der Session.
+
 ## 2026-09-10 — test: voller docker-compose-Boot-Test für Phase 1
 **Was:** `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` in die lokale `.env` eingetragen (Werte aus
 `.env.example`), dann `docker compose up -d --build` gegen den kompletten Demo-Stack (Postgres,
