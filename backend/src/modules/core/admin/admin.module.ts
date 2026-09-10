@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { User } from '../auth/entities/user.entity';
 import { MediaUpload } from '../media/entities/media-upload.entity';
 import { Report } from '../moderation/entities/report.entity';
@@ -21,14 +19,6 @@ import { SystemSettingsModule } from '../system-settings/system-settings.module'
 @Module({
     imports: [
         TypeOrmModule.forFeature([User, MediaUpload, Report, Strike, Profile]),
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET'),
-                signOptions: { expiresIn: '15m' },
-            }),
-            inject: [ConfigService],
-        }),
         NotificationsModule,
         ModerationModule,
         MailModule,

@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Profile } from './entities/profile.entity';
 import { User } from '../auth/entities/user.entity';
 import { Interest } from './entities/interest.entity';
@@ -21,14 +19,6 @@ import { ModerationModule } from '../moderation/moderation.module';
     imports: [
         TypeOrmModule.forFeature([Profile, User, Interest, UserInterest, AgbVersion, ConsentLog, ProfileSensitiveData, Block, MediaUpload]),
         ModerationModule,
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET'),
-                signOptions: { expiresIn: '15m' },
-            }),
-            inject: [ConfigService],
-        }),
     ],
     controllers: [ProfileController],
     providers: [ProfileService, JwtGuard, OptionalJwtGuard],

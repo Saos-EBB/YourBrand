@@ -14,14 +14,15 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
 ## Module
 
 - `src/modules/core/*` — auth, profile, chat, notifications, moderation, admin, gdpr, media,
-  payment, system-settings, setup, support, cities. Jedes Modul deklariert `JwtModule.registerAsync`
-  selbst (kopiert, ~12 Zeilen je Modul) — siehe Rework-Liste.
+  payment, system-settings, setup, support, cities.
 - `src/modules/hidden/*` — beef, coin, teeth, badge. Beef treibt Coin-Awards/-Spends per
   `CoinService`-Injection; Badge wird intern von `BeefService` erzeugt.
 - `common/` — Guards, `crypto.helper.ts` (AES-256-CBC + SHA-256 Email-Hash), `rls.helper.ts`
   (`withRls`), `redis/` (globales `RedisModule`, `ioredis`), `storage/object-storage.helper.ts`
-  (S3-kompatibel, plain functions wie `crypto.helper.ts`), zwei WebSocket-Gateways (`ChatGateway`
-  default-namespace, `HiddenBeefGateway` `/hidden-beef`).
+  (S3-kompatibel, plain functions wie `crypto.helper.ts`), `last-active/` (globales
+  `LastActiveModule`), `auth/shared-jwt.module.ts` (globales `JwtModule.registerAsync`, ersetzt
+  die 14-fache Kopie), zwei WebSocket-Gateways (`ChatGateway` default-namespace,
+  `HiddenBeefGateway` `/hidden-beef`).
 - Geplant neu: BullMQ `QueueModule`, ein Worker-Entrypoint (`start:worker`, gleicher Codebase).
 
 ## Datenfluss (Ziel)
@@ -67,9 +68,9 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | ~~Rate-Limiting~~ | ~~Prozess-lokale IP-Map (`setup.controller.ts`) + globaler Throttler ohne Shared-Store~~ | **Erledigt 2026-09-10:** `setup.controller.ts` nutzt jetzt `redis.incr()` (gleiche Semantik: 5 erlaubt, ab dem 6. Versuch blockiert, aber jetzt geteilt statt pro Prozess). Globaler `ThrottlerGuard` nutzt `ThrottlerStorageRedisService` (`@nest-lab/throttler-storage-redis`, MIT, ioredis-basiert) mit dem geteilten `REDIS_CLIENT` statt eigener Verbindung. Verifiziert gegen echten Redis-Container: Limit greift nach N Requests, Block-Duration korrekt. |
 | ~~Media-Storage (`media.service.ts`, `profile.service.ts` uploadProfileAudio)~~ | ~~`fs.*Sync` gegen `process.cwd()` — überlebt keinen Container-Restart, kein Shared Storage~~ | **Erledigt 2026-09-10:** `src/common/storage/object-storage.helper.ts` (plain functions wie `crypto.helper.ts`, kein DI — auch von Standalone-Seed-Skripten importierbar), `@aws-sdk/client-s3` gegen S3-kompatiblen Endpoint (`forcePathStyle`, provider-agnostisch über Env-Vars: `S3_ENDPOINT`/`S3_REGION`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`/`S3_BUCKET`/`S3_PUBLIC_URL_BASE`). Provider für Railway-Prod (R2/B2) bewusst noch offen — User-Entscheidung vertagt. Lokal: MinIO in beiden Compose-Stacks (`minio`/`minio-init`, `XXX_minio_load`/`_init`), Bucket + Public-Read-Policy per `minio/mc`-Einmal-Container. `demo-seed.ts`s `seedMediaFile` ebenfalls migriert (User-Entscheidung: Seeds mit). Verifiziert End-to-End gegen echtes MinIO: Upload + öffentlicher HTTP-Fetch. |
 | ~~`jwt.guard`~~ | ~~`SELECT EXISTS` pro Request + fire-and-forget `last_active`-Update, liegt auf Hot-Path von ~27 Dateien~~ | **Erledigt 2026-09-10:** `user:exists:{id}`-Redis-Cache mit 15-Min-TTL (akzeptiertes Staleness-Fenster laut Plan) statt `SELECT EXISTS` pro Request. `last_active_at` läuft über neue `LastActiveService` (`common/last-active/`): `touch()` schreibt nur nach Redis, ein `@Cron(EVERY_MINUTE)` `flush()` bulk-updated Postgres per `unnest()`. |
-| ~~`optional-jwt.guard.ts`~~ | ~~Duplizierte Logik gegenüber `jwt.guard`~~ | **Erledigt 2026-09-10:** Token-Extraktion + gecachter Exists-Check jetzt in `common/guards/jwt-verify.helper.ts` geteilt (plain functions), beide Guards nutzen dieselbe Logik. `JwtModule.registerAsync`-Duplikat über 14 Module bleibt bewusst — das ist der separate Roadmap-Punkt "Shared Auth-Modul". |
+| ~~`optional-jwt.guard.ts`~~ | ~~Duplizierte Logik gegenüber `jwt.guard`~~ | **Erledigt 2026-09-10:** Token-Extraktion + gecachter Exists-Check jetzt in `common/guards/jwt-verify.helper.ts` geteilt (plain functions), beide Guards nutzen dieselbe Logik. Das `JwtModule.registerAsync`-Duplikat über 14 Module ist mit dem separaten Roadmap-Punkt "Shared Auth-Modul" (siehe unten) ebenfalls erledigt. |
 | `hashEmail` | Zwei lokale Kopien neben `crypto.helper.ts` | Nur noch `crypto.helper.ts` |
-| `JwtModule.registerAsync` | ~12 Zeilen kopiert in jedem Modul | Ein importierbares Shared-Auth-Modul |
+| ~~`JwtModule.registerAsync`~~ | ~~~12 Zeilen kopiert in 14 Modulen~~ | **Erledigt 2026-09-10:** `common/auth/shared-jwt.module.ts` — eine Registrierung, `@Global()` wie `RedisModule`/`LastActiveModule`, einmal in `AppModule` importiert. Alle 14 Feature-Module brauchen den Block seitdem nicht mehr (kein neuer Import nötig — global heißt hier wirklich global). Verifiziert per `tsc --noEmit`; vollständiger Boot-Test folgt beim nächsten `docker compose up` des Users (dieselbe Struktur wie das schon laufende `RedisModule`/`LastActiveModule`, kein neues Risiko). |
 | ~~system-settings-Cache~~ | ~~Cacht nur Hits (Prozess-lokaler `Map`)~~ | **Erledigt 2026-09-10:** Ganzer Cache nach Redis (`settings:{key}`, 60s TTL), Misses über `MISS_SENTINEL` mitgecacht — vorher ging jeder Call für einen nie gesetzten Key (z.B. Fallback-Defaults) bei jedem Request gegen Postgres. Nebeneffekt: `set()` invalidiert jetzt den geteilten Cache, alle Instanzen sehen die neue Config sofort statt jede für sich bis zu 60s zu warten. |
 | Media-Pipeline (`sharp`) | Synchron im Request | Rohdatei sofort in Object Storage, Job in Queue, Worker resized async |
 | GDPR-Export | 15 Queries + synchrones `pdfkit` auf dem Event-Loop | Background-Job (BullMQ), Link per Mail |
@@ -105,10 +106,12 @@ immer fragen).
   `docker build -f db/Dockerfile` gegen leeres Volume erzeugt alle 45 Tabellen inkl.
   `pseudonymize_user` + 9 Trigger, ohne Fehler. Offen gelassen (bewusst, siehe Tabelle oben):
   `Dockerfile.railway` Multi-Stage/non-root.
-- **Phase 1 — Stateless (Redis + Object Storage):** Reihenfolge laut Plan: (1) Redis aufsetzen ✅,
-  (2) Beef-Game-State → Redis ✅, (3) Rate-Limiting → Redis ✅, (4) Media → Object Storage ✅,
-  (5) `jwt.guard` entlasten ✅, (6) system-settings-Cache Misses ✅ (alle 2026-09-10), (7) Shared
-  Auth-Modul. Details siehe "Was neu / umgebaut werden muss" oben.
+- **Phase 1 — Stateless (Redis + Object Storage): ✅ komplett 2026-09-10.** Alle 7 Punkte laut
+  Plan erledigt: (1) Redis, (2) Beef-Game-State, (3) Rate-Limiting, (4) Media → Object Storage,
+  (5) `jwt.guard`, (6) system-settings-Cache, (7) Shared Auth-Modul. Details siehe "Was neu /
+  umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
+  möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
+  Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
 - **Phase 2 — Async (Worker + Queue):** danach.
 - **Phase 3 — Messen & hochrechnen:** danach.
 - **Track B (Correctness + Wartbarkeit):** parallel, jederzeit.

@@ -1,7 +1,5 @@
 import { Module, Type } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CoinController } from './coin.controller';
 import { CoinTestPurchaseController } from './coin-test-purchase.controller';
 import { CoinService } from './coin.service';
@@ -21,15 +19,6 @@ if (process.env.LOADTEST_MODE === 'true') {
 @Module({
     imports: [
         TypeOrmModule.forFeature([UserCoinBalance, CoinTransaction, User]),
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET'),
-                signOptions: { expiresIn: '15m' },
-            }),
-            inject: [ConfigService],
-        }),
-        ConfigModule,
     ],
     controllers,
     providers: [CoinService, JwtGuard],

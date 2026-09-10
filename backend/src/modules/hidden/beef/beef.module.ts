@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BeefController } from './beef.controller';
 import { BeefService } from './beef.service';
 import { BeefGameService } from './beef-game.service';
@@ -29,14 +27,6 @@ import { SystemSettingsModule } from '../../core/system-settings/system-settings
 @Module({
     imports: [
         TypeOrmModule.forFeature([Beef, BeefVote, BeefComment, BeefGame, User, Badge, Tooth]),
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET'),
-                signOptions: { expiresIn: '15m' },
-            }),
-            inject: [ConfigService],
-        }),
         CoinModule,
         NotificationsModule,
         SystemSettingsModule,

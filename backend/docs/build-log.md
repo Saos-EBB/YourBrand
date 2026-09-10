@@ -1,3 +1,22 @@
+## 2026-09-10 — refactor(auth): Shared-Auth-Modul — JwtModule-Duplikat über 14 Module beseitigt
+**Was:** `JwtModule.registerAsync({...})` war identisch in 14 Feature-Modulen kopiert (Auth, Chat,
+GDPR, Moderation, Teeth, Badge, Admin, Payment, Coin, Matching, Beef, Notifications,
+System-Settings, Profile). Jetzt eine Registrierung in `common/auth/shared-jwt.module.ts`,
+`@Global()` wie `RedisModule`/`LastActiveModule` — einmal in `AppModule` importiert, `JwtService`
+danach ueberall automatisch verfuegbar. Alle 14 Module verloren den Block ersatzlos (kein neuer
+Import noetig, das ist der Sinn von `@Global()`); `coin.module.ts` hatte zusaetzlich eine
+verwaiste, redundante `ConfigModule,`-Zeile (ConfigModule ist ohnehin `isGlobal: true` in
+`AppModule`) — beim Vorbeikommen mitentfernt.
+**Verifiziert:** `tsc --noEmit` sauber über alle 15 geaenderten Dateien. Kein vollstaendiger
+Boot-Test in dieser Session (haette `.env` um `MINIO_ROOT_USER`/`PASSWORD` ergaenzen muessen, die
+dort noch fehlen seit dem MinIO-Schritt) — strukturell identisch zum bereits laufenden
+`RedisModule`/`LastActiveModule`-Pattern, daher kein neues Risiko eingeschaetzt. Voller
+Boot-Test folgt beim naechsten `docker compose up` des Users.
+**Nicht gebaut:** keine Aenderung an den einzelnen `JwtGuard`/`OptionalJwtGuard`-Registrierungen
+in den 14 Modulen (die bleiben als Provider dort — nur die JWT-Config-Duplizierung war der
+Roadmap-Punkt, nicht die Guard-Registrierung selbst).
+**Damit ist Phase 1 (Stateless) komplett** — alle 7 Punkte aus der Roadmap erledigt.
+
 ## 2026-09-10 — feat(system-settings): Cache nach Redis, Misses mitgecacht
 **Was:** `SystemSettingsService`s Prozess-lokaler `Map`-Cache cachte nur Hits — jeder Call fuer
 einen nie in der DB gesetzten Key (haeufig bei Fallback-Defaults, z.B.

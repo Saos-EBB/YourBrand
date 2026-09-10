@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { StripeService } from './stripe.service';
@@ -14,14 +12,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     imports: [
         TypeOrmModule.forFeature([Subscription, PaymentLog]),
         NotificationsModule,
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET'),
-                signOptions: { expiresIn: '15m' },
-            }),
-            inject: [ConfigService],
-        }),
     ],
     controllers: [PaymentController],
     providers: [PaymentService, StripeService, JwtGuard],
