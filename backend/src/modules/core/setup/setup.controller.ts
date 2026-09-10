@@ -1,17 +1,19 @@
-import { Body, Controller, Get, Post, Req, ForbiddenException } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Post, Req, ForbiddenException } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../../common/redis/redis.constants';
 import { SetupService } from './setup.service';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 
-// In-memory permanent counter per IP — persists for the lifetime of the process.
-// For a multi-instance deployment, swap this for a Redis counter.
-const setupAttempts = new Map<string, number>();
 const SETUP_MAX_ATTEMPTS = 5;
 
 @Controller('setup')
 @SkipThrottle()
 export class SetupController {
-    constructor(private readonly setupService: SetupService) {}
+    constructor(
+        private readonly setupService: SetupService,
+        @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    ) {}
 
     @Get('status')
     getStatus() {
@@ -24,11 +26,12 @@ export class SetupController {
             ?? req.socket?.remoteAddress
             ?? 'unknown';
 
-        const attempts = setupAttempts.get(ip) ?? 0;
-        if (attempts >= SETUP_MAX_ATTEMPTS) {
+        // Permanent counter (no TTL) — same lifetime semantics as before, but now
+        // shared across instances instead of reset on every process restart.
+        const attempts = await this.redis.incr(`setup:attempts:${ip}`);
+        if (attempts > SETUP_MAX_ATTEMPTS) {
             throw new ForbiddenException('Zu viele Setup-Versuche von dieser IP');
         }
-        setupAttempts.set(ip, attempts + 1);
 
         return this.setupService.createOwner(dto);
     }

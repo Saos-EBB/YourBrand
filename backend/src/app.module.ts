@@ -5,6 +5,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import Redis from 'ioredis';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/core/auth/auth.module';
 import { MailModule } from './common/mail/mail.module';
@@ -18,6 +20,7 @@ import { MediaModule } from './modules/core/media/media.module';
 import { GdprModule } from './modules/core/gdpr/gdpr.module';
 import { CommonModule } from './common/common.module';
 import { RedisModule } from './common/redis/redis.module';
+import { REDIS_CLIENT } from './common/redis/redis.constants';
 import { SupportModule } from './modules/core/support/support.module';
 import { SetupModule } from './modules/core/setup/setup.module';
 import { CitiesModule } from './modules/core/cities/cities.module';
@@ -48,9 +51,20 @@ import databaseConfig from './config/database.config';
     // als Sibling von "throttlers" (das waere nur bei der Objekt-Form gueltig)
     // — ThrottlerGuard liest bei Array-Konfiguration ausschliesslich das
     // per-Throttler skipIf, commonOptions.skipIf bleibt dabei immer leer.
-    ThrottlerModule.forRoot([
-      { ttl: 60000, limit: 100, skipIf: () => process.env.LOADTEST_MODE === 'true' },
-    ]),
+    //
+    // storage: ThrottlerStorageRedisService mit dem geteilten REDIS_CLIENT
+    // (kein eigener Connect/Disconnect noetig, siehe deren disconnectRequired-
+    // Logik) — sonst zaehlt jede Instanz ihr eigenes In-Memory-Limit und das
+    // globale 100req/60s gilt effektiv pro Instanz statt pro IP.
+    ThrottlerModule.forRootAsync({
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: Redis) => ({
+        throttlers: [
+          { ttl: 60000, limit: 100, skipIf: () => process.env.LOADTEST_MODE === 'true' },
+        ],
+        storage: new ThrottlerStorageRedisService(redis),
+      }),
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

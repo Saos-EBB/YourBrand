@@ -1,3 +1,15 @@
+## 2026-09-10 — feat(rate-limit): Rate-Limiting nach Redis
+**Was:** `setup.controller.ts`s permanenter Prozess-Map-Counter → `redis.incr()`, identische
+Semantik (5 erlaubt, 6. blockiert), jetzt aber geteilt statt bei jedem Neustart zurueckgesetzt.
+Globaler `ThrottlerGuard` (`app.module.ts`) nutzt jetzt `ThrottlerStorageRedisService` aus
+`@nest-lab/throttler-storage-redis` (neue Dependency — User-Entscheidung nach Lizenz-/Maintainer-
+Check: MIT, jmcdo29/nest-lab, passende Peer-Deps) mit dem geteilten `REDIS_CLIENT`. Verifiziert:
+TS-Build sauber, `ThrottlerStorageRedisService.increment()` und der Setup-Counter beide direkt
+gegen einen echten Redis-Container durchgespielt (Limit greift korrekt, Block-Duration korrekt).
+**Nicht gebaut:** kein eigener Rate-Limit-Algorithmus (bewusst fertiges Paket statt Sliding-Window
+selbst schreiben — User-Entscheidung), kein TTL auf dem Setup-Counter (war vorher auch permanent,
+unveraendertes Verhalten).
+
 ## 2026-09-10 — feat(beef): Reaction-Ready-State nach Redis, TicTacToe-Timer-Bug gefixt
 **Was:** `reactionReadyPlayers`-Map (Prozess-lokal, bricht bei zwei Instanzen sofort — Spieler A
 und B koennten auf verschiedenen Instanzen landen) durch Redis-Set ersetzt (`SADD`/`SCARD`/

@@ -64,7 +64,7 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | Deploy-Descriptoren | ~~Drei parallel: `render.yaml`, `railway.json` + `Dockerfile.railway`, `db/Dockerfile`/`Dockerfile`~~ | **Teilweise erledigt 2026-09-10:** Railway als der eine Pfad gewählt (Render-Postgres hat kein PostGIS, Railway löst das schon über `db/Dockerfile`s Custom-Image); `render.yaml` nach `_archive/` verschoben. **Bewusst zurückgestellt:** `Dockerfile.railway` bleibt Single-Stage/root — ist bereits lokal verifiziert (`docs/deployment/railway.md`), und devDependencies müssen wegen der ts-node-Seeds im Entrypoint ohnehin im finalen Image bleiben, Multi-Stage brächte keinen Größenvorteil. Umbau erst als eigener Härtungsschritt mit Re-Verifikation. |
 | ~~`render.yaml`~~ | ~~`DB_HOST`/`DB_NAME`/`DB_USER` im Klartext im Repo (Passwörter korrekt als `sync: false`)~~ | **Erledigt 2026-09-10:** Datei archiviert, kein aktiver Pfad mehr — Secret-Sorge entfällt damit. |
 | ~~Beef-Game-State (`beef-game.service.ts`)~~ | ~~In-Memory (Ready-Sets, Turn-Timer als Prozess-`Map`)~~ | **Erledigt 2026-09-10:** Reaction-Ready-Set → Redis (`SADD`/`SCARD`/`EXPIRE`, TTL als Leak-Schutz). TicTacToe-Turn-Timer bleibt bewusst ein lokaler JS-Timer (ein Timer-Handle kann nicht in Redis liegen) — dabei einen echten Multi-Instance-Bug gefunden und gefixt: `applyRandomTttMove` prüfte `move_deadline_at` nicht, ein auf Instanz A gestellter Timer konnte nach einem Move auf Instanz B noch einen zweiten, ungültigen Zufallszug draufsetzen. Jetzt derselbe Deadline-Check wie im Cron-Backstop — ein verwaister Timer wird zum sicheren No-Op statt zum Bug. |
-| Rate-Limiting | Prozess-lokale IP-Map (`setup.controller.ts`) + globaler Throttler ohne Shared-Store | Redis-Store — Limit gilt über alle Instanzen |
+| ~~Rate-Limiting~~ | ~~Prozess-lokale IP-Map (`setup.controller.ts`) + globaler Throttler ohne Shared-Store~~ | **Erledigt 2026-09-10:** `setup.controller.ts` nutzt jetzt `redis.incr()` (gleiche Semantik: 5 erlaubt, ab dem 6. Versuch blockiert, aber jetzt geteilt statt pro Prozess). Globaler `ThrottlerGuard` nutzt `ThrottlerStorageRedisService` (`@nest-lab/throttler-storage-redis`, MIT, ioredis-basiert) mit dem geteilten `REDIS_CLIENT` statt eigener Verbindung. Verifiziert gegen echten Redis-Container: Limit greift nach N Requests, Block-Duration korrekt. |
 | Media-Storage (`media.service.ts`, `profile.service.ts` uploadProfileAudio) | `fs.*Sync` gegen `process.cwd()` — überlebt keinen Container-Restart, kein Shared Storage | S3-kompatibles Object Storage (R2/B2/MinIO) |
 | `jwt.guard` | `SELECT EXISTS` pro Request + fire-and-forget `last_active`-Update, liegt auf Hot-Path von ~27 Dateien | Redis-Lookup (oder dokumentiertes 15-Min-Fenster), `last_active` in Redis gebatcht |
 | `optional-jwt.guard.ts` | Duplizierte Logik gegenüber `jwt.guard` | Gegen dieselbe (entlastete) Logik teilen |
@@ -105,8 +105,8 @@ immer fragen).
   `docker build -f db/Dockerfile` gegen leeres Volume erzeugt alle 45 Tabellen inkl.
   `pseudonymize_user` + 9 Trigger, ohne Fehler. Offen gelassen (bewusst, siehe Tabelle oben):
   `Dockerfile.railway` Multi-Stage/non-root.
-- **Phase 1 — Stateless (Redis + Object Storage):** Reihenfolge laut Plan: (1) Redis aufsetzen
-  ✅, (2) Beef-Game-State → Redis ✅ (beide 2026-09-10), (3) Rate-Limiting → Redis, (4) Media →
+- **Phase 1 — Stateless (Redis + Object Storage):** Reihenfolge laut Plan: (1) Redis aufsetzen ✅,
+  (2) Beef-Game-State → Redis ✅, (3) Rate-Limiting → Redis ✅ (alle 2026-09-10), (4) Media →
   Object Storage, (5) `jwt.guard` entlasten, (6) system-settings-Cache Misses, (7) Shared
   Auth-Modul. Details siehe "Was neu / umgebaut werden muss" oben.
 - **Phase 2 — Async (Worker + Queue):** danach.
