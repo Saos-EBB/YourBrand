@@ -260,8 +260,11 @@ innerhalb einer Gruppe ist keine Priorität, nur Herkunft.
   Suche die einzigen tatsaechlich benutzten Endpunkte sind). End-to-End verifiziert: Admin sieht
   jetzt einen fremden Report + fremden Strike, obwohl er selbst keinen von beiden hat.
 - [x] `checkAutoSuspend` atomar machen — **erledigt** in Phase 2 (idempotenter Job).
-- [ ] Fehlende Indizes: `beef_votes(beef_id)`, `beef_comments(beef_id)`,
-  `coin_transactions(user_id)`, `teeth(owner_id)`, `badges(expires_at)`.
+- [x] Fehlende Indizes — **erledigt 2026-09-10:** `migrations/003_track_b_missing_indexes.sql`,
+  alle fünf per `CREATE INDEX CONCURRENTLY IF NOT EXISTS` (`beef_votes(beef_id)`,
+  `beef_comments(beef_id)`, `coin_transactions(user_id)`, `teeth(owner_id)`,
+  `badges(expires_at)`). Gegen die lokale Dev-DB gefahren, alle fünf als `indisvalid = t`
+  verifiziert.
 - [ ] City-Search: leading-wildcard `ILIKE '%q%'` ohne Guard → Trigram-Index oder Prefix-Suche +
   Guard.
 - [ ] Admin-`useSearch` sucht nur die geladene Seite (keine serverseitige Pagination); Debounce-

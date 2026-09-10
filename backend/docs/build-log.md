@@ -1,3 +1,16 @@
+## 2026-09-10 — fix(db): missing indexes on beef_votes/beef_comments/coin_transactions/teeth/badges (Track B)
+**Was:** Fünf Fremdschlüssel-artige Lookup-Spalten hatten keinen Index, jeder Read auf diesen
+Tabellen war ein Seq Scan: `beef_votes(beef_id)`, `beef_comments(beef_id)`,
+`coin_transactions(user_id)`, `teeth(owner_id)`, `badges(expires_at)`. Neue Migration
+`migrations/003_track_b_missing_indexes.sql`, jeweils `CREATE INDEX CONCURRENTLY IF NOT EXISTS`
+(User-Entscheidung statt normalem `CREATE INDEX`, non-blocking falls die Tabelle bereits live
+ist) — läuft deshalb außerhalb einer Transaktion, wie im Datei-Kommentar vermerkt.
+**Verifiziert:** gegen die lokale Dev-DB (`XXX_db`-Container, per `docker compose up -d XXX_db`
+gestartet) gefahren, alle fünf Indizes über `pg_indexes`/`pg_index.indisvalid` als vorhanden und
+gültig bestätigt.
+**Nicht gebaut:** keine weiteren Indizes über die fünf im Backlog genannten hinaus — kein
+allgemeiner Index-Audit.
+
 ## 2026-09-10 — fix(moderation): Access-Scope-Bug in getReports/getReport/getStrikes (Track B)
 **Was:** Die drei `@Roles('admin')`-Routen `GET /moderation/reports`, `GET /moderation/reports/:id`,
 `GET /moderation/strikes` filterten auf `req.user.sub` (die ADMIN-ID) — `getReports(reporterId)`
