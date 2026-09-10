@@ -8,12 +8,12 @@
  * Media (Fotos + Audio):
  *   DEMO_MEDIA_PATH=/pfad/zu/DemoScriptData npx ts-node ...
  *   Erwartet Unterordner: demoPfp/ und demoAudio/
- *   Kopiert Dateien nach uploads/profiles/ bzw. uploads/audio/ und legt
- *   media_uploads-Eintraege (moderation_status=approved) an.
+ *   Laedt Dateien ins Object Storage hoch (siehe common/storage/object-storage.helper.ts,
+ *   S3_*-Env-Vars) und legt media_uploads-Eintraege (moderation_status=approved) an.
  *
- *   Hinweis: file_url beginnt mit BACKEND_URL (Standard: http://localhost:3000).
- *   Falls die DB eine https://-Constraint auf media_uploads.file_url hat,
- *   muss BACKEND_URL auf https:// zeigen oder die Constraint temporaer deaktiviert werden.
+ *   Hinweis: file_url beginnt mit S3_PUBLIC_URL_BASE. Falls die DB eine
+ *   https://-Constraint auf media_uploads.file_url hat, muss S3_PUBLIC_URL_BASE
+ *   auf https:// zeigen oder die Constraint temporaer deaktiviert werden.
  */
 
 import 'dotenv/config';
@@ -23,6 +23,7 @@ import * as yaml from 'js-yaml';
 import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 import { encryptField, hashEmail } from '../../common/crypto/crypto.helper';
+import { uploadObject } from '../../common/storage/object-storage.helper';
 
 // ---------------------------------------------------------------------------
 // Typen
@@ -91,8 +92,20 @@ async function getOrCreateInterest(ds: DataSource, name: string): Promise<string
     return created[0].id;
 }
 
+const MIME_BY_EXT: Record<string, string> = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.mp3': 'audio/mpeg',
+    '.ogg': 'audio/ogg',
+    '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4',
+    '.webm': 'audio/webm',
+};
+
 /**
- * Kopiert eine Mediendatei ins uploads-Verzeichnis und legt einen
+ * Laedt eine Mediendatei ins Object Storage hoch und legt einen
  * media_uploads-Eintrag an. Gibt die neue media_id zurueck, oder null
  * wenn die Quelldatei nicht existiert.
  */
@@ -108,16 +121,11 @@ async function seedMediaFile(
         return null;
     }
 
-    const filename  = path.basename(srcPath);
-    const destDir   = path.join(process.cwd(), 'uploads', uploadSubDir);
-    fs.mkdirSync(destDir, { recursive: true });
-
-    const destPath  = path.join(destDir, filename);
-    fs.copyFileSync(srcPath, destPath);
-
-    const backendUrl  = (process.env.BACKEND_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-    const fileUrl     = `${backendUrl}/uploads/${uploadSubDir}/${filename}`;
-    const fileSizeKb  = Math.ceil(fs.statSync(destPath).size / 1024);
+    const filename    = path.basename(srcPath);
+    const contentType = MIME_BY_EXT[path.extname(filename).toLowerCase()] ?? 'application/octet-stream';
+    const buffer       = fs.readFileSync(srcPath);
+    const fileUrl      = await uploadObject(`${uploadSubDir}/${filename}`, buffer, contentType);
+    const fileSizeKb   = Math.ceil(buffer.length / 1024);
 
     const result = await ds.query(
         `INSERT INTO media_uploads
@@ -158,9 +166,8 @@ async function main() {
     }
 
     // Constraint auf media_uploads.file_url erfordert https://.
-    // Im lokalen Dev-Betrieb (BACKEND_URL=http://...) wird sie temporaer entfernt.
-    const backendUrl = (process.env.BACKEND_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-    const needsConstraintDrop = !backendUrl.startsWith('https://');
+    // Im lokalen Dev-Betrieb (S3_PUBLIC_URL_BASE=http://... fuer MinIO) wird sie temporaer entfernt.
+    const needsConstraintDrop = !(process.env.S3_PUBLIC_URL_BASE ?? '').startsWith('https://');
     if (needsConstraintDrop && demoMediaPath) {
         await ds.query(`ALTER TABLE media_uploads DROP CONSTRAINT IF EXISTS chk_media_file_url`);
         console.log('  INFO  chk_media_file_url temporaer entfernt (http-URL in dev)');
@@ -292,13 +299,13 @@ async function main() {
         created++;
     }
 
-    // Constraint wiederherstellen (nur wenn BACKEND_URL https:// ist)
+    // Constraint wiederherstellen (nur wenn S3_PUBLIC_URL_BASE https:// ist)
     if (needsConstraintDrop && demoMediaPath) {
-        if (backendUrl.startsWith('https://')) {
+        if ((process.env.S3_PUBLIC_URL_BASE ?? '').startsWith('https://')) {
             await ds.query(`ALTER TABLE media_uploads ADD CONSTRAINT chk_media_file_url CHECK (file_url ~ '^https://')`);
             console.log('  INFO  chk_media_file_url wiederhergestellt');
         } else {
-            console.log('  WARN  chk_media_file_url bleibt entfernt — BACKEND_URL ist kein https://');
+            console.log('  WARN  chk_media_file_url bleibt entfernt — S3_PUBLIC_URL_BASE ist kein https://');
             console.log('        Manuell wiederherstellen: ALTER TABLE media_uploads ADD CONSTRAINT chk_media_file_url CHECK (file_url ~ \'^https://\')');
         }
     }

@@ -4,11 +4,11 @@
 #
 # Start (Demo- und Loadtest-Stack zusammen, im selben Compose-Projekt):
 #   docker compose -f docker-compose.yml -f docker-compose.loadtest.yml up -d \
-#     XXX_db_load XXX_redis_load XXX_backend_load pgadmin
+#     XXX_db_load XXX_redis_load XXX_minio_load XXX_minio_load_init XXX_backend_load pgadmin
 #
-# Eigenes DB-Volume (XXX_load_pgdata), eigenes Redis (XXX_redis_load) und
-# eigenes Netzwerk (XXX_load_network) — die Demo-DB/-Redis/das Demo-Volume/
-# -Netzwerk werden nie beruehrt.
+# Eigenes DB-Volume (XXX_load_pgdata), eigenes Redis (XXX_redis_load), eigenes
+# MinIO (XXX_minio_load) und eigenes Netzwerk (XXX_load_network) — die
+# Demo-DB/-Redis/-MinIO/das Demo-Volume/-Netzwerk werden nie beruehrt.
 #
 # pgAdmin-Zugriff auf die Loadtest-DB: der bestehende `pgadmin`-Service (siehe
 # docker-compose.yml) wird hier NICHT neu definiert, sondern per Compose-Merge
@@ -64,6 +64,38 @@ services:
     networks:
       - XXX_load_network
 
+  XXX_minio_load:
+    image: minio/minio:latest
+    container_name: XXX_minio_load
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER:     ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9500:9000"
+    volumes:
+      - XXX_load_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    networks:
+      - XXX_load_network
+
+  XXX_minio_load_init:
+    image: minio/mc:latest
+    container_name: XXX_minio_load_init
+    depends_on:
+      XXX_minio_load:
+        condition: service_healthy
+    environment:
+      MC_HOST_local: http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@XXX_minio_load:9000
+    entrypoint: ["/bin/sh", "-c", "mc mb -p local/yourbrand-media-load && mc anonymous set download local/yourbrand-media-load"]
+    networks:
+      - XXX_load_network
+
   XXX_backend_load:
     build:
       context: ./backend
@@ -79,6 +111,12 @@ services:
       DB_POOL_MAX: ${DB_POOL_MAX:-20}
       REDIS_HOST:  XXX_redis_load
       REDIS_PORT:  6379
+      S3_ENDPOINT: http://XXX_minio_load:9000
+      S3_REGION:   auto
+      S3_ACCESS_KEY_ID:     ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET:   yourbrand-media-load
+      S3_PUBLIC_URL_BASE: http://localhost:9500/yourbrand-media-load
       JWT_SECRET:  ${JWT_SECRET}
       DEMO_MEDIA_PATH: /app
       LOADTEST_MODE: "true"
@@ -93,6 +131,8 @@ services:
         condition: service_healthy
       XXX_redis_load:
         condition: service_healthy
+      XXX_minio_load_init:
+        condition: service_completed_successfully
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -113,3 +153,4 @@ networks:
 
 volumes:
   XXX_load_pgdata:
+  XXX_load_minio_data:

@@ -8,8 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import * as fs from 'fs';
-import * as path from 'path';
+import { uploadObject } from '../../../common/storage/object-storage.helper';
 import { MediaUpload, FileType, FileContext, ModerationStatus } from '../media/entities/media-upload.entity';
 import { withRls } from '../../../common/database/rls.helper';
 import * as crypto from 'crypto';
@@ -841,11 +840,7 @@ export class ProfileService {
         };
         const ext = extMap[baseType] ?? '.audio';
         const filename = `${userId}-${Date.now()}${ext}`;
-        const uploadDir = path.join(process.cwd(), 'uploads', 'audio');
-        fs.mkdirSync(uploadDir, { recursive: true });
-        fs.writeFileSync(path.join(uploadDir, filename), file.buffer);
-
-        const fileUrl = `${process.env.BACKEND_URL ?? 'http://localhost:3000'}/uploads/audio/${filename}`;
+        const fileUrl = await uploadObject(`audio/${filename}`, file.buffer, baseType);
 
         const profile = await this.getOwnProfile(userId);
         if (profile.audio_id) {

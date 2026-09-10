@@ -2,9 +2,8 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import * as fs from 'fs';
-import * as path from 'path';
 import sharp from 'sharp';
+import { uploadObject } from '../../../common/storage/object-storage.helper';
 import { MediaUpload, FileType, FileContext, ModerationStatus } from './entities/media-upload.entity';
 import { Profile } from '../profile/entities/profile.entity';
 import { User } from '../auth/entities/user.entity';
@@ -86,11 +85,7 @@ export class MediaService {
                 throw new BadRequestException('Ungültiges Dateiformat');
             }
 
-            const uploadDir = path.join(process.cwd(), 'uploads', 'profiles');
-            fs.mkdirSync(uploadDir, { recursive: true });
-
             const filename = `${userId}-${Date.now()}.webp`;
-            const filepath = path.join(uploadDir, filename);
 
             // Resize + convert to WebP buffer so we can inspect dimensions and composite the watermark.
             const resizedBuf = await sharp(file.buffer)
@@ -101,20 +96,21 @@ export class MediaService {
             const user = await this.userRepository.findOne({ where: { id: userId } });
             const publicId = user?.public_id;
 
+            let finalBuf: Buffer;
             if (publicId) {
                 const prefix = await this.systemSettingsService.getString('watermark_prefix', 'ID');
                 const watermarkText = `#${prefix}-${publicId}`;
                 const { width = 800, height = 800 } = await sharp(resizedBuf).metadata();
                 const watermarkSvg = this.buildWatermarkSvg(watermarkText, width, height);
-                await sharp(resizedBuf)
+                finalBuf = await sharp(resizedBuf)
                     .composite([{ input: watermarkSvg, top: 0, left: 0 }])
-                    .toFile(filepath);
+                    .toBuffer();
             } else {
-                await sharp(resizedBuf).toFile(filepath);
+                finalBuf = resizedBuf;
             }
 
-            const fileSizeKb = Math.ceil(fs.statSync(filepath).size / 1024);
-            const fileUrl = `${process.env.BACKEND_URL ?? 'http://localhost:3000'}/uploads/profiles/${filename}`;
+            const fileSizeKb = Math.ceil(finalBuf.length / 1024);
+            const fileUrl = await uploadObject(`profiles/${filename}`, finalBuf, 'image/webp');
 
             const media = this.mediaRepository.create({
                 uploaded_by: userId,

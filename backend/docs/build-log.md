@@ -1,3 +1,27 @@
+## 2026-09-10 — feat(media): Object Storage statt lokalem Dateisystem
+**Was:** `src/common/storage/object-storage.helper.ts` (plain functions, kein DI — mirrored auf
+`crypto.helper.ts`, damit auch Standalone-Seed-Skripte es importieren koennen) mit `@aws-sdk/client-s3`
+gegen einen S3-kompatiblen Endpoint (`forcePathStyle: true` fuer MinIO/R2/B2). `media.service.ts`
+(`uploadProfilePhoto`) und `profile.service.ts` (`uploadProfileAudio`) schreiben jetzt dorthin statt
+`fs.mkdirSync`/`fs.writeFileSync` gegen `process.cwd()`. `demo-seed.ts`s `seedMediaFile` ebenfalls
+migriert (User-Entscheidung: Seeds direkt mit) inkl. MIME-Type-Mapping und Fix der
+https-Constraint-Drop-Logik (pruefte vorher `BACKEND_URL`, jetzt korrekt `S3_PUBLIC_URL_BASE` —
+das sind seit diesem Schritt zwei unabhaengige Variablen). `seed-media.ts` brauchte keine Aenderung:
+schreibt nur Fake-`file_url`-Strings in die DB, nie echte Dateien.
+Lokal: MinIO in `docker-compose.yml` und `docker-compose.loadtest.yml` (User-Entscheidung), je ein
+`minio`- und ein `minio-init`-Einmal-Container (`minio/mc`, legt Bucket an + setzt Public-Read).
+Provider fuer Railway-Prod (R2 vs. B2) bewusst offen gelassen (User-Entscheidung) — Code ist
+provider-agnostisch ueber Env-Vars, nur die tatsaechlichen Credentials/Endpoint fehlen noch.
+Verifiziert End-to-End gegen echtes MinIO (Upload via SDK, Abruf per HTTP-Fetch — 200, Inhalt
+korrekt) und TS-Build sauber.
+**Nicht gebaut:** kein Loeschen alter Dateien beim Ersetzen (Foto/Audio-Replace markiert die alte
+`media_uploads`-Zeile als `REJECTED`, loescht aber das Objekt nicht — exakt das bisherige Verhalten,
+keine Verschlechterung). Kein Umbau von `main.ts`s `useStaticAssets('/uploads')` — write-seitig
+schreibt jetzt nichts mehr dorthin, aber die Zeile anzufassen haette `app.module.ts`/`main.ts`
+(euer Railway-WIP) erneut beruehrt fuer minimalen Nutzen (leeres Verzeichnis, keine Fehlfunktion).
+Kein Presigned-URL/Moderation-Gating vor Public-Read — identisch zum bisherigen Verhalten (Datei
+war schon vorher sofort oeffentlich per `/uploads` erreichbar, unabhaengig vom moderation_status).
+
 ## 2026-09-10 — feat(rate-limit): Rate-Limiting nach Redis
 **Was:** `setup.controller.ts`s permanenter Prozess-Map-Counter → `redis.incr()`, identische
 Semantik (5 erlaubt, 6. blockiert), jetzt aber geteilt statt bei jedem Neustart zurueckgesetzt.

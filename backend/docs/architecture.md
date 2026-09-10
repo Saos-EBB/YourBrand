@@ -19,10 +19,10 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
 - `src/modules/hidden/*` — beef, coin, teeth, badge. Beef treibt Coin-Awards/-Spends per
   `CoinService`-Injection; Badge wird intern von `BeefService` erzeugt.
 - `common/` — Guards, `crypto.helper.ts` (AES-256-CBC + SHA-256 Email-Hash), `rls.helper.ts`
-  (`withRls`), zwei WebSocket-Gateways (`ChatGateway` default-namespace, `HiddenBeefGateway`
-  `/hidden-beef`).
-- Geplant neu: `RedisModule` (geteilter Zustand + Cache + BullMQ-Queue), `QueueModule`, ein
-  Worker-Entrypoint (`start:worker`, gleicher Codebase), ein Object-Storage-Client (S3-kompatibel).
+  (`withRls`), `redis/` (globales `RedisModule`, `ioredis`), `storage/object-storage.helper.ts`
+  (S3-kompatibel, plain functions wie `crypto.helper.ts`), zwei WebSocket-Gateways (`ChatGateway`
+  default-namespace, `HiddenBeefGateway` `/hidden-beef`).
+- Geplant neu: BullMQ `QueueModule`, ein Worker-Entrypoint (`start:worker`, gleicher Codebase).
 
 ## Datenfluss (Ziel)
 
@@ -65,7 +65,7 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | ~~`render.yaml`~~ | ~~`DB_HOST`/`DB_NAME`/`DB_USER` im Klartext im Repo (Passwörter korrekt als `sync: false`)~~ | **Erledigt 2026-09-10:** Datei archiviert, kein aktiver Pfad mehr — Secret-Sorge entfällt damit. |
 | ~~Beef-Game-State (`beef-game.service.ts`)~~ | ~~In-Memory (Ready-Sets, Turn-Timer als Prozess-`Map`)~~ | **Erledigt 2026-09-10:** Reaction-Ready-Set → Redis (`SADD`/`SCARD`/`EXPIRE`, TTL als Leak-Schutz). TicTacToe-Turn-Timer bleibt bewusst ein lokaler JS-Timer (ein Timer-Handle kann nicht in Redis liegen) — dabei einen echten Multi-Instance-Bug gefunden und gefixt: `applyRandomTttMove` prüfte `move_deadline_at` nicht, ein auf Instanz A gestellter Timer konnte nach einem Move auf Instanz B noch einen zweiten, ungültigen Zufallszug draufsetzen. Jetzt derselbe Deadline-Check wie im Cron-Backstop — ein verwaister Timer wird zum sicheren No-Op statt zum Bug. |
 | ~~Rate-Limiting~~ | ~~Prozess-lokale IP-Map (`setup.controller.ts`) + globaler Throttler ohne Shared-Store~~ | **Erledigt 2026-09-10:** `setup.controller.ts` nutzt jetzt `redis.incr()` (gleiche Semantik: 5 erlaubt, ab dem 6. Versuch blockiert, aber jetzt geteilt statt pro Prozess). Globaler `ThrottlerGuard` nutzt `ThrottlerStorageRedisService` (`@nest-lab/throttler-storage-redis`, MIT, ioredis-basiert) mit dem geteilten `REDIS_CLIENT` statt eigener Verbindung. Verifiziert gegen echten Redis-Container: Limit greift nach N Requests, Block-Duration korrekt. |
-| Media-Storage (`media.service.ts`, `profile.service.ts` uploadProfileAudio) | `fs.*Sync` gegen `process.cwd()` — überlebt keinen Container-Restart, kein Shared Storage | S3-kompatibles Object Storage (R2/B2/MinIO) |
+| ~~Media-Storage (`media.service.ts`, `profile.service.ts` uploadProfileAudio)~~ | ~~`fs.*Sync` gegen `process.cwd()` — überlebt keinen Container-Restart, kein Shared Storage~~ | **Erledigt 2026-09-10:** `src/common/storage/object-storage.helper.ts` (plain functions wie `crypto.helper.ts`, kein DI — auch von Standalone-Seed-Skripten importierbar), `@aws-sdk/client-s3` gegen S3-kompatiblen Endpoint (`forcePathStyle`, provider-agnostisch über Env-Vars: `S3_ENDPOINT`/`S3_REGION`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`/`S3_BUCKET`/`S3_PUBLIC_URL_BASE`). Provider für Railway-Prod (R2/B2) bewusst noch offen — User-Entscheidung vertagt. Lokal: MinIO in beiden Compose-Stacks (`minio`/`minio-init`, `XXX_minio_load`/`_init`), Bucket + Public-Read-Policy per `minio/mc`-Einmal-Container. `demo-seed.ts`s `seedMediaFile` ebenfalls migriert (User-Entscheidung: Seeds mit). Verifiziert End-to-End gegen echtes MinIO: Upload + öffentlicher HTTP-Fetch. |
 | `jwt.guard` | `SELECT EXISTS` pro Request + fire-and-forget `last_active`-Update, liegt auf Hot-Path von ~27 Dateien | Redis-Lookup (oder dokumentiertes 15-Min-Fenster), `last_active` in Redis gebatcht |
 | `optional-jwt.guard.ts` | Duplizierte Logik gegenüber `jwt.guard` | Gegen dieselbe (entlastete) Logik teilen |
 | `hashEmail` | Zwei lokale Kopien neben `crypto.helper.ts` | Nur noch `crypto.helper.ts` |
@@ -106,8 +106,8 @@ immer fragen).
   `pseudonymize_user` + 9 Trigger, ohne Fehler. Offen gelassen (bewusst, siehe Tabelle oben):
   `Dockerfile.railway` Multi-Stage/non-root.
 - **Phase 1 — Stateless (Redis + Object Storage):** Reihenfolge laut Plan: (1) Redis aufsetzen ✅,
-  (2) Beef-Game-State → Redis ✅, (3) Rate-Limiting → Redis ✅ (alle 2026-09-10), (4) Media →
-  Object Storage, (5) `jwt.guard` entlasten, (6) system-settings-Cache Misses, (7) Shared
+  (2) Beef-Game-State → Redis ✅, (3) Rate-Limiting → Redis ✅, (4) Media → Object Storage ✅
+  (alle 2026-09-10), (5) `jwt.guard` entlasten, (6) system-settings-Cache Misses, (7) Shared
   Auth-Modul. Details siehe "Was neu / umgebaut werden muss" oben.
 - **Phase 2 — Async (Worker + Queue):** danach.
 - **Phase 3 — Messen & hochrechnen:** danach.
