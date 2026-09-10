@@ -1,4 +1,5 @@
 export const MEDIA_PROCESSING_QUEUE = 'media-processing';
+export const AUTO_SUSPEND_QUEUE = 'auto-suspend';
 
 // Shared across all queues registered via BullModule.registerQueue(..., { defaultJobOptions }).
 // 3 retries with exponential backoff so a transient failure (S3 hiccup, DB

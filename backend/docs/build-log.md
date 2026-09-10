@@ -1,3 +1,26 @@
+## 2026-09-10 — fix(moderation): checkAutoSuspend als idempotenter Job + System-User-Bug gefixt (Phase 2, Punkt 3/6)
+**Was:** `checkAutoSuspend` aus `moderation.service.ts` rausgezogen nach `auto-suspend.processor.ts`
+(`@Processor`, nur `WorkerModule`-Provider). `createReport` enqueued jetzt einen Job statt
+`void ...checkAutoSuspend().catch(logger.error)`. Ban- und Strike-Schritt sind jetzt EINZELN
+idempotent (`if (!user.is_banned)`, `strikeRepository.findOne({report_id, issued_by, type})` statt
+dem alten `if (user.is_banned) return` ganz am Anfang — das haette bei einem Retry nach
+Teilerfolg NIE Strike/Notification/Mail nachgeholt, weil es sofort zurueckgesprungen waere.
+Notification/Mail bleiben bewusst nicht dedupliziert (try/catch wie vorher) — ein doppelter Hinweis
+ist kein Korrektheitsproblem, ein fehlender Strike/Bann schon.
+**Echter Bug beim End-to-End-Test gefunden:** `strikes.issued_by = SYSTEM_USER_ID
+('00000000-...-0000')` verletzte die FK — dieser User existierte nie in `users`, obwohl das Schema
+ihn an mehreren Stellen voraussetzt (`pseudonymize_user()`, Views, `vulnerable_flag_audit`-Default).
+`checkAutoSuspend` ist damit vermutlich seit jeher gescheitert, nur durch den verschluckten
+`.catch()` unsichtbar. Mit User-Bestaetigung `migrations/002_seed_system_user.sql` angelegt
+(idempotenter INSERT, Placeholder-`email_search_hash` fuer die NOT-NULL-Constraint).
+**Verifiziert End-to-End** gegen echte Container: `auto_suspend_threshold` testweise auf 2
+gesenkt, zwei Reports von verschiedenen Usern ausgeloest. Vor dem Migrations-Fix: Ban griff
+korrekt, Strike-Insert scheiterte drei Mal (BullMQ-Retries), User blieb korrekt EINFACH gebannt
+(kein Doppel-Bann trotz drei Versuchen — Idempotenz-Beweis). Nach dem Fix: neuer Report loeste
+einen frischen Job aus, der Strike + Notification korrekt anlegte.
+**Nicht gebaut:** `createImageTicket` (media-ticket-dispatch) bleibt vorerst `.catch(() => {})` —
+eigener, kleinerer Schritt (4/6).
+
 ## 2026-09-10 — feat(media): Media-Pipeline async — Raw-Upload + Worker-Processing (Phase 2, Punkt 2/6)
 **Was:** `media.service.ts`s `uploadProfilePhoto` laedt jetzt die Rohdatei sofort unter dem finalen
 Object-Storage-Key hoch (`Content-Type` = `file.mimetype`, keine Sharp-Verarbeitung mehr im

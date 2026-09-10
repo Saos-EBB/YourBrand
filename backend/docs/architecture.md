@@ -72,9 +72,10 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | `hashEmail` | Zwei lokale Kopien neben `crypto.helper.ts` | Nur noch `crypto.helper.ts` |
 | ~~`JwtModule.registerAsync`~~ | ~~~12 Zeilen kopiert in 14 Modulen~~ | **Erledigt 2026-09-10:** `common/auth/shared-jwt.module.ts` — eine Registrierung, `@Global()` wie `RedisModule`/`LastActiveModule`, einmal in `AppModule` importiert. Alle 14 Feature-Module brauchen den Block seitdem nicht mehr (kein neuer Import nötig — global heißt hier wirklich global). Verifiziert per `tsc --noEmit`; vollständiger Boot-Test folgt beim nächsten `docker compose up` des Users (dieselbe Struktur wie das schon laufende `RedisModule`/`LastActiveModule`, kein neues Risiko). |
 | ~~system-settings-Cache~~ | ~~Cacht nur Hits (Prozess-lokaler `Map`)~~ | **Erledigt 2026-09-10:** Ganzer Cache nach Redis (`settings:{key}`, 60s TTL), Misses über `MISS_SENTINEL` mitgecacht — vorher ging jeder Call für einen nie gesetzten Key (z.B. Fallback-Defaults) bei jedem Request gegen Postgres. Nebeneffekt: `set()` invalidiert jetzt den geteilten Cache, alle Instanzen sehen die neue Config sofort statt jede für sich bis zu 60s zu warten. |
-| Media-Pipeline (`sharp`) | Synchron im Request | Rohdatei sofort in Object Storage, Job in Queue, Worker resized async |
-| GDPR-Export | 15 Queries + synchrones `pdfkit` auf dem Event-Loop | Background-Job (BullMQ), Link per Mail |
-| Notification-/Mail-Fanout (`checkAutoSuspend`, media-ticket-dispatch) | Non-transaktionale Fire-and-forget-Chain mit `.catch(()=>{})` | Job, retry-bar |
+| ~~Media-Pipeline (`sharp`)~~ | ~~Synchron im Request~~ | **Erledigt 2026-09-10:** Raw-Upload sofort, `MediaProcessor` (nur `WorkerModule`) resized/watermarkt async und überschreibt denselben Object-Storage-Key. |
+| GDPR-Export | 15 Queries + synchrones `pdfkit` auf dem Event-Loop | Background-Job (BullMQ), PDF als Mail-Anhang (User-Entscheidung, kein Object-Storage-Link — PII) |
+| ~~`checkAutoSuspend`~~ | ~~Non-transaktionale Fire-and-forget-Chain mit `.catch(()=>{})`~~ | **Erledigt 2026-09-10:** `AutoSuspendProcessor` (BullMQ, nur `WorkerModule`), Ban/Strike-Schritte einzeln idempotent (Retry überspringt bereits erledigte Schritte statt alles neu zu machen oder alles zu überspringen). Dabei `migrations/002_seed_system_user.sql` gefunden+gefixt (siehe Entscheidungen). |
+| `createImageTicket` (media-ticket-dispatch) | `.catch(() => {})` ganz ohne Logging | Über dieselbe Queue-Infra, eigener kleiner Schritt |
 | bcrypt | Läuft im geteilten libuv-Threadpool, gleicher Pool wie `sharp` | Worker-Thread / eigener Pfad, isoliert vom Media-Threadpool |
 | `beef.scheduler.ts` — alle `@Cron`-Jobs | Jede Instanz führt jeden Cron unabhängig aus — bei N Instanzen verarbeitet jede denselben abgelaufenen Beef parallel, kein verteilter Lock (gefunden 2026-09-10 beim Beef-Game-State-Rework, nicht Teil dieses Punkts) | Verteilter Lock (z.B. Redis `SET NX`) oder nur eine Instanz führt Crons aus |
 | ~~Redis~~ | ~~Existiert nicht~~ | **Infra erledigt 2026-09-10:** globales `RedisModule` (`ioredis`, `REDIS_CLIENT`-Token) in `AppModule`; `redis`-Service in `docker-compose.yml` (Demo) und `XXX_redis_load` in `docker-compose.loadtest.yml` (eigenes Netzwerk, analog zur Loadtest-DB). Noch kein Verbraucher — startet mit Beef-Game-State (nächster Punkt). |
@@ -102,6 +103,13 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 - 2026-09-10 — `checkAutoSuspend` (Phase 2) wird beim Queue-Umbau idempotent gemacht (Check vor
   jedem der 4 Writes), nicht nur retry-fähig. Grund: BullMQ retried die ganze Funktion von vorn —
   ohne Idempotenz könnte ein Teilfehler zu doppeltem Bann/Strike/Mail führen.
+- 2026-09-10 — **Bug + Fix:** `migrations/002_seed_system_user.sql` legt den Sentinel-System-User
+  (`00000000-0000-0000-0000-000000000000`) an, den das Schema an mehreren Stellen voraussetzt
+  (`pseudonymize_user()`, mehrere Views, `vulnerable_flag_audit.user_id`-Default), der aber nie
+  tatsächlich in `users` existierte. `checkAutoSuspend` ist dadurch vermutlich seit Einführung
+  immer an der FK auf `strikes.issued_by` gescheitert — unsichtbar, weil der Aufrufer den Fehler
+  nur geloggt hat. Beim ersten echten End-to-End-Test dieses Schritts aufgefallen (Retry schlug
+  wiederholt fehl), mit User-Bestätigung gefixt (DB-Migration).
 - 2026-09-10 — **Korrektur:** Worker bootet `WorkerModule`, nicht `AppModule`. Der Plan-Text sagte
   "`NestFactory.createApplicationContext(AppModule)`" — das wäre ein Bug gewesen: `@Processor`-
   Provider in einem von `AppModule` importierten Feature-Modul würden dann von **beiden** Prozessen
@@ -135,14 +143,19 @@ immer fragen).
   umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
   möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
   Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
-- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 2 von 6 erledigt, 2026-09-10).**
+- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 3 von 6 erledigt, 2026-09-10).**
   Design-Entscheidungen (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` ✅ — eigenes,
   schlankes `WorkerModule` statt `AppModule` (siehe Korrektur unten), eigene Redis-Connection.
   (2) Media-Pipeline ✅: Raw-Upload sofort unter dem finalen Object-Storage-Key (`MediaService`),
   `MediaProcessor` (nur im `WorkerModule`) überschreibt nach Resize/Watermark dasselbe Objekt —
   keine Migration. End-to-End verifiziert: Upload-Response 98ms, Bild erscheint verarbeitet
   (resized + watermarkt, gültiges WebP) innerhalb weniger Sekunden unter derselben URL. (3)
-  `checkAutoSuspend` → idempotenter Job (schließt Track-B "atomar machen" mit ab), (4)
+  `checkAutoSuspend` → idempotenter Job ✅ (schließt Track-B "atomar machen" mit ab) — dabei einen
+  vorbestehenden Bug gefunden und mit `migrations/002_seed_system_user.sql` gefixt (siehe
+  Entscheidungen unten): der Sentinel-System-User existierte nie in `users`, jeder Auto-Suspend
+  scheiterte an der FK auf `strikes.issued_by`, nur unsichtbar durch den verschluckten `.catch()`.
+  End-to-End verifiziert (Schwelle testweise auf 2 gesenkt): kein Doppel-Bann bei fehlgeschlagenen
+  Retries (Ban-Schritt idempotent übersprungen), Strike + Notification korrekt nach dem Fix. (4)
   `createImageTicket` ebenfalls über die Queue (war reines Logging-Loch, keine echte Chain), (5)
   GDPR-Export → Job, PDF als Mail-Anhang statt Object-Storage-Link (PII-Sensitivität, aktuelle
   Buckets sind public-read), (6) bcrypt-Isolierung zurückgestellt bis nach Phase 3s Neu-Messung

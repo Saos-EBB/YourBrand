@@ -1,6 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Report } from './entities/report.entity';
 import { Strike } from './entities/strike.entity';
 import { User } from '../auth/entities/user.entity';
@@ -8,19 +10,13 @@ import { FileType, MediaUpload } from '../media/entities/media-upload.entity';
 import { Profile } from '../profile/entities/profile.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { MailService } from '../../../common/mail/mail.service';
-import { decryptEmail } from '../../../common/crypto/crypto.helper';
 import { CreateReportDto } from './dto/create-report.dto';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { CreateStrikeDto, StrikeType } from './dto/create-strike.dto';
-import { SystemSettingsService } from '../system-settings/system-settings.service';
-
-const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+import { AUTO_SUSPEND_QUEUE } from '../../../common/queue/queue.constants';
 
 @Injectable()
 export class ModerationService {
-    private readonly logger = new Logger(ModerationService.name);
-
     constructor(
         @InjectRepository(Report)
         private readonly reportRepository: Repository<Report>,
@@ -35,9 +31,9 @@ export class ModerationService {
         @InjectDataSource()
         private readonly dataSource: DataSource,
         private readonly notificationsService: NotificationsService,
-        private readonly mailService: MailService,
         private readonly eventEmitter: EventEmitter2,
-        private readonly systemSettingsService: SystemSettingsService,
+        @InjectQueue(AUTO_SUSPEND_QUEUE)
+        private readonly autoSuspendQueue: Queue,
     ) { }
 
     async createReport(reporterId: string, dto: CreateReportDto) {
@@ -61,57 +57,12 @@ export class ModerationService {
 
         this.eventEmitter.emit('ticket.new', {});
 
-        void this.checkAutoSuspend(dto.reported_user_id, saved.id).catch((err) =>
-            this.logger.error(`checkAutoSuspend fehlgeschlagen für User ${dto.reported_user_id}`, err),
-        );
+        await this.autoSuspendQueue.add('check-auto-suspend', {
+            reportedUserId: dto.reported_user_id,
+            reportId: saved.id,
+        });
 
         return saved;
-    }
-
-    async checkAutoSuspend(reportedUserId: string, reportId: string): Promise<void> {
-        const threshold = await this.systemSettingsService.getNumber('auto_suspend_threshold', 10);
-
-        const result = await this.dataSource.query<[{ count: string }]>(
-            `SELECT COUNT(DISTINCT reporter_id) AS count
-             FROM reports
-             WHERE reported_user_id = $1
-               AND status = 'open'
-               AND deleted_at IS NULL`,
-            [reportedUserId],
-        );
-
-        if (parseInt(result[0]?.count ?? '0', 10) < threshold) return;
-
-        const user = await this.userRepository.findOne({ where: { id: reportedUserId } });
-        if (!user || user.is_banned) return;
-
-        user.is_banned      = true;
-        user.ban_reason     = `Automatische Sperre: ${threshold} unabhängige Meldungen eingegangen.`;
-        user.ban_expires_at = null;
-        await this.userRepository.save(user);
-
-        this.eventEmitter.emit('user.banned', { userId: reportedUserId });
-
-        const strike = this.strikeRepository.create({
-            user_id:    reportedUserId,
-            report_id:  reportId,
-            issued_by:  SYSTEM_USER_ID,
-            type:       StrikeType.PERMANENT,
-            reason:     `Auto-Suspend: ${threshold} offene Reports von verschiedenen Nutzern.`,
-            expires_at: null,
-        });
-        await this.strikeRepository.save(strike);
-
-        await this.notificationsService.notifyBanPermanent(reportedUserId, 'Auto-Suspend');
-
-        const email = decryptEmail(user.email as Buffer | null);
-        if (email) {
-            try {
-                await this.mailService.sendAutoSuspendEmail(email);
-            } catch (err) {
-                this.logger.error(`Auto-Suspend-E-Mail an ${reportedUserId} fehlgeschlagen`, err);
-            }
-        }
     }
 
     async getReports(reporterId: string) {

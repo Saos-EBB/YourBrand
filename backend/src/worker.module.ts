@@ -2,14 +2,25 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { RedisModule } from './common/redis/redis.module';
 import { QueueModule } from './common/queue/queue.module';
-import { MEDIA_PROCESSING_QUEUE, DEFAULT_JOB_OPTIONS } from './common/queue/queue.constants';
+import { MailModule } from './common/mail/mail.module';
+import {
+    MEDIA_PROCESSING_QUEUE,
+    AUTO_SUSPEND_QUEUE,
+    DEFAULT_JOB_OPTIONS,
+} from './common/queue/queue.constants';
 import { SystemSettingsService } from './modules/core/system-settings/system-settings.service';
 import { SystemSetting } from './modules/core/system-settings/entities/system-setting.entity';
+import { NotificationsService } from './modules/core/notifications/notifications.service';
+import { Notification } from './modules/core/notifications/entities/notification.entity';
+import { NotificationSettings } from './modules/core/notifications/entities/notification-settings.entity';
 import { MediaUpload } from './modules/core/media/entities/media-upload.entity';
+import { Strike } from './modules/core/moderation/entities/strike.entity';
 import { User } from './modules/core/auth/entities/user.entity';
 import { MediaProcessor } from './modules/core/media/media.processor';
+import { AutoSuspendProcessor } from './modules/core/moderation/auto-suspend.processor';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 
@@ -26,6 +37,10 @@ import databaseConfig from './config/database.config';
             load: [appConfig, databaseConfig],
             envFilePath: '.env',
         }),
+        // Each app instance (API, worker) is its own Nest application — Nest's
+        // "global" providers only reach modules within the same instance, so
+        // this needs its own forRoot() even though AppModule also has one.
+        EventEmitterModule.forRoot(),
         TypeOrmModule.forRootAsync({
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => ({
@@ -42,15 +57,20 @@ import databaseConfig from './config/database.config';
             }),
             inject: [ConfigService],
         }),
-        TypeOrmModule.forFeature([MediaUpload, User, SystemSetting]),
+        TypeOrmModule.forFeature([MediaUpload, User, SystemSetting, Notification, NotificationSettings, Strike]),
         RedisModule,
         QueueModule,
-        BullModule.registerQueue({ name: MEDIA_PROCESSING_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
+        MailModule,
+        BullModule.registerQueue(
+            { name: MEDIA_PROCESSING_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+            { name: AUTO_SUSPEND_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+        ),
     ],
-    // SystemSettingsService directly instead of importing SystemSettingsModule —
-    // that module also provides SystemSettingsController/JwtGuard/OwnerGuard,
-    // and JwtGuard needs JwtService (SharedJwtModule, API-only). The worker
-    // has no HTTP surface, so it only needs the service itself.
-    providers: [MediaProcessor, SystemSettingsService],
+    // SystemSettingsService/NotificationsService directly instead of importing
+    // SystemSettingsModule/NotificationsModule — both also provide JwtGuard,
+    // which needs JwtService (SharedJwtModule, API-only). The worker has no
+    // HTTP surface, so it only needs the services themselves. MailModule has
+    // no guard, safe to import as-is.
+    providers: [MediaProcessor, AutoSuspendProcessor, SystemSettingsService, NotificationsService],
 })
 export class WorkerModule { }
