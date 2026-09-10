@@ -1,3 +1,20 @@
+## 2026-09-10 — fix(teeth): Race-Condition in transform() behoben (Track B — Correctness)
+**Was:** `TeethService.transform()` las 15 unkonvertierte Zähne, prüfte die Anzahl, schrieb dann
+`converted_to_chain=true` — alles ohne Lock oder Transaktion. Zwei parallele Aufrufe fuer denselben
+User konnten dieselben 15 Zähne lesen, beide die Pruefung bestehen und beide eine Chain anlegen
+(Zaehne doppelt verwertet). Jetzt `dataSource.transaction()` mit
+`SELECT ... FOR UPDATE` (gleiches Muster wie `coin.service.ts`s `spendCoins`) — eine parallele
+Transaktion blockiert auf dem Lock statt dieselben Zeilen zu lesen.
+**Verifiziert mit echter Postgres-Lock-Konkurrenz** (nicht nur Code-Review): zwei parallele
+`psql`-Transaktionen mit `pg_sleep` gegen 15 vorbereitete Test-Zaehne, dieselbe SQL-Sequenz wie
+der Fix. Ergebnis: Transaktion A gewinnt den Lock und committet, Transaktion B blockiert, sieht
+danach 0 verfuegbare Zaehne und wirft korrekt "Nicht genug Zaehne, hatte 0". Endzustand: exakt
+1 Chain, 0 unkonvertierte Zaehne — kein Doppel-Chain. Testdaten liefen versehentlich gegen das
+persistente Demo-DB-Volume (nicht isoliert) — danach gezielt wieder entfernt (User/Beef/Teeth/
+Chain per ID geloescht), keine Demo-Seed-Daten beruehrt.
+**Nicht gebaut:** keine Aenderung an der Chain-Groesse (15) oder sonstiger Business-Logik — nur
+der fehlende Lock.
+
 ## 2026-09-10 — feat(bcrypt): dedizierter piscina-Worker-Thread-Pool
 **Was:** `src/common/bcrypt/` neu — `bcrypt.worker.ts` (laeuft in piscina-Worker-Threads, nutzt
 `bcrypt.hashSync`/`compareSync` da bereits im eigenen Thread) + `bcrypt-pool.helper.ts` (plain

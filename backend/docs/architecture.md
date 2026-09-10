@@ -247,8 +247,11 @@ innerhalb einer Gruppe ist keine Priorität, nur Herkunft.
   dort, nur beim Vorbeikommen aufgefallen.
 
 **Track B — Correctness:**
-- [ ] Teeth-Race: `teeth.service.ts` transform (read → check ≥15 → write) in eine Transaktion
-  mit Lock.
+- [x] Teeth-Race — **erledigt 2026-09-10:** `transform()` läuft jetzt in `dataSource.transaction()`
+  mit `SELECT ... FOR UPDATE` (gleiches Muster wie `coin.service.ts`). Mit echter Postgres-Lock-
+  Konkurrenz verifiziert (zwei parallele Transaktionen gegen 15 Zähne): die zweite blockiert auf
+  dem Lock, sieht nach Commit der ersten korrekt 0 verfügbare Zähne und wirft die erwartete
+  Exception — kein Doppel-Chain, Endzustand exakt 1 Chain + 0 unkonvertierte Zähne.
 - [ ] Moderation-Access-Scope: `getReports`/`getStrikes` haben `@Roles('admin')`, filtern aber auf
   `req.user.sub` → Admin sieht nur eigene statt plattformweite Queue.
 - [x] `checkAutoSuspend` atomar machen — **erledigt** in Phase 2 (idempotenter Job).
