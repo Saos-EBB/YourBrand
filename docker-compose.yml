@@ -137,6 +137,34 @@ services:
     networks:
       - XXX_network
 
+  # Gleiches Image wie nestjs, anderer Command: ueberspringt docker-entrypoint.sh
+  # (keine Seeds noetig) und startet direkt den Worker-Prozess (src/worker.ts,
+  # eigenes WorkerModule statt AppModule — siehe dessen Kommentar).
+  worker:
+    build:
+      context: ./backend
+    container_name: XXX_worker
+    restart: unless-stopped
+    command: npm run start:worker:dev
+    environment:
+      DB_HOST:     XXX_db
+      DB_PORT:     5432
+      DB_NAME:     ${DB_NAME}
+      DB_USER:     ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST:  redis
+      REDIS_PORT:  6379
+    depends_on:
+      XXX_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - XXX_network
+
   nextjs:
     build:
       context: ./frontend

@@ -102,6 +102,14 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 - 2026-09-10 — `checkAutoSuspend` (Phase 2) wird beim Queue-Umbau idempotent gemacht (Check vor
   jedem der 4 Writes), nicht nur retry-fähig. Grund: BullMQ retried die ganze Funktion von vorn —
   ohne Idempotenz könnte ein Teilfehler zu doppeltem Bann/Strike/Mail führen.
+- 2026-09-10 — **Korrektur:** Worker bootet `WorkerModule`, nicht `AppModule`. Der Plan-Text sagte
+  "`NestFactory.createApplicationContext(AppModule)`" — das wäre ein Bug gewesen: `@Processor`-
+  Provider in einem von `AppModule` importierten Feature-Modul würden dann von **beiden** Prozessen
+  (API + Worker) instanziiert, da `main.ts` dasselbe `AppModule` bootet. `WorkerModule` ist eine
+  eigene, schlanke Root-Modul-Definition (eigene `TypeOrmModule.forRootAsync`, `RedisModule`,
+  `QueueModule` — kein HTTP, keine Controller/Guards/Gateways), Processors werden künftig nur dort
+  registriert, nie in den von `AppModule` geladenen Feature-Modulen. "Ein Codebase, zwei
+  Prozess-Rollen" bleibt gültig — nur eben zwei Root-Module statt einem.
 - 2026-09-10 — bcrypt-Isolierung (Phase 2) zurückgestellt bis nach der Phase-3-Neu-Messung. Grund:
   die im Plan genannte Threadpool-Konkurrenz mit `sharp` verschwindet automatisch, sobald `sharp`
   mit der Media-Pipeline in den Worker-Prozess wandert — ob dedizierte bcrypt-Isolierung danach
@@ -127,9 +135,10 @@ immer fragen).
   umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
   möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
   Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
-- **Phase 2 — Async (Worker + Queue): geplant 2026-09-10, Umsetzung läuft.** Design-Entscheidungen
-  (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` (gleicher Codebase, eigene
-  Redis-Connection), (2) Media-Pipeline: Raw-Upload sofort unter dem finalen Object-Storage-Key,
+- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 1 von 6 erledigt, 2026-09-10).**
+  Design-Entscheidungen (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` ✅ — eigenes,
+  schlankes `WorkerModule` statt `AppModule` (siehe Korrektur unten), eigene Redis-Connection.
+  (2) Media-Pipeline: Raw-Upload sofort unter dem finalen Object-Storage-Key,
   Worker überschreibt nach Resize/Watermark dasselbe Objekt — keine Migration, (3)
   `checkAutoSuspend` → idempotenter Job (schließt Track-B "atomar machen" mit ab), (4)
   `createImageTicket` ebenfalls über die Queue (war reines Logging-Loch, keine echte Chain), (5)

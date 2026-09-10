@@ -22,6 +22,7 @@ import { CommonModule } from './common/common.module';
 import { RedisModule } from './common/redis/redis.module';
 import { LastActiveModule } from './common/last-active/last-active.module';
 import { SharedJwtModule } from './common/auth/shared-jwt.module';
+import { QueueModule } from './common/queue/queue.module';
 import { REDIS_CLIENT } from './common/redis/redis.constants';
 import { SupportModule } from './modules/core/support/support.module';
 import { SetupModule } from './modules/core/setup/setup.module';
@@ -90,6 +91,7 @@ import databaseConfig from './config/database.config';
     RedisModule,
     LastActiveModule,
     SharedJwtModule,
+    QueueModule,
     CommonModule,
     AuthModule,
     MailModule,

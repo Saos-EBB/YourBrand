@@ -4,11 +4,12 @@
 #
 # Start (Demo- und Loadtest-Stack zusammen, im selben Compose-Projekt):
 #   docker compose -f docker-compose.yml -f docker-compose.loadtest.yml up -d \
-#     XXX_db_load XXX_redis_load XXX_minio_load XXX_minio_load_init XXX_backend_load pgadmin
+#     XXX_db_load XXX_redis_load XXX_minio_load XXX_minio_load_init XXX_worker_load XXX_backend_load pgadmin
 #
 # Eigenes DB-Volume (XXX_load_pgdata), eigenes Redis (XXX_redis_load), eigenes
-# MinIO (XXX_minio_load) und eigenes Netzwerk (XXX_load_network) — die
-# Demo-DB/-Redis/-MinIO/das Demo-Volume/-Netzwerk werden nie beruehrt.
+# MinIO (XXX_minio_load), ein eigener Worker (XXX_worker_load) und ein eigenes
+# Netzwerk (XXX_load_network) — die Demo-DB/-Redis/-MinIO/-Worker/das
+# Demo-Volume/-Netzwerk werden nie beruehrt.
 #
 # pgAdmin-Zugriff auf die Loadtest-DB: der bestehende `pgadmin`-Service (siehe
 # docker-compose.yml) wird hier NICHT neu definiert, sondern per Compose-Merge
@@ -133,6 +134,33 @@ services:
         condition: service_healthy
       XXX_minio_load_init:
         condition: service_completed_successfully
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - XXX_load_network
+
+  XXX_worker_load:
+    build:
+      context: ./backend
+    image: xxx_worker_load:local
+    container_name: XXX_worker_load
+    restart: unless-stopped
+    command: npm run start:worker:dev
+    environment:
+      DB_HOST:     XXX_db_load
+      DB_PORT:     5432
+      DB_NAME:     ${DB_NAME}
+      DB_USER:     ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_POOL_MAX: ${DB_POOL_MAX:-20}
+      REDIS_HOST:  XXX_redis_load
+      REDIS_PORT:  6379
+    depends_on:
+      XXX_db_load:
+        condition: service_healthy
+      XXX_redis_load:
+        condition: service_healthy
     volumes:
       - ./backend:/app
       - /app/node_modules

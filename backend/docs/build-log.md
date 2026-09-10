@@ -1,3 +1,26 @@
+## 2026-09-10 — feat(queue): BullMQ-Infra + eigener Worker-Prozess (Phase 2, Punkt 1/6)
+**Was:** `bullmq` + `@nestjs/bullmq` installiert, `QueueModule` (`common/queue/`) konfiguriert die
+geteilte BullMQ-Redis-Connection (`maxRetriesPerRequest: null`, wie von BullMQ verlangt — eigene
+Connection, nicht der `REDIS_CLIENT` aus Phase 1, aber derselbe Redis-Host, kein neues Infra-Stück).
+Beim Runterbrechen einen Bug im urspruenglichen Plan-Wortlaut gefunden (siehe Entscheidungs-
+Korrektur in `docs/architecture.md`): Worker bootet ein eigenes, schlankes `WorkerModule`
+(`src/worker.module.ts`, `src/worker.ts`) statt `AppModule` — sonst wuerden `@Processor`-Provider
+in Feature-Modulen von BEIDEN Prozessen (API + Worker) instanziiert. Neue npm-Scripts
+`start:worker`/`start:worker:dev` (ts-node, analog zu den Seed-Skripten — kein `nest-cli.json`-
+Umbau noetig, `nest build` kompiliert den ganzen `src/`-Baum ohnehin). `worker`/`XXX_worker_load`-
+Service in beiden Compose-Stacks (gleiches Image, `command` ueberschreibt `docker-entrypoint.sh`
+— keine Seeds im Worker).
+**Verifiziert:** `tsc -p tsconfig.build.json` kompiliert `worker.js`/`worker.module.js` fehlerfrei
+in ein Scratch-`outDir` (der echte `dist/`-Ordner ist weiterhin root-owned von einem frueheren
+Lauf). `docker compose config` validiert beide Compose-Dateien. Worker gegen echte DB+Redis
+gestartet: bootet unabhaengig, "Worker gestartet — verbunden mit DB und Redis, wartet auf Jobs."
+Sauber heruntergefahren.
+**Nicht gebaut:** noch keine Queues registriert (`BullModule.registerQueue(...)`) und keine
+`@Processor`-Klassen — reine Infra fuer diesen Schritt, die vier konkreten Jobs (Media, GDPR,
+AutoSuspend, MediaTicket) kommen in den naechsten Schritten. S3-Env-Vars noch nicht im
+Worker-Service der Compose-Dateien (erst noetig ab dem Media-Pipeline-Schritt, wird dort ergaenzt
+statt jetzt auf Vorrat).
+
 ## 2026-09-10 — docs(architecture): Phase 2 durchdacht, fünf Design-Entscheidungen getroffen
 **Was:** Recherche-Fork gegen `gdpr.service.ts`, `moderation.service.ts` (`checkAutoSuspend`),
 `media.service.ts` (`createImageTicket`), `MediaUpload`-Entity, bcrypt-Callsites und BullMQ-
