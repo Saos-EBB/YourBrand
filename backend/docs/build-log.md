@@ -1,3 +1,17 @@
+## 2026-09-10 — fix(deploy): Schema-Baseline-Regression in Railway-WIP behoben
+**Was:** Der Schema-Konsolidierungs-Commit hatte `db/schema.sql` nach
+`migrations/001_baseline.sql` verschoben, ohne dass `scripts/deploy/ensure-db.js`
+(Railway-Boot-Guard, uncommittetes WIP) mitgezogen wurde — waere bei jedem
+Fresh-Deploy mit `ENOENT` gecrasht. Pfad + Kommentare dort und in
+`docs/deployment/railway.md` korrigiert. Nicht committet, da beide Dateien Teil
+des laufenden Railway-WIP sind — Fix liegt im Working Tree, wird mit dem Rest
+committet.
+**Entscheidung:** `Dockerfile.railway` bleibt Single-Stage/root. Multi-Stage
+braechte keinen Image-Vorteil (devDependencies muessen wegen ts-node-Seeds im
+Entrypoint ohnehin im finalen Image bleiben) und wuerde die bereits dokumentierte
+lokale Verifikation (`docs/deployment/railway.md`, "Was davon verifiziert ist")
+ungueltig machen. Umbau auf einen spaeteren, eigenen Haertungsschritt verschoben.
+
 ## 2026-09-10 — chore(deploy): Railway als einzigen Deploy-Pfad festlegen
 **Was:** `render.yaml` nach `_archive/render.yaml` verschoben (mit Begründungs-Header). Railway war
 über `railway.json`/`Dockerfile.railway`/`docker-entrypoint.railway.sh` (WIP) ohnehin schon der
