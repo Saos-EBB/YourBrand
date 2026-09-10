@@ -1,3 +1,8 @@
+# Archived 2026-09-10: Railway was chosen as the single deploy path (see
+# docs/architecture.md, Deploy-Descriptoren). Render's managed Postgres has
+# no PostGIS, and the Railway path (Dockerfile.railway, railway.json,
+# docker-entrypoint.railway.sh) already solves that via a custom postgis
+# image. Kept for history only — not wired into any active build.
 services:
   - type: web
     name: paarship-backend

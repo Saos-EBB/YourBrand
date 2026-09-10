@@ -1,3 +1,14 @@
+## 2026-09-10 — chore(deploy): Railway als einzigen Deploy-Pfad festlegen
+**Was:** `render.yaml` nach `_archive/render.yaml` verschoben (mit Begründungs-Header). Railway war
+über `railway.json`/`Dockerfile.railway`/`docker-entrypoint.railway.sh` (WIP) ohnehin schon der
+gelebte Pfad — Grund für die Wahl: Renders Managed-Postgres hat kein PostGIS, Railway löst das
+bereits über das bestehende `db/Dockerfile` (Custom-Postgis-Image).
+**Nicht gebaut:** kein neuer `deploy/`-Ordner für die aktiven Descriptoren (die liegen weiter flach
+im Backend-Root, wie schon vor diesem Step) — nur ein `_archive/`-Ordner für das Ausgemusterte,
+analog zu `migrations/_archive/`. `Dockerfile.railway` nicht auf Multi-Stage/non-root umgebaut —
+das ist der noch offene Rest des Roadmap-Punkts, bewusst als separater Schritt gelassen, da er das
+laufende Railway-WIP direkt anfasst.
+
 ## 2026-09-10 — chore(migrations): Schema-Baseline konsolidieren
 **Was:** `db/schema.sql` (bereits ein aktueller `pg_dump --schema-only`-Snapshot, strukturell
 verifiziert gegen Migrationen 023/037/038 und alle `schema_v4.sql`-Trigger) zu
