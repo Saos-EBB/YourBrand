@@ -1,3 +1,21 @@
+## 2026-09-10 — feat(beef): Reaction-Ready-State nach Redis, TicTacToe-Timer-Bug gefixt
+**Was:** `reactionReadyPlayers`-Map (Prozess-lokal, bricht bei zwei Instanzen sofort — Spieler A
+und B koennten auf verschiedenen Instanzen landen) durch Redis-Set ersetzt (`SADD`/`SCARD`/
+`EXPIRE` 5 Min. Safety-TTL). Dabei per Code-Review gefunden: `applyRandomTttMove` prüfte
+`move_deadline_at` nicht, bevor es einen Zufallszug setzt — ein auf Instanz A gestellter 25s-Timer
+konnte nach einem regulaeren Move auf Instanz B trotzdem noch feuern und einen zweiten,
+ungueltigen Zug drueberlegen. Gefixt mit demselben Deadline-Check, den der Cron-Backstop
+(`handleExpiredMoveDeadlines`) schon nutzt. Verifiziert: TS-Build sauber, Redis-Sequenz
+(SADD/dup-SADD/SCARD/DEL/TTL) gegen echten Redis-Container durchgespielt.
+**Nicht gebaut:** TicTacToe-Turn-Timer selbst bleibt ein lokaler JS-Timer-Handle (`tttTurnTimers`)
+statt "Redis-Keys/TTL" wie im Plan wörtlich formuliert — ein Timer-Handle kann nicht in Redis
+liegen, und `move_deadline_at` in Postgres ist bereits die geteilte Wahrheit; Redis-Keyspace-
+Notifications dafür einzuführen wäre mehr Komplexität ohne Mehrwert gegenüber dem jetzigen
+Deadline-Guard. Auch entdeckt, aber bewusst nicht angefasst: alle `@Cron`-Jobs in
+`beef.scheduler.ts` laufen auf jeder Instanz unabhaengig — bei mehreren Instanzen verarbeitet
+jede denselben abgelaufenen Beef parallel (kein verteilter Lock). Kein Teil dieses Roadmap-Punkts,
+aber relevant für "echtes Horizontal" — als offener Punkt in der Rework-Tabelle vermerkt.
+
 ## 2026-09-10 — feat(redis): Phase-1-Auftakt — Redis-Infra
 **Was:** Globales `RedisModule` (`ioredis`, `REDIS_CLIENT`-Token, `onModuleDestroy` disconnected)
 in `AppModule` verdrahtet; `redis`-Service in `docker-compose.yml` und ein isolierter

@@ -1,4 +1,5 @@
 import {
+    Inject,
     Injectable,
     BadRequestException,
     ForbiddenException,
@@ -6,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../../common/redis/redis.constants';
 import { GameRegistry } from './games/game.registry';
 import { TicTacToeHandler } from './games/tictactoe.handler';
 import { BeefGame } from './entities/beef-game.entity';
@@ -16,13 +19,17 @@ import { TypedEventBus, AppEvents } from '../../shared/events/app-events';
 
 const GAME_DEADLINE_SECONDS = 30 * 60; // 30 minutes
 
+// Safety-net TTL for the reaction-ready handshake — cleans up the Redis set if
+// one player never shows up (no explicit deadline exists for this phase).
+const REACTION_READY_TTL_SECONDS = 5 * 60;
+
 @Injectable()
 export class BeefGameService {
-    // Tracks which players have signalled game:reaction_ready for a given beef.
-    // Both must be present before the GO signal is scheduled.
-    private readonly reactionReadyPlayers = new Map<string, Set<string>>();
-
     // Per-beef in-memory turn timers for TicTacToe (25 s → random placement).
+    // Stays in-process (a JS timer handle can't live in Redis) — safe under
+    // horizontal scaling because applyRandomTttMove re-checks move_deadline_at
+    // (the shared, DB-backed truth) before acting, so a stale timer on an
+    // instance that didn't see a later move just no-ops.
     private readonly tttTurnTimers = new Map<string, ReturnType<typeof setTimeout>>();
     constructor(
         @InjectRepository(BeefGame)
@@ -33,6 +40,7 @@ export class BeefGameService {
         private readonly stateMachine: BeefStateMachineService,
         private readonly systemSettings: SystemSettingsService,
         private readonly eventBus: TypedEventBus,
+        @Inject(REDIS_CLIENT) private readonly redis: Redis,
     ) {}
 
     async pressReady(beefId: string, userId: string): Promise<void> {
@@ -88,14 +96,16 @@ export class BeefGameService {
         const isTarget = beef.target_id === userId;
         if (!isInitiator && !isTarget) return;
 
-        if (!this.reactionReadyPlayers.has(beefId)) {
-            this.reactionReadyPlayers.set(beefId, new Set());
-        }
-        this.reactionReadyPlayers.get(beefId)!.add(userId);
+        // SADD is a no-op if userId is already a member — safe against duplicate
+        // presses. Set can only ever hold initiator_id/target_id (checked above),
+        // so size 2 means both are in.
+        const readyKey = `beef:${beefId}:reaction_ready`;
+        await this.redis.sadd(readyKey, userId);
+        await this.redis.expire(readyKey, REACTION_READY_TTL_SECONDS);
 
-        const ready = this.reactionReadyPlayers.get(beefId)!;
-        if (ready.has(beef.initiator_id) && ready.has(beef.target_id)) {
-            this.reactionReadyPlayers.delete(beefId);
+        const readyCount = await this.redis.scard(readyKey);
+        if (readyCount >= 2) {
+            await this.redis.del(readyKey);
             const delayMs = Math.floor(Math.random() * 4800) + 200;
             setTimeout(() => void (async () => {
                 const sentAt = Date.now();
@@ -294,6 +304,13 @@ export class BeefGameService {
 
         const game = await this.gameRepo.findOne({ where: { beef_id: beefId } });
         if (!game || game.winner_id || !game.state) return;
+
+        // This timer is local to whichever instance held the beef when the turn
+        // started. If a real move landed on a different instance in the meantime,
+        // move_deadline_at has already moved forward (or been cleared) — treat
+        // that exactly like the cron backstop does and no-op instead of forcing
+        // a second, stale placement on top of the real move.
+        if (!game.move_deadline_at || game.move_deadline_at > new Date()) return;
 
         const state = game.state as { board: (string | null)[]; turn: 'initiator' | 'target'; round_over: boolean; winner_id: string | null };
         if (state.round_over || state.winner_id) return;
