@@ -1,8 +1,12 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { Injectable, ExecutionContext, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Request } from 'express';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../redis/redis.constants';
+import { extractToken, userExistsCached } from './jwt-verify.helper';
+import { LastActiveService } from '../last-active/last-active.service';
 
 @Injectable()
 export class OptionalJwtGuard {
@@ -10,11 +14,14 @@ export class OptionalJwtGuard {
         private readonly jwtService: JwtService,
         @InjectDataSource()
         private readonly dataSource: DataSource,
+        @Inject(REDIS_CLIENT)
+        private readonly redis: Redis,
+        private readonly lastActive: LastActiveService,
     ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest<Request>();
-        const token = this.extractToken(request);
+        const token = extractToken(request);
 
         if (!token) return true;
 
@@ -23,28 +30,16 @@ export class OptionalJwtGuard {
                 secret: process.env.JWT_SECRET,
             });
 
-            const [{ exists }] = await this.dataSource.query(
-                'SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL) AS exists',
-                [payload.sub],
-            );
+            const exists = await userExistsCached(payload.sub, this.redis, this.dataSource);
             if (!exists) return true;
 
             request['user'] = payload;
 
-            this.dataSource.query(
-                'UPDATE profiles SET last_active_at = NOW() WHERE user_id = $1',
-                [payload.sub],
-            ).catch(() => {});
+            this.lastActive.touch(payload.sub).catch(() => {});
         } catch {
             // invalid or expired token, or user no longer exists — leave req.user undefined
         }
 
         return true;
-    }
-
-    private extractToken(request: Request): string | null {
-        const auth = request.headers.authorization;
-        if (!auth || !auth.startsWith('Bearer ')) return null;
-        return auth.split(' ')[1];
     }
 }

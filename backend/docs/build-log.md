@@ -1,3 +1,24 @@
+## 2026-09-10 — feat(auth): jwt.guard entlastet — Redis-Cache + gebatchtes last_active
+**Was:** `SELECT EXISTS (... FROM users ...)` lief bisher auf JEDEM authentifizierten Request
+(Hot-Path von ~27 Dateien) — jetzt `user:exists:{id}` in Redis gecacht, 15-Min-TTL (akzeptiertes
+Staleness-Fenster, explizit so im Plan vorgesehen). `last_active_at` lief bisher als
+fire-and-forget-`UPDATE` pro Request — jetzt schreibt `LastActiveService.touch()` nur nach Redis
+(`SET` + `SADD` in ein "dirty"-Set), ein neuer `@Cron(EVERY_MINUTE)` `flush()` liest das Set und
+bulk-updated Postgres in einer Query (`unnest($1::uuid[])`). `LastActiveModule` ist `@Global()`
+wie `RedisModule` — noetig, weil `JwtGuard`/`OptionalJwtGuard` als Provider in 14 Modulen einzeln
+deklariert sind statt über ein gemeinsames Modul (das ist der separate Punkt "Shared Auth-Modul").
+Token-Extraktion + der neue gecachte Exists-Check liegen jetzt geteilt in
+`common/guards/jwt-verify.helper.ts` (plain functions) — beide Guards riefen vorher exakt
+denselben Code dupliziert auf. Verifiziert: TS-Build sauber, Redis-Sequenzen (Cache-Miss/Hit/TTL,
+Dirty-Set add/remove) gegen echten Redis-Container durchgespielt.
+**Nicht gebaut:** kein aktives Invalidieren des Exists-Cache bei Ban/Delete — das 15-Min-Fenster
+ist eine bewusste, im Plan explizit genannte Abwägung, kein Bug. Kein Locking zwischen
+`flush()`s SMEMBERS-Read und SREM-Write — ein Touch in der Luecke wird beim naechsten Flush einfach
+erneut aufgenommen, ausreichend fuer eine "letzte Aktivitaet"-Anzeige. `JwtModule.registerAsync`-
+Duplikat über die 14 Module NICHT angefasst — eigener Roadmap-Punkt (Shared Auth-Modul).
+`npm run build` liess sich nicht gegenpruefen (`dist/` root-owned von einem frueheren
+Container-Lauf, EACCES) — `tsc --noEmit` lief sauber durch, als Ersatznachweis ausreichend.
+
 ## 2026-09-10 — feat(media): Object Storage statt lokalem Dateisystem
 **Was:** `src/common/storage/object-storage.helper.ts` (plain functions, kein DI — mirrored auf
 `crypto.helper.ts`, damit auch Standalone-Seed-Skripte es importieren koennen) mit `@aws-sdk/client-s3`
