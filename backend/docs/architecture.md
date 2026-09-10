@@ -91,10 +91,21 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Roadmap
 
-Siehe `.scratch/` bzw. Handoff-Notizen für den Ausführungsstand. Reihenfolge: Phase 0 (Fundament:
-eine Schema-Wahrheit + ein Deploy-Pfad) ist Voraussetzung für Phase 1 (Stateless: Redis + Object
-Storage, schaltet Horizontal frei), danach Phase 2 (Async: Worker + Queue) und Phase 3 (Messen &
-hochrechnen). Track B (Correctness + Wartbarkeit aus der Tabelle oben) läuft parallel, blockiert
-nichts. Pro CC-Session eine Phase-Zeile, Phase 0/1 strikt der Reihe nach, Track B frei dazwischen.
-DB-Migrationen und Deploy-Pfad-Entscheidungen werden vor jedem Schritt einzeln bestätigt (workmode:
-DB-Migration = immer fragen).
+Reihenfolge: Phase 0 ist Voraussetzung für Phase 1 (Stateless, schaltet Horizontal frei), danach
+Phase 2 (Async: Worker + Queue) und Phase 3 (Messen & hochrechnen). Track B (Correctness +
+Wartbarkeit aus der Tabelle oben) läuft parallel, blockiert nichts. Pro CC-Session ein Punkt,
+Phase 0/1 strikt der Reihe nach, Track B frei dazwischen. DB-Migrationen und
+Deploy-Pfad-Entscheidungen werden vor jedem Schritt einzeln bestätigt (workmode: DB-Migration =
+immer fragen).
+
+- **Phase 0 — Fundament: ✅ erledigt 2026-09-10.** Eine Schema-Baseline (`migrations/001_baseline.sql`),
+  ein Deploy-Pfad (Railway), kein Plaintext-Secret im aktiven Pfad. Validiert: frischer
+  `docker build -f db/Dockerfile` gegen leeres Volume erzeugt alle 45 Tabellen inkl.
+  `pseudonymize_user` + 9 Trigger, ohne Fehler. Offen gelassen (bewusst, siehe Tabelle oben):
+  `Dockerfile.railway` Multi-Stage/non-root.
+- **Phase 1 — Stateless (Redis + Object Storage):** nächster Punkt, siehe "Was neu / umgebaut
+  werden muss" oben (Beef-Game-State, Rate-Limiting, Media-Storage, `jwt.guard`,
+  `optional-jwt.guard.ts`, `hashEmail`, Shared-Auth-Modul, system-settings-Cache).
+- **Phase 2 — Async (Worker + Queue):** danach.
+- **Phase 3 — Messen & hochrechnen:** danach.
+- **Track B (Correctness + Wartbarkeit):** parallel, jederzeit.

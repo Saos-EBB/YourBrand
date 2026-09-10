@@ -1,3 +1,12 @@
+## 2026-09-10 — docs(architecture): Phase 0 als erledigt markieren
+**Was:** Fertig-Kriterium aus dem Plan geprüft: `docker build -f db/Dockerfile` + Run gegen ein
+leeres, temporaeres Volume (kein bestehendes Compose-Volume angefasst) erzeugt alle 45 Tabellen,
+`pseudonymize_user` und 9 Trigger ohne Fehler. Roadmap-Abschnitt in `docs/architecture.md` auf
+Phasen-Status umgestellt (die alte `.scratch/`-Referenz war falsch — der Ordner existiert nicht,
+es gibt keine separate Tracking-Datei).
+**Nicht gebaut:** keine neue Tracking-Datei fuer den Roadmap-Status — der Stand steht direkt in
+`docs/architecture.md`.
+
 ## 2026-09-10 — fix(deploy): Schema-Baseline-Regression in Railway-WIP behoben
 **Was:** Der Schema-Konsolidierungs-Commit hatte `db/schema.sql` nach
 `migrations/001_baseline.sql` verschoben, ohne dass `scripts/deploy/ensure-db.js`
