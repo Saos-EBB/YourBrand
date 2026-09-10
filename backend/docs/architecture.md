@@ -75,7 +75,8 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | GDPR-Export | 15 Queries + synchrones `pdfkit` auf dem Event-Loop | Background-Job (BullMQ), Link per Mail |
 | Notification-/Mail-Fanout (`checkAutoSuspend`, media-ticket-dispatch) | Non-transaktionale Fire-and-forget-Chain mit `.catch(()=>{})` | Job, retry-bar |
 | bcrypt | Läuft im geteilten libuv-Threadpool, gleicher Pool wie `sharp` | Worker-Thread / eigener Pfad, isoliert vom Media-Threadpool |
-| Redis / Queue / Object Storage | Existiert nicht | Neu: `RedisModule`, BullMQ `QueueModule`, S3-kompatibler Client, Worker-Entrypoint `start:worker` |
+| ~~Redis~~ | ~~Existiert nicht~~ | **Infra erledigt 2026-09-10:** globales `RedisModule` (`ioredis`, `REDIS_CLIENT`-Token) in `AppModule`; `redis`-Service in `docker-compose.yml` (Demo) und `XXX_redis_load` in `docker-compose.loadtest.yml` (eigenes Netzwerk, analog zur Loadtest-DB). Noch kein Verbraucher — startet mit Beef-Game-State (nächster Punkt). |
+| Queue / Object Storage | Existiert nicht | Neu: BullMQ `QueueModule`, S3-kompatibler Client, Worker-Entrypoint `start:worker` (Phase 2) |
 
 Track-B-Punkte (Correctness-Bugs, God-Objects, Duplikate — siehe Roadmap unten) sind Fixes,
 keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
@@ -103,9 +104,10 @@ immer fragen).
   `docker build -f db/Dockerfile` gegen leeres Volume erzeugt alle 45 Tabellen inkl.
   `pseudonymize_user` + 9 Trigger, ohne Fehler. Offen gelassen (bewusst, siehe Tabelle oben):
   `Dockerfile.railway` Multi-Stage/non-root.
-- **Phase 1 — Stateless (Redis + Object Storage):** nächster Punkt, siehe "Was neu / umgebaut
-  werden muss" oben (Beef-Game-State, Rate-Limiting, Media-Storage, `jwt.guard`,
-  `optional-jwt.guard.ts`, `hashEmail`, Shared-Auth-Modul, system-settings-Cache).
+- **Phase 1 — Stateless (Redis + Object Storage):** Reihenfolge laut Plan: (1) Redis aufsetzen
+  ✅ erledigt 2026-09-10, (2) Beef-Game-State → Redis, (3) Rate-Limiting → Redis, (4) Media →
+  Object Storage, (5) `jwt.guard` entlasten, (6) system-settings-Cache Misses, (7) Shared
+  Auth-Modul. Details siehe "Was neu / umgebaut werden muss" oben.
 - **Phase 2 — Async (Worker + Queue):** danach.
 - **Phase 3 — Messen & hochrechnen:** danach.
 - **Track B (Correctness + Wartbarkeit):** parallel, jederzeit.
