@@ -1,3 +1,19 @@
+## 2026-09-10 — test: voller docker-compose-Boot-Test für Phase 1
+**Was:** `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` in die lokale `.env` eingetragen (Werte aus
+`.env.example`), dann `docker compose up -d --build` gegen den kompletten Demo-Stack (Postgres,
+Redis, MinIO, Backend, Frontend). Ergebnis: `Nest application successfully started`, alle Seeds
+inkl. `seed-media` liefen durch (95 User × 3 Uploads landeten im MinIO-Bucket, per HTTP 200
+abrufbar). `GET /api/v1` → 200. Register + Login + `GET /auth/me` end-to-end getestet:
+`user:exists:{id}` und `last_active:dirty`/`last_active:ts:{id}` erschienen korrekt in Redis, nach
+~60s hat der `@Cron`-Flush den Dirty-Set geleert und `profiles.last_active_at` stand korrekt in
+Postgres. `ThrottlerStorageRedisService` schreibt sichtbar Hash-Keys nach Redis. Damit ist die
+gesamte Phase 1 (nicht nur einzeln gegen Wegwerf-Container, sondern im echten App-Kontext)
+verifiziert. Sauber mit `docker compose down` heruntergefahren, Working Tree danach unveraendert
+(nur das bekannte Railway-WIP als Diff).
+**Nicht gebaut:** `settings:*`-Redis-Keys nicht im Live-Test beobachtet (kein Codepfad im Testlauf
+hat `SystemSettingsService.getNumber/getString` ausgeloest) — bereits im vorigen Schritt separat
+gegen echtes Redis verifiziert, hier kein Nachtest noetig.
+
 ## 2026-09-10 — refactor(auth): Shared-Auth-Modul — JwtModule-Duplikat über 14 Module beseitigt
 **Was:** `JwtModule.registerAsync({...})` war identisch in 14 Feature-Modulen kopiert (Auth, Chat,
 GDPR, Moderation, Teeth, Badge, Admin, Payment, Coin, Matching, Beef, Notifications,
