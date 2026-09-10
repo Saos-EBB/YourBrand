@@ -65,25 +65,25 @@ export class ModerationService {
         return saved;
     }
 
-    async getReports(reporterId: string) {
+    // These three back @Roles('admin') routes — a platform-wide moderation
+    // queue, not "reports/strikes I personally filed/received". Used to
+    // filter on the calling admin's own id (copy-paste from a likely
+    // earlier self-service version), so an admin only ever saw their own.
+    async getReports() {
         return this.reportRepository.find({
-            where: { reporter_id: reporterId },
             order: { created_at: 'DESC' },
         });
     }
 
-    async getReport(reporterId: string, reportId: string) {
-        const report = await this.reportRepository.findOne({
-            where: { id: reportId, reporter_id: reporterId },
-        });
+    async getReport(reportId: string) {
+        const report = await this.reportRepository.findOne({ where: { id: reportId } });
 
         if (!report) throw new NotFoundException('Meldung nicht gefunden');
         return report;
     }
 
-    async getStrikes(userId: string) {
+    async getStrikes() {
         return this.strikeRepository.find({
-            where: { user_id: userId },
             order: { created_at: 'DESC' },
         });
     }

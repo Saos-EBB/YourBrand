@@ -252,8 +252,13 @@ innerhalb einer Gruppe ist keine Priorität, nur Herkunft.
   Konkurrenz verifiziert (zwei parallele Transaktionen gegen 15 Zähne): die zweite blockiert auf
   dem Lock, sieht nach Commit der ersten korrekt 0 verfügbare Zähne und wirft die erwartete
   Exception — kein Doppel-Chain, Endzustand exakt 1 Chain + 0 unkonvertierte Zähne.
-- [ ] Moderation-Access-Scope: `getReports`/`getStrikes` haben `@Roles('admin')`, filtern aber auf
-  `req.user.sub` → Admin sieht nur eigene statt plattformweite Queue.
+- [x] Moderation-Access-Scope — **erledigt 2026-09-10:** `getReports`/`getReport`/`getStrikes`
+  in `moderation.service.ts` filterten auf die aufrufende Admin-ID statt plattformweit zu
+  zeigen (vermutlich Reste einer frueheren Self-Service-Variante). Filter entfernt, Routen
+  bleiben (User-Entscheidung gegen Loeschen, obwohl `/admin/reports`/`/admin/strikes` in
+  `admin.controller.ts` funktional dieselbe Aufgabe bereits korrekt loesen und laut Frontend-
+  Suche die einzigen tatsaechlich benutzten Endpunkte sind). End-to-End verifiziert: Admin sieht
+  jetzt einen fremden Report + fremden Strike, obwohl er selbst keinen von beiden hat.
 - [x] `checkAutoSuspend` atomar machen — **erledigt** in Phase 2 (idempotenter Job).
 - [ ] Fehlende Indizes: `beef_votes(beef_id)`, `beef_comments(beef_id)`,
   `coin_transactions(user_id)`, `teeth(owner_id)`, `badges(expires_at)`.

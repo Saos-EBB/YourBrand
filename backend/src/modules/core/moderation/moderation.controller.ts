@@ -30,15 +30,15 @@ export class ModerationController {
     @Get('reports')
     @UseGuards(JwtGuard, RolesGuard)
     @Roles('admin')
-    getReports(@Request() req: any) {
-        return this.moderationService.getReports(req.user.sub);
+    getReports() {
+        return this.moderationService.getReports();
     }
 
     @Get('reports/:id')
     @UseGuards(JwtGuard, RolesGuard)
     @Roles('admin')
-    getReport(@Request() req: any, @Param('id', ParseUUIDPipe) id: string) {
-        return this.moderationService.getReport(req.user.sub, id);
+    getReport(@Param('id', ParseUUIDPipe) id: string) {
+        return this.moderationService.getReport(id);
     }
 
     @Post('strikes')
@@ -51,8 +51,8 @@ export class ModerationController {
     @Get('strikes')
     @UseGuards(JwtGuard, RolesGuard)
     @Roles('admin')
-    getStrikes(@Request() req: any) {
-        return this.moderationService.getStrikes(req.user.sub);
+    getStrikes() {
+        return this.moderationService.getStrikes();
     }
 
     @Patch('reports/:id/review')

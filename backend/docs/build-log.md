@@ -1,3 +1,24 @@
+## 2026-09-10 — fix(moderation): Access-Scope-Bug in getReports/getReport/getStrikes (Track B)
+**Was:** Die drei `@Roles('admin')`-Routen `GET /moderation/reports`, `GET /moderation/reports/:id`,
+`GET /moderation/strikes` filterten auf `req.user.sub` (die ADMIN-ID) — `getReports(reporterId)`
+zeigte also nur Reports, die der Admin selbst als normaler User eingereicht hatte (praktisch nie),
+`getStrikes(userId)` nur Strikes gegen den Admin selbst. Vermutlich Reste einer aelteren
+Self-Service-Variante ("meine eigenen Reports"), die spaeter unveraendert hinter die Admin-Routen
+gehaengt wurde. Filter komplett entfernt, alle drei Methoden geben jetzt plattformweite Daten
+zurueck (bzw. per ID, unabhaengig vom Ersteller).
+**Recherche vor dem Fix:** geprueft, ob diese Routen ueberhaupt vom Frontend genutzt werden —
+nirgends gefunden. Das Frontend nutzt stattdessen `/admin/reports`/`/admin/strikes`
+(`admin.controller.ts`), die bereits korrekt plattformweit filtern (mit Pagination). Dem User
+beide Optionen vorgelegt (loeschen vs. fixen) — Entscheidung: fixen, Routen bleiben fuer
+moegliche kuenftige Verwendung.
+**Verifiziert End-to-End:** Reporter meldet Target, Admin (0 eigene Reports) sieht den Report in
+der Liste UND per Einzel-Abruf per ID; Admin erstellt einen Strike gegen Target, sieht ihn danach
+in der eigenen `GET /moderation/strikes`-Antwort zusammen mit einem alten Auto-Suspend-Strike aus
+einem frueheren Test — beides fremde Datensaetze, korrekt sichtbar. Testdaten (3 User, 1 Report,
+1 Strike) direkt danach wieder entfernt.
+**Nicht gebaut:** keine Pagination fuer diese drei Routen (die haben `/admin/reports`/`/admin/strikes`
+bereits) — nur der Scope-Bug, kein Feature-Ausbau.
+
 ## 2026-09-10 — fix(teeth): Race-Condition in transform() behoben (Track B — Correctness)
 **Was:** `TeethService.transform()` las 15 unkonvertierte Zähne, prüfte die Anzahl, schrieb dann
 `converted_to_chain=true` — alles ohne Lock oder Transaktion. Zwei parallele Aufrufe fuer denselben
