@@ -85,14 +85,6 @@ export class ProfanityService implements OnModuleInit {
         this.eventEmitter.emit('ticket.new', {});
     }
 
-    async createImageTicket(userId: string, mediaId: string): Promise<void> {
-        await this.dataSource.query(
-            `INSERT INTO admin_tickets (type, user_id, context) VALUES ('image', $1, $2)`,
-            [userId, JSON.stringify({ media_id: mediaId, user_id: userId })],
-        );
-        this.eventEmitter.emit('ticket.new', {});
-    }
-
     // ── Admin word management ──────────────────────────────────────────────────
 
     async getCustomWords(): Promise<{ word: string; added_by: string | null; added_at: Date }[]> {

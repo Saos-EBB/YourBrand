@@ -1,15 +1,13 @@
-import { Injectable, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { uploadObject } from '../../../common/storage/object-storage.helper';
-import { MEDIA_PROCESSING_QUEUE } from '../../../common/queue/queue.constants';
+import { MEDIA_PROCESSING_QUEUE, MEDIA_TICKET_QUEUE } from '../../../common/queue/queue.constants';
 import { MediaUpload, FileType, FileContext, ModerationStatus } from './entities/media-upload.entity';
 import { Profile } from '../profile/entities/profile.entity';
-import { User } from '../auth/entities/user.entity';
-import { ProfanityService } from '../moderation/profanity.service';
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -20,10 +18,11 @@ export class MediaService {
         private readonly mediaRepository: Repository<MediaUpload>,
         @InjectRepository(Profile)
         private readonly profileRepository: Repository<Profile>,
-        private readonly profanityService: ProfanityService,
         private readonly eventEmitter: EventEmitter2,
         @InjectQueue(MEDIA_PROCESSING_QUEUE)
         private readonly mediaQueue: Queue,
+        @InjectQueue(MEDIA_TICKET_QUEUE)
+        private readonly mediaTicketQueue: Queue,
     ) {}
 
     private validateMagicBytes(buffer: Buffer): boolean {
@@ -84,7 +83,10 @@ export class MediaService {
 
         await this.profileRepository.update({ user_id: userId }, { photo_id: saved.id });
 
-        this.profanityService.createImageTicket(userId, saved.id).catch(() => {});
+        await this.mediaTicketQueue.add('create-image-ticket', {
+            userId,
+            mediaId: saved.id,
+        });
 
         this.eventEmitter.emit('media.pending_review', {
             mediaId: saved.id,

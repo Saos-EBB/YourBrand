@@ -75,7 +75,7 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | ~~Media-Pipeline (`sharp`)~~ | ~~Synchron im Request~~ | **Erledigt 2026-09-10:** Raw-Upload sofort, `MediaProcessor` (nur `WorkerModule`) resized/watermarkt async und überschreibt denselben Object-Storage-Key. |
 | GDPR-Export | 15 Queries + synchrones `pdfkit` auf dem Event-Loop | Background-Job (BullMQ), PDF als Mail-Anhang (User-Entscheidung, kein Object-Storage-Link — PII) |
 | ~~`checkAutoSuspend`~~ | ~~Non-transaktionale Fire-and-forget-Chain mit `.catch(()=>{})`~~ | **Erledigt 2026-09-10:** `AutoSuspendProcessor` (BullMQ, nur `WorkerModule`), Ban/Strike-Schritte einzeln idempotent (Retry überspringt bereits erledigte Schritte statt alles neu zu machen oder alles zu überspringen). Dabei `migrations/002_seed_system_user.sql` gefunden+gefixt (siehe Entscheidungen). |
-| `createImageTicket` (media-ticket-dispatch) | `.catch(() => {})` ganz ohne Logging | Über dieselbe Queue-Infra, eigener kleiner Schritt |
+| ~~`createImageTicket`~~ (media-ticket-dispatch) | ~~`.catch(() => {})` ganz ohne Logging~~ | **Erledigt 2026-09-10:** `MediaTicketProcessor` (BullMQ, nur `WorkerModule`). Aus `ProfanityService` entfernt (war deren einziger Aufrufer), `ModerationModule`-Import aus `media.module.ts` damit auch überflüssig geworden. |
 | bcrypt | Läuft im geteilten libuv-Threadpool, gleicher Pool wie `sharp` | Worker-Thread / eigener Pfad, isoliert vom Media-Threadpool |
 | `beef.scheduler.ts` — alle `@Cron`-Jobs | Jede Instanz führt jeden Cron unabhängig aus — bei N Instanzen verarbeitet jede denselben abgelaufenen Beef parallel, kein verteilter Lock (gefunden 2026-09-10 beim Beef-Game-State-Rework, nicht Teil dieses Punkts) | Verteilter Lock (z.B. Redis `SET NX`) oder nur eine Instanz führt Crons aus |
 | ~~Redis~~ | ~~Existiert nicht~~ | **Infra erledigt 2026-09-10:** globales `RedisModule` (`ioredis`, `REDIS_CLIENT`-Token) in `AppModule`; `redis`-Service in `docker-compose.yml` (Demo) und `XXX_redis_load` in `docker-compose.loadtest.yml` (eigenes Netzwerk, analog zur Loadtest-DB). Noch kein Verbraucher — startet mit Beef-Game-State (nächster Punkt). |
@@ -143,7 +143,7 @@ immer fragen).
   umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
   möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
   Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
-- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 3 von 6 erledigt, 2026-09-10).**
+- **Phase 2 — Async (Worker + Queue): Umsetzung läuft (Punkt 4 von 6 erledigt, 2026-09-10).**
   Design-Entscheidungen (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` ✅ — eigenes,
   schlankes `WorkerModule` statt `AppModule` (siehe Korrektur unten), eigene Redis-Connection.
   (2) Media-Pipeline ✅: Raw-Upload sofort unter dem finalen Object-Storage-Key (`MediaService`),
@@ -156,7 +156,9 @@ immer fragen).
   scheiterte an der FK auf `strikes.issued_by`, nur unsichtbar durch den verschluckten `.catch()`.
   End-to-End verifiziert (Schwelle testweise auf 2 gesenkt): kein Doppel-Bann bei fehlgeschlagenen
   Retries (Ban-Schritt idempotent übersprungen), Strike + Notification korrekt nach dem Fix. (4)
-  `createImageTicket` ebenfalls über die Queue (war reines Logging-Loch, keine echte Chain), (5)
+  `createImageTicket` ✅ über eigene `MediaTicketProcessor`-Queue (war reines Logging-Loch, keine
+  echte Chain — kleinster der sechs Punkte). End-to-End verifiziert: Upload erzeugt korrekten
+  `admin_tickets`-Eintrag, unabhängig vom parallel laufenden Media-Processing-Job. (5)
   GDPR-Export → Job, PDF als Mail-Anhang statt Object-Storage-Link (PII-Sensitivität, aktuelle
   Buckets sind public-read), (6) bcrypt-Isolierung zurückgestellt bis nach Phase 3s Neu-Messung
   (sharp verlässt mit Schritt 2 ohnehin den API-Prozess-Threadpool).

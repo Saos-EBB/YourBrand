@@ -1,3 +1,19 @@
+## 2026-09-10 — feat(moderation): createImageTicket über die Queue (Phase 2, Punkt 4/6)
+**Was:** `ProfanityService.createImageTicket` (ein INSERT + Event, aufgerufen als
+`.catch(() => {})` OHNE Logging — schlimmer als checkAutoSuspend, ein Fehlschlag verschwand
+komplett) rausgezogen nach `media-ticket.processor.ts` (`@Processor`, nur `WorkerModule`).
+`media.service.ts` enqueued jetzt stattdessen einen Job auf einer neuen `media-ticket`-Queue.
+War der einzige Aufrufer von `createImageTicket` — Methode aus `ProfanityService` entfernt,
+`ModerationModule`-Import aus `media.module.ts` dadurch ebenfalls ueberfluessig geworden
+(`MediaService` brauchte `ProfanityService` sonst nirgends mehr). Nebenbei zwei tote Reste aus
+Schritt 2 aufgeraeumt: ungenutzter `Inject`-Import und `User`-Entity-Import in `media.service.ts`.
+**Verifiziert End-to-End** gegen echte Container: Foto-Upload erzeugte einen korrekten
+`admin_tickets`-Eintrag (`type='image'`, `context` mit `media_id`/`user_id`), unabhaengig vom
+parallel laufenden Media-Processing-Job (beide Queues verarbeiten den Upload gleichzeitig, ohne
+sich gegenseitig zu beeinflussen).
+**Nicht gebaut:** `createNicknameTicket` (dieselbe INSERT+Event-Struktur, andere Aufrufstelle)
+nicht angefasst — war nicht Teil des Plans, kein bekanntes Fire-and-forget-Problem dort.
+
 ## 2026-09-10 — fix(moderation): checkAutoSuspend als idempotenter Job + System-User-Bug gefixt (Phase 2, Punkt 3/6)
 **Was:** `checkAutoSuspend` aus `moderation.service.ts` rausgezogen nach `auto-suspend.processor.ts`
 (`@Processor`, nur `WorkerModule`-Provider). `createReport` enqueued jetzt einen Job statt

@@ -9,6 +9,7 @@ import { MailModule } from './common/mail/mail.module';
 import {
     MEDIA_PROCESSING_QUEUE,
     AUTO_SUSPEND_QUEUE,
+    MEDIA_TICKET_QUEUE,
     DEFAULT_JOB_OPTIONS,
 } from './common/queue/queue.constants';
 import { SystemSettingsService } from './modules/core/system-settings/system-settings.service';
@@ -21,6 +22,7 @@ import { Strike } from './modules/core/moderation/entities/strike.entity';
 import { User } from './modules/core/auth/entities/user.entity';
 import { MediaProcessor } from './modules/core/media/media.processor';
 import { AutoSuspendProcessor } from './modules/core/moderation/auto-suspend.processor';
+import { MediaTicketProcessor } from './modules/core/moderation/media-ticket.processor';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 
@@ -64,6 +66,7 @@ import databaseConfig from './config/database.config';
         BullModule.registerQueue(
             { name: MEDIA_PROCESSING_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
             { name: AUTO_SUSPEND_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+            { name: MEDIA_TICKET_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
         ),
     ],
     // SystemSettingsService/NotificationsService directly instead of importing
@@ -71,6 +74,6 @@ import databaseConfig from './config/database.config';
     // which needs JwtService (SharedJwtModule, API-only). The worker has no
     // HTTP surface, so it only needs the services themselves. MailModule has
     // no guard, safe to import as-is.
-    providers: [MediaProcessor, AutoSuspendProcessor, SystemSettingsService, NotificationsService],
+    providers: [MediaProcessor, AutoSuspendProcessor, MediaTicketProcessor, SystemSettingsService, NotificationsService],
 })
 export class WorkerModule { }
