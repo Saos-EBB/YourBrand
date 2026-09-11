@@ -1,3 +1,7 @@
+> **Archiviert 2026-09-11:** Root-`docs/`-Datei der ersten Projektphase, seit dem Split in
+> Per-Package-Docs verwaist (letzter Eintrag: 2026-07-22, keine Verlinkung mehr im Repo).
+> Nur zur Historie behalten.
+
 # Known Errors & Solutions
 
 Wiederkehrende Fehler mit Ursache und Fix. Neue Einträge oben anhängen.

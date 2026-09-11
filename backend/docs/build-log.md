@@ -1,3 +1,12 @@
+## 2026-09-11 — chore(docs): archive orphaned root-level docs/ folder
+**Was:** Root `docs/` (`build-log.md`, `known-errors.md`, `loadtest-ist-zustand.md`) war seit dem
+Split in Per-Package-Docs (`backend/docs/`, `frontend/docs/`) verwaist — letzter Touch
+2026-07-24/08-05, keine `.md`-Datei im Repo verlinkt mehr dorthin. Nach `docs/_archive/`
+verschoben (Muster analog zu `migrations/_archive/`), jede Datei mit Archiv-Header versehen statt
+kommentarlos verschoben.
+**Nicht gebaut:** keine Inhalts-Migration einzelner Root-Log-Einträge hierher — die Root-Historie
+ist reines Altmaterial aus der Vor-Split-Phase, nicht mehr aktueller Kontext für dieses Log.
+
 ## 2026-09-10 — fix(db): missing indexes on beef_votes/beef_comments/coin_transactions/teeth/badges (Track B)
 **Was:** Fünf Fremdschlüssel-artige Lookup-Spalten hatten keinen Index, jeder Read auf diesen
 Tabellen war ein Seq Scan: `beef_votes(beef_id)`, `beef_comments(beef_id)`,

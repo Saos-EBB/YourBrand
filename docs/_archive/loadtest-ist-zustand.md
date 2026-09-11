@@ -1,3 +1,7 @@
+> **Archiviert 2026-09-11:** Root-`docs/`-Snapshot der ersten Projektphase, seit dem Split in
+> Per-Package-Docs verwaist — der Loadtest-Ordner hat sich seit dem 2026-08-05-Stand hier
+> weiterentwickelt (siehe `backend/scripts/loadtest/README.md`). Nur zur Historie behalten.
+
 # Loadtest — Ist-Zustand
 
 Reine Analyse von `backend/scripts/loadtest/` (Stand 2026-08-05). Keine Bewertung, keine Vorschläge.

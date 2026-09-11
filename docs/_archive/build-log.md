@@ -1,3 +1,7 @@
+> **Archiviert 2026-09-11:** Root-`docs/`-Log der ersten Projektphase, seit dem Split in
+> Per-Package-Docs abgelöst durch `backend/docs/build-log.md` (letzter Eintrag hier: 2026-07-24).
+> Nirgends mehr verlinkt — nur zur Historie behalten.
+
 # Build Log
 
 Ein Eintrag pro Step. Neue Einträge oben.
