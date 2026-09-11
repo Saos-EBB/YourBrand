@@ -83,7 +83,7 @@ Starts four containers: Postgres+PostGIS (`XXX_db`, port 5432), pgAdmin (port 50
 
 `.env` (root) and `backend/.env` both define `DB_NAME`/`DB_USER`/`DB_PASSWORD`/`JWT_SECRET` — keep them in sync, the root copy is what `docker-compose.yml` substitutes into the Postgres/pgAdmin/backend service definitions.
 
-The database starts empty. Load `backend/schema_v4.sql` for a quick baseline, or run the `backend/migrations/*.sql` files in order for the fully up-to-date schema (`schema_v4.sql` predates the newest migrations).
+The database starts empty. Run the `backend/migrations/*.sql` files in order, starting from `001_baseline.sql` (a consolidated schema snapshot), to get the fully up-to-date schema.
 
 ---
 

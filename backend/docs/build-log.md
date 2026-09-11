@@ -1,3 +1,11 @@
+## 2026-09-11 — fix(docs): root README pointed at archived schema_v4.sql
+**Was:** Root `README.md`'s "Running Locally"-Abschnitt sagte noch, man solle `backend/schema_v4.sql`
+laden — die Datei wurde am 2026-09-10 (Schema-Baseline-Konsolidierung) nach
+`migrations/_archive/schema_v4.sql` verschoben und existiert am alten Pfad nicht mehr. Auf dieselbe
+Formulierung wie `backend/README.md:649` umgestellt (`migrations/001_baseline.sql` + Migrationen
+danach in Reihenfolge ausführen).
+**Nicht gebaut:** —
+
 ## 2026-09-11 — chore(docs): archive orphaned root-level docs/ folder
 **Was:** Root `docs/` (`build-log.md`, `known-errors.md`, `loadtest-ist-zustand.md`) war seit dem
 Split in Per-Package-Docs (`backend/docs/`, `frontend/docs/`) verwaist — letzter Touch
