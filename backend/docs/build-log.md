@@ -1,3 +1,11 @@
+## 2026-09-11 — chore: drop stale HANDOFF.md, gitignore .idea/
+**Was:** `HANDOFF.md` (root, untracked) beschrieb den `belastung`-Branch-Stand vom 2026-07-31 —
+der Branch ist längst in `main` gemerged, der Loadtest-Dashboard-Stand ist seit `93c5c56`
+(2026-08-06) weiter. Gelöscht statt archiviert, da nie committet und ohne Referenz von
+irgendwo. `.idea/` (untracked JetBrains-Ordner) zum `.gitignore` hinzugefügt, damit er nicht
+versehentlich mitcommittet wird.
+**Nicht gebaut:** —
+
 ## 2026-09-11 — fix(docs): root README pointed at archived schema_v4.sql
 **Was:** Root `README.md`'s "Running Locally"-Abschnitt sagte noch, man solle `backend/schema_v4.sql`
 laden — die Datei wurde am 2026-09-10 (Schema-Baseline-Konsolidierung) nach
