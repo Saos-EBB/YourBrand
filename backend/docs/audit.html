@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Paarship Backend Audit — 2026-09-12</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1e222b; --border:#2a2f3a;
+    --text:#e6e8ec; --text-dim:#9aa2b1; --accent:#5b8def;
+    --hoch:#e5484d; --hoch-bg:#3a1a1c; --mittel:#e8a33d; --mittel-bg:#3a2c14;
+    --niedrig:#3dba6d; --niedrig-bg:#123a24; --none:#6b7280; --none-bg:#22262f;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f5f6f8; --panel:#ffffff; --panel-2:#f0f1f4; --border:#dde1e8;
+      --text:#1a1d24; --text-dim:#5b6270; --accent:#3661c9;
+      --hoch:#c53030; --hoch-bg:#fde2e2; --mittel:#b7791f; --mittel-bg:#fdf0d5;
+      --niedrig:#2f8a55; --niedrig-bg:#e1f5ea; --none:#6b7280; --none-bg:#eceef1;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:0 16px 60px;
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px; line-height:1.5;
+  }
+  header{max-width:1200px; margin:0 auto; padding-top:28px;}
+  h1{font-size:22px; margin:0 0 4px;}
+  .meta{color:var(--text-dim); font-size:13px; margin-bottom:20px;}
+  .summary-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px; margin-bottom:20px;
+  }
+  .summary-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:10px 12px;
+  }
+  .summary-card .num{font-size:20px; font-weight:700;}
+  .summary-card .label{color:var(--text-dim); font-size:12px;}
+  .top5{
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:14px 18px; margin-bottom:22px;
+  }
+  .top5 h2{font-size:15px; margin:0 0 10px;}
+  .top5 ol{margin:0; padding-left:20px;}
+  .top5 li{margin-bottom:6px;}
+  .tabs{display:flex; gap:8px; max-width:1200px; margin:0 auto 14px; border-bottom:1px solid var(--border);}
+  .tab-btn{
+    background:none; border:none; color:var(--text-dim); font-size:14px;
+    padding:10px 4px; cursor:pointer; border-bottom:2px solid transparent;
+    margin-right:16px;
+  }
+  .tab-btn.active{color:var(--text); border-bottom-color:var(--accent); font-weight:600;}
+  .controls{
+    max-width:1200px; margin:0 auto 14px; display:flex; flex-wrap:wrap;
+    gap:10px; align-items:center;
+  }
+  #search{
+    flex:1; min-width:220px; background:var(--panel); border:1px solid var(--border);
+    color:var(--text); padding:8px 12px; border-radius:6px; font-size:14px;
+  }
+  .filter-btn{
+    background:var(--panel); border:1px solid var(--border); color:var(--text-dim);
+    padding:7px 12px; border-radius:6px; cursor:pointer; font-size:13px;
+  }
+  .filter-btn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+  main{max-width:1200px; margin:0 auto;}
+  table{width:100%; border-collapse:collapse; background:var(--panel); border-radius:8px; overflow:hidden;}
+  thead th{
+    text-align:left; padding:10px 12px; background:var(--panel-2);
+    border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase;
+    letter-spacing:.03em; color:var(--text-dim); cursor:pointer; user-select:none;
+    white-space:nowrap;
+  }
+  thead th:hover{color:var(--text);}
+  thead th.sorted::after{content:" ▾"; color:var(--accent);}
+  thead th.sorted-asc::after{content:" ▴"; color:var(--accent);}
+  tbody td{padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--panel-2);}
+  .path{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12.5px;}
+  .evidence{color:var(--text-dim); font-size:12.5px; max-width:340px;}
+  .badge{
+    display:inline-block; padding:2px 9px; border-radius:20px; font-size:11.5px;
+    font-weight:600; white-space:nowrap;
+  }
+  .badge.risk-hoch{background:var(--hoch-bg); color:var(--hoch);}
+  .badge.risk-mittel{background:var(--mittel-bg); color:var(--mittel);}
+  .badge.risk-niedrig{background:var(--niedrig-bg); color:var(--niedrig);}
+  .badge.risk-none{background:var(--none-bg); color:var(--none);}
+  .badge.conf-hoch{background:var(--niedrig-bg); color:var(--niedrig);}
+  .badge.conf-mittel{background:var(--mittel-bg); color:var(--mittel);}
+  .badge.conf-niedrig{background:var(--none-bg); color:var(--none);}
+  .cat-tag{color:var(--accent); font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.02em;}
+  .no-rows{padding:24px; text-align:center; color:var(--text-dim);}
+  #panel-b{display:none;}
+  .pattern-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:16px 20px; margin-bottom:14px;
+  }
+  .pattern-card h3{margin:0 0 4px; font-size:16px;}
+  .pattern-card .tagline{color:var(--text-dim); font-size:12.5px; margin-bottom:10px;}
+  .pattern-card ul{margin:6px 0 10px; padding-left:20px;}
+  .pattern-card li{margin-bottom:4px;}
+  .pattern-card .kv{font-size:12.5px; color:var(--text-dim); margin-top:8px;}
+  .pattern-card .kv b{color:var(--text);}
+  .pattern-card code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:var(--panel-2); padding:1px 5px; border-radius:4px;}
+  .gap-note{
+    border-left:3px solid var(--mittel); background:var(--mittel-bg); color:var(--text);
+    padding:10px 14px; border-radius:0 6px 6px 0; font-size:13px; margin-bottom:14px;
+  }
+  footer{max-width:1200px; margin:30px auto 0; color:var(--text-dim); font-size:12px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Paarship Backend Audit</h1>
+  <div class="meta">Scan-Datum: 2026-09-12 · Read-only Audit, keine Änderungen am Code · Quelle: backend/, frontend/, migrations/, docker-compose*.yml</div>
+
+  <div class="summary-grid" id="summary-grid"></div>
+
+  <div class="top5">
+    <h2>Top 5 zuerst aufräumen (Risiko × Impact)</h2>
+    <ol>
+      <li><b>Media-Moderation-Gate uneinheitlich</b> — Fotos werden immer ausgeliefert (nur <code>needs_review</code>-Flag), während Audio &amp; Matching hart auf <code>moderation_status='approved'</code> prüfen. Trust-&amp;-Safety-Risiko. <span class="badge risk-hoch">hoch</span></li>
+      <li><b>Ban-Aufhebung doppelt implementiert</b> — DB-Trigger <code>trg_strikes_check_ban_expiry</code> und <code>auth.service.ts</code> setzen unabhängig dieselbe Regel; nur der App-Code ist in der Praxis wirksam. <span class="badge risk-mittel">mittel</span></li>
+      <li><b>Drei unabhängige „Conversation anlegen"-Implementierungen</b> — swipe.service.ts, chat.service.ts, admin.service.ts dupliziert statt ein gemeinsamer <code>getOrCreate()</code>. <span class="badge risk-niedrig">niedrig</span></li>
+      <li><b>Tote TypeORM-Migration</b> — <code>CreateCitiesTable.ts</code> ist seit der Baseline-Konsolidierung ein permanentes No-op, aber irreführend für <code>migration:run</code>. <span class="badge risk-niedrig">niedrig</span></li>
+      <li><b>user_role dreifach unabhängig definiert</b> — DB-Enum, Entity-Inline-Array, DTO-Enum; aktuell konsistent aber fragil bei Änderungen. <span class="badge risk-niedrig">niedrig</span></li>
+    </ol>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="a">Cleanup &amp; Wahrheiten (Phase A)</button>
+  <button class="tab-btn" data-tab="b">Feed-Patterns (Phase B)</button>
+</div>
+
+<div class="controls">
+  <input id="search" type="text" placeholder="Volltextsuche über alle Spalten…">
+  <button class="filter-btn active" data-conf="alle">Alle</button>
+  <button class="filter-btn" data-conf="hoch">Confidence: hoch</button>
+  <button class="filter-btn" data-conf="mittel">Confidence: mittel</button>
+  <button class="filter-btn" data-conf="niedrig">Confidence: niedrig</button>
+</div>
+
+<main>
+  <section id="panel-a">
+    <table id="findings-table">
+      <thead>
+        <tr>
+          <th data-key="category">Kategorie</th>
+          <th data-key="path">Pfad(e)</th>
+          <th data-key="evidence">Evidenz</th>
+          <th data-key="risk">Risiko</th>
+          <th data-key="recommendation">Empfehlung</th>
+          <th data-key="confidence">Confidence</th>
+        </tr>
+      </thead>
+      <tbody id="findings-body"></tbody>
+    </table>
+    <div class="no-rows" id="no-rows" style="display:none;">Keine Funde für diesen Filter.</div>
+  </section>
+
+  <section id="panel-b">
+    <div class="gap-note"><b>Hinweis:</b> Phase B dokumentiert bestehende Muster zum Wiederverwenden — keine Cleanup-Empfehlungen. Eine Ausnahme: Pagination hat sich als <b>Lücke</b> herausgestellt statt als Referenzmuster (siehe unten).</div>
+    <div id="patterns"></div>
+  </section>
+</main>
+
+<footer>Erzeugt read-only aus Repo-Inspektion (grep/Codelesen). Keine Datei außer dieser wurde geschrieben.</footer>
+
+<script>
+const findings = [
+  {category:"Verwaiste Files", path:"frontend/components/ui/ErrorCard.tsx",
+   evidence:"grep -rn \"ErrorCard\" app components lib hooks → nur eigene Definition, kein Import irgendwo. app/error.tsx und global-error.tsx nutzen eigenes inline Markup statt dieser Komponente.",
+   risk:"niedrig", recommendation:"delete-Kandidat — nie eingebundene Error-Card-Komponente.", confidence:"hoch"},
+  {category:"Verwaiste Files", path:"backend/src/database/seeds/check-columns.ts",
+   evidence:"grep -rn \"check-columns\" (ganzes Repo, exkl. node_modules/dist) → 0 Treffer. Nicht in package.json, nicht in docker-entrypoint*.sh. Hardcodierte information_schema-Debug-Query gegen conversations.",
+   risk:"niedrig", recommendation:"delete-Kandidat — Debug-Einwegskript.", confidence:"hoch"},
+  {category:"Verwaiste Files", path:"backend/src/database/seeds/delete-user.ts",
+   evidence:"grep -rn \"seeds/delete-user\" → 0 Treffer außerhalb der Datei selbst. Kein Aufrufer in package.json/Entrypoints. CLI-Tool: `ts-node delete-user.ts <nickname>`.",
+   risk:"niedrig", recommendation:"keep — plausibles manuelles Ops-Tool, aber unbelegt/undokumentiert.", confidence:"mittel"},
+  {category:"Verwaiste Files", path:"backend/src/database/seeds/run-sql.ts",
+   evidence:"Einzige Repo-Erwähnung liegt in docs/_archive/known-errors.md:63 (selbst archiviert). Kein aktiver Aufrufer.",
+   risk:"niedrig", recommendation:"keep — generisches Ops-Tool, aktuell von keiner lebenden Doku referenziert.", confidence:"mittel"},
+
+  {category:"Schema-Wahrheit", path:"backend/migrations/_archive/schema_v4.sql vs. migrations/001_baseline.sql",
+   evidence:"Tabellen-Diff: alle 23 Tabellen aus schema_v4.sql stecken in der Baseline; die Baseline hat 17 zusätzliche Tabellen (kompletter Hidden-Zone-Stack: beefs, beef_comments, beef_games, beef_votes, badges, teeth, tooth_chains, coin_transactions, matches, cities, system_settings, admin_tickets, profanity_flags/words, swipes, user_coin_balance, typeorm_migrations). user_role ENUM in schema_v4.sql (Zeile 38) fehlt 'owner', Baseline hat es (Zeile 473-478).",
+   risk:"niedrig", recommendation:"keep as-is in _archive/ — rein historischer Beleg, faktisch tot, schon korrekt gekennzeichnet.", confidence:"hoch"},
+  {category:"Schema-Wahrheit", path:"README.md, docs/ (root + backend)",
+   evidence:"grep -rn \"schema_v4|schema\\.sql\" --include=*.md → nur historische, bereits korrigierte Einträge (backend/docs/architecture.md:64 dokumentiert die Konsolidierung). Kein aktiver Verweis mehr auf den alten Pfad.",
+   risk:"—", recommendation:"keep — nichts zu tun, bereits sauber.", confidence:"hoch"},
+
+  {category:"Migrations-System", path:"backend/src/database/migrations/1748908800000-CreateCitiesTable.ts",
+   evidence:"cities existiert bereits in migrations/001_baseline.sql:1025-1034 mit identischen Spalten. db/Dockerfile und ensure-db.js spielen ausschließlich 001_baseline.sql ein — die TypeORM-Migration ist auf jeder realen Umgebung permanentes No-op (CREATE TABLE/INDEX IF NOT EXISTS).",
+   risk:"niedrig", recommendation:"delete-Kandidat — tote Migrationshistorie, irreführend für `npm run migration:run`.", confidence:"hoch"},
+  {category:"Migrations-System", path:"backend/migrations/002_seed_system_user.sql, 003_track_b_missing_indexes.sql",
+   evidence:"grep -rn nach beiden Dateinamen → nur Erwähnungen in backend/docs/build-log.md und architecture.md. Kein Runner-Skript, kein CI-Verzeichnis (.github/) im Repo.",
+   risk:"niedrig", recommendation:"keep — entspricht CLAUDE.md (\"not auto-run — run manually\"). Prozess-Risiko (leicht vergessen), kein Code-Risiko.", confidence:"hoch"},
+
+  {category:"Duplizierte Definition", path:"migrations/001_baseline.sql (Tabelle beefs, Zeile ~1000 &amp; ~1002)",
+   evidence:"Zwei CHECK-Constraints auf derselben Spalte mit identischer Werteliste: `beefs_status_check` (auto-generiert) und `chk_beef_status` (Projekt-Namenskonvention chk_*).",
+   risk:"niedrig", recommendation:"delete-Kandidat — beefs_status_check entfernen, chk_beef_status behalten.", confidence:"hoch"},
+  {category:"Duplizierte Definition", path:"migrations/001_baseline.sql:473 (user_role ENUM) + auth/entities/user.entity.ts:17 + admin/dto/update-user-role.dto.ts:3,10",
+   evidence:"DB-Enum ['user','admin','org','owner'] wird als Inline-Array in der TypeORM-Spalte wiederholt; UpdateUserRoleDto definiert zusätzlich eigene UserRole/AssignableRole-Enums mit nur 2-3 der 4 Werte (owner bewusst ausgeschlossen). Drei unabhängige Stellen, aktuell konsistent.",
+   risk:"niedrig", recommendation:"merge — zentrales TS-Enum, AssignableRole als Subset ableiten statt eigener String-Literale.", confidence:"mittel"},
+  {category:"Duplizierte Definition", path:"migrations/001_baseline.sql (moderation_status/report_status/notification_type) vs. media-upload.entity.ts:14, admin/dto/update-report.dto.ts:3, notifications/entity.ts:3",
+   evidence:"TS-Enums aktuell deckungsgleich mit DB-Enums. notifications.type ist im Entity aber `@Column() type!: string` OHNE enum-Constraint — nur die DB-Spalte erzwingt die Werteliste, TypeORM tut es nicht.",
+   risk:"niedrig", recommendation:"keep, aber Verweis-Kommentar auf die DB-Migration ergänzen, damit neue Typen nicht einseitig im TS ergänzt werden.", confidence:"hoch"},
+
+  {category:"Business-Logik doppelt", path:"migrations/001_baseline.sql:712 (trigger_check_ban_expiry / trg_strikes_check_ban_expiry) vs. auth.service.ts:141-149",
+   evidence:"DB-Trigger hebt Bans auf, feuert aber NUR bei UPDATE auf strikes. auth.service.ts reimplementiert dieselbe Regel eigenständig beim Login (ban_expires_at < now → is_banned=false, ban_reason=null, ban_expires_at=null). Praktisch ist der App-Code die wirksame Quelle, der Trigger greift kaum unabhängig.",
+   risk:"mittel", recommendation:"merge — auth.service.ts als einzige Wahrheit dokumentieren; Trigger entfernen oder explizit als Fallback kennzeichnen.", confidence:"hoch"},
+  {category:"Business-Logik doppelt", path:"media_uploads.moderation_status (enum) vs. media_uploads.needs_review (boolean) — profile.service.ts:73-79,322-330,339 vs. matching.service.ts:88,162,206",
+   evidence:"Foto-Auslieferung in profile.service.ts liefert das Foto IMMER aus und markiert nur needs_review — kein harter Gate-Check. matching.service.ts joint Profil-Fotos dagegen strikt mit moderation_status='approved'. Audio wird in profile.service.ts:339 korrekt nur bei moderation_status===APPROVED ausgeliefert. Zwei Felder für \"ist freigegeben\", je nach Aufrufer unterschiedlich geprüft.",
+   risk:"hoch", recommendation:"merge — einheitlich moderation_status='approved' als harten Gate-Check für alle Foto-Auslieferungspfade; needs_review nur noch als Admin-Queue-Flag, nicht als Sichtbarkeits-Gate.", confidence:"hoch"},
+
+  {category:"Konkurrierendes Datenmodell", path:"matches / contact_requests / conversations — swipe.service.ts, chat.service.ts:107-129, admin.service.ts:618-629",
+   evidence:"Drei unabhängige Code-Pfade legen jeweils direkt eine conversations-Zeile an: Swipe-Match, Contact-Request-Annahme, Admin→User-Chat. matches.conversation_id und conversations.contact_request_id sind beide nullable FKs. Keine Synchronisations-/Migrationslogik zwischen den Pfaden gefunden.",
+   risk:"niedrig", recommendation:"merge-Kandidat — gemeinsamer ConversationsService.getOrCreate(userA, userB, origin) statt drei duplizierter Inline-Implementierungen. Die Tabellen selbst sind laut Beleg keine echten Duplikate, sondern legitime getrennte Feature-Herkünfte.", confidence:"mittel"},
+
+  {category:"Redundante Infra", path:"backend/docker-entrypoint.sh vs. backend/docker-entrypoint.railway.sh",
+   evidence:"Beide rufen dieselben 8 Seed-Schritte in identischer Reihenfolge (demo-seed → demo-relations-seed → seed-extra-users → seed-coin-transactions → seed-subscriptions-payments → seed-media → seed-cities → backfill-profile-locations). Kein gemeinsamer Ort erzwingt das — ein neuer Schritt in einer Datei muss manuell in der anderen nachgezogen werden.",
+   risk:"niedrig", recommendation:"keep (optional: gemeinsame Seed-Liste in eine Datei extrahieren, die beide Entrypoints includen).", confidence:"hoch"},
+  {category:"Redundante Infra", path:"docker-compose.yml, docker-compose.loadtest.yml, backend/db/Dockerfile",
+   evidence:"docker-compose.loadtest.yml baut die Load-DB über denselben backend/db/Dockerfile (identischer Schema-Bake-Mechanismus über 001_baseline.sql), eigenes Volume/Netzwerk. Kein divergenter DB-Setup-Pfad gefunden.",
+   risk:"niedrig", recommendation:"keep — sauber getrennt, keine Überlappung.", confidence:"hoch"},
+  {category:"Redundante Infra", path:"backend/src/database/seeds/delete-user.ts, check-columns.ts, run-sql.ts",
+   evidence:"grep über *.sh/*.json/Dockerfile* im ganzen Repo findet keinen automatisierten Aufrufer für diese drei Dateien. Vermutlich manuelle Dev-Hilfsskripte.",
+   risk:"niedrig", recommendation:"keep — nicht ausgeschlossen, dass sie manuell/extern (README, Wiki) dokumentiert sind, hier nicht geprüft.", confidence:"niedrig"},
+
+  {category:"Doku-Lücke", path:"docker-compose.yml (worker-Service) → src/worker.ts + WorkerModule",
+   evidence:"docker-compose.yml definiert einen eigenständigen worker-Service (eigenes Bootstrap-Modul statt AppModule) — taucht in backend/CLAUDE.md's Architektur-Übersicht nicht auf.",
+   risk:"niedrig", recommendation:"keep (Code unverändert lassen), aber CLAUDE.md/architecture.md um den Worker-Prozess ergänzen.", confidence:"mittel"},
+  {category:"Doku-Lücke", path:"frontend/hooks/useTranslation.ts",
+   evidence:"Reiner Re-Export-Shim mit nur einem Nutzer im Repo — technisch nicht tot, aber ein Duplikat-Pfad zur eigentlichen Übersetzungs-Quelle statt direktem Import.",
+   risk:"niedrig", recommendation:"keep — geringe Priorität, bei Gelegenheit auf direkten Import konsolidieren.", confidence:"niedrig"},
+];
+
+const patterns = [
+  {name:"WS-Gateway (HiddenBeefGateway)",
+   tagline:"Room-basiertes Realtime-Pattern für Namespace /hidden-beef — Vorlage für jedes weitere Live-Feature.",
+   how:[
+     "Handshake-Auth: <code>extractUserId()</code> liest Token aus <code>client.handshake.auth.token</code> oder <code>.query.token</code>, verifiziert per <code>JwtService.verify</code> (beef.gateway.ts:32-39).",
+     "<code>handleConnection()</code> (beef.gateway.ts:41-50): kein/ungültiger User → <code>client.disconnect()</code>; sonst DB-Check <code>SELECT EXISTS ... FROM users WHERE id=$1 AND deleted_at IS NULL</code> — gelöschte User werden ebenfalls getrennt. User-ID landet in <code>client.data.userId</code>.",
+     "Room-Beitritt über Event <code>join_beef</code> (<code>@SubscribeMessage('join_beef')</code>, beef.gateway.ts:53-56) mit <code>beefId</code> als Payload → <code>client.join(`beef:${beefId}`)</code>. Gegenstück <code>leave_beef</code>.",
+     "Emits laufen über <code>@OnEvent(AppEvents.beef*)</code> aus dem EventEmitter (nicht per Direktinjektion aus dem Service) → <code>server.to(`beef:${beefId}`).emit(...)</code>: <code>beef:vote_update</code>, <code>beef:comment_new</code>, <code>beef:closed</code>, <code>game:state_update</code>, <code>game:go</code>, <code>game:board_update</code>.",
+     "Rollenspezifische Redaktion: bei <code>game:board_update</code> (Mastermind) werden Sockets im Room einzeln iteriert (<code>fetchSockets()</code>) und je nach <code>client.data.userId</code> unterschiedliche, redaktierte Boards verschickt — der Server kennt beide Boards, der Client nur sein eigenes."
+   ],
+   files:"backend/src/modules/hidden/beef/beef.gateway.ts",
+   reuse:"Jedes Feature mit Room-basiertem Live-Update (Typing-Indicator, Live-Feed-Kommentare) — Handshake-Auth- und rollenspezifisches Payload-Filtering direkt übertragbar."},
+
+  {name:"Pagination-Konvention — LÜCKE, kein Referenzmuster",
+   tagline:"Es existiert keine Cursor-Pagination im Backend. Wird dokumentiert, weil der Auftrag danach fragte — nicht zum Kopieren geeignet.",
+   how:[
+     "<code>ChatService.getMessages()</code> (chat.service.ts:293-309) lädt mit <code>messageRepository.find({ where: { conversation_id }, order: { sent_at: 'ASC' } })</code> — ohne <code>take</code>/<code>skip</code>/Cursor, alle Nachrichten einer Conversation auf einmal.",
+     "Repo-weite Prüfung: <code>grep -rl \"cursor\" src/**/*.ts</code> liefert 0 Treffer — Cursor-Pagination existiert im gesamten Backend nicht als etabliertes Pattern.",
+     "Route: <code>GET conversations/:id/messages</code> (chat.controller.ts:63-65)."
+   ],
+   files:"backend/src/modules/core/chat/chat.controller.ts, chat.service.ts",
+   reuse:"Kein Muster zum Kopieren vorhanden. Bei Bedarf müsste Cursor-Pagination neu eingeführt werden — bei wachsenden Conversations ist das unbegrenzte Laden aller Nachrichten ein Skalierungsrisiko."},
+
+  {name:"Media-Flow",
+   tagline:"Upload → S3-Storage → asynchrone Moderation/Verarbeitung über BullMQ.",
+   how:[
+     "Upload: <code>POST /media/upload/profile-photo</code>, <code>@UseGuards(JwtGuard)</code>, FileInterceptor mit memoryStorage (media.controller.ts:38-58); MIME-Whitelist im fileFilter plus Magic-Byte-Check im Service (media.service.ts:28-47, 62-64); max. 5 MB.",
+     "Speicherung: S3-kompatibler Object Storage über <code>common/storage/object-storage.helper.ts</code> (nicht das lokale /uploads-Verzeichnis — das dient laut main.ts nur alten Seed-Dateien).",
+     "media_uploads-Row wird sofort mit <code>moderation_status=PENDING, needs_review=true</code> angelegt (media-upload.entity.ts:46,58-59); Foto wird sofort auf <code>profiles.photo_id</code> gesetzt — Freigabe passiert NACH, nicht VOR der Anzeige.",
+     "Async-Pipeline über BullMQ: <code>MEDIA_TICKET_QUEUE</code> erzeugt ein Moderations-Ticket, <code>MEDIA_PROCESSING_QUEUE</code> resized/watermarked async — der Processor läuft nur im WorkerModule, nie im API-Prozess.",
+     "Moderation-Gate wird von admin.service.ts gesetzt (approve/reject, Zeilen 187-226).",
+     "⚠️ Auslieferung ist uneinheitlich zwischen Foto- und Audio-Pfad — siehe Phase-A-Fund „Business-Logik doppelt / media_uploads.moderation_status vs. needs_review“."
+   ],
+   files:"media.controller.ts, media.service.ts, media.processor.ts, media-upload.entity.ts, object-storage.helper.ts, profile.service.ts, matching.service.ts",
+   reuse:"Jeder neue Upload-Flow mit Vorab-Prüfung (z.B. Verifizierungs-Uploads) — Interceptor + Magic-Byte-Check + Queue-getriebene Nachbearbeitung + Moderations-Ticket ist die Vorlage."},
+
+  {name:"Notification-Erzeugung",
+   tagline:"DB-Row zuerst, dann Event — garantiert Persistenz vor Zustellung.",
+   how:[
+     "Domain-Services rufen NotificationsService-Methoden wie <code>notifyBeefWon()</code>, die intern <code>createNotification()</code> aufrufen (notifications.service.ts:21-57).",
+     "<code>createNotification()</code> blockt Admin-User (Rollen-Check per Raw-Query, Zeilen 67-71), legt die Row an (73-81) und emitted danach <code>notification.created</code> über EventEmitter2 (82) — die Row existiert in der DB BEVOR das Event feuert.",
+     "Zustellung: ChatGateway hört <code>@OnEvent('notification.created')</code> (chat.gateway.ts:96-99) und pusht per <code>emitToUser()</code> an den persönlichen Socket-Room <code>user:{userId}</code>, dem der Client beim Handshake (JWT-Verify, Zeilen 51-89) beitritt.",
+     "Weitere Events demselben Muster folgend: <code>user.banned</code>/<code>user.unbanned</code> (117-122), <code>ticket.new</code> an den <code>admin</code>-Room (127-129), <code>media.pending_review</code> ebenfalls an <code>admin</code> (132-140).",
+     "Pull-Pfad vorhanden: <code>GET /notifications</code>, <code>PATCH /notifications/read-all</code>, <code>PATCH /notifications/:id/read</code>, <code>DELETE /notifications/:id</code>, <code>GET/PUT /notifications/settings</code> — Route-Reihenfolge korrekt (named route vor parametrisch)."
+   ],
+   files:"notifications.service.ts, notifications.controller.ts, chat.gateway.ts",
+   reuse:"Jedes „Server-Event soll User live + als abrufbare Liste erreichen“-Feature — Row-erst-dann-Event garantiert Ordering/Persistenz vor Zustellung."},
+
+  {name:"Auth-Guards an Controllern",
+   tagline:"Kein globaler Auth-Guard — jeder Controller deklariert seinen Guard-Stack explizit; nur ThrottlerGuard ist global.",
+   how:[
+     "<b>JwtGuard</b> (jwt.guard.ts:11-46): verifiziert Bearer-Token, Redis-gecachte User-Existenzprüfung, schreibt <code>request.user</code>. Beispiel: <code>@UseGuards(JwtGuard)</code> auf <code>POST /media/upload/profile-photo</code>.",
+     "<b>OptionalJwtGuard</b>: identische Logik, gibt aber bei fehlendem/ungültigem Token trotzdem <code>true</code> zurück. Beispiel: <code>GET /profile/:nickname</code> — öffentliches Profil mit optionalem User-Kontext.",
+     "<b>RolesGuard</b>: liest <code>@Roles()</code> via Reflector, lässt <code>owner</code> implizit <code>admin</code>-Routen passieren. Immer kombiniert: <code>@UseGuards(JwtGuard, RolesGuard)</code> + <code>@Roles('admin')</code>, z.B. moderation.controller.ts.",
+     "<b>OwnerGuard</b>: einfacher Rollen-Check nur für <code>owner</code>. Beispiel: <code>system-settings.controller.ts</code>.",
+     "<b>PremiumGuard</b> + <code>@RequiresPremium()</code>: global von CommonModule bereitgestellt, kombiniert <code>@UseGuards(JwtGuard, PremiumGuard)</code>, prüft aktive Subscription. Beispiel: <code>GET /payment/logs</code>.",
+     "Global gilt nur <code>ThrottlerGuard</code> via <code>APP_GUARD</code> (app.module.ts:123)."
+   ],
+   files:"src/common/guards/*.ts, src/common/decorators/requires-premium.decorator.ts, app.module.ts",
+   reuse:"Jeder neue geschützte Endpoint kombiniert diese Bausteine statt einen neuen Guard zu schreiben. Geprüft: cities/setup/support-Controller ohne Guard sind bewusst öffentlich und anderweitig abgesichert (Rate-Limit, Owner-Existenz-Check) — kein Guard-Gap gefunden."},
+];
+
+function badge(kind, val){
+  const text = (val || "—").toString().trim();
+  const known = ['hoch','mittel','niedrig'];
+  const cls = known.includes(text) ? text : 'none';
+  return `<span class="badge ${kind}-${cls}">${text}</span>`;
+}
+
+function renderSummary(){
+  const counts = {};
+  findings.forEach(f => counts[f.category] = (counts[f.category]||0)+1);
+  const grid = document.getElementById('summary-grid');
+  grid.innerHTML = `<div class="summary-card"><div class="num">${findings.length}</div><div class="label">Funde gesamt</div></div>` +
+    Object.entries(counts).map(([cat,n]) =>
+      `<div class="summary-card"><div class="num">${n}</div><div class="label">${cat}</div></div>`
+    ).join('');
+}
+
+let sortKey = null, sortAsc = true;
+let confFilter = 'alle';
+
+function matchesSearch(f, q){
+  if(!q) return true;
+  const hay = (f.category+' '+f.path+' '+f.evidence+' '+f.recommendation+' '+f.risk+' '+f.confidence).toLowerCase();
+  return hay.includes(q);
+}
+
+function renderTable(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  let rows = findings.filter(f => matchesSearch(f, q) && (confFilter === 'alle' || f.confidence === confFilter));
+
+  if(sortKey){
+    rows = rows.slice().sort((a,b) => {
+      const av = (a[sortKey]||'').toString().toLowerCase();
+      const bv = (b[sortKey]||'').toString().toLowerCase();
+      if(av < bv) return sortAsc ? -1 : 1;
+      if(av > bv) return sortAsc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  const body = document.getElementById('findings-body');
+  const noRows = document.getElementById('no-rows');
+  if(rows.length === 0){
+    body.innerHTML = '';
+    noRows.style.display = 'block';
+    return;
+  }
+  noRows.style.display = 'none';
+
+  body.innerHTML = rows.map(f => `
+    <tr>
+      <td><span class="cat-tag">${f.category}</span></td>
+      <td class="path">${f.path}</td>
+      <td class="evidence">${f.evidence}</td>
+      <td>${badge('risk', f.risk)}</td>
+      <td>${f.recommendation}</td>
+      <td>${badge('conf', f.confidence)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderPatterns(){
+  document.getElementById('patterns').innerHTML = patterns.map(p => `
+    <div class="pattern-card">
+      <h3>${p.name}</h3>
+      <div class="tagline">${p.tagline}</div>
+      <ul>${p.how.map(h => `<li>${h}</li>`).join('')}</ul>
+      <div class="kv"><b>Key files:</b> <span class="path">${p.files}</span></div>
+      <div class="kv"><b>Reusable für:</b> ${p.reuse}</div>
+    </div>
+  `).join('');
+}
+
+document.querySelectorAll('thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if(sortKey === key){ sortAsc = !sortAsc; } else { sortKey = key; sortAsc = true; }
+    document.querySelectorAll('thead th').forEach(h => h.classList.remove('sorted','sorted-asc'));
+    th.classList.add(sortAsc ? 'sorted-asc' : 'sorted');
+    renderTable();
+  });
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    confFilter = btn.dataset.conf;
+    renderTable();
+  });
+});
+
+document.getElementById('search').addEventListener('input', renderTable);
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('panel-a').style.display = tab === 'a' ? 'block' : 'none';
+    document.getElementById('panel-b').style.display = tab === 'b' ? 'block' : 'none';
+    document.querySelector('.controls').style.display = tab === 'a' ? 'flex' : 'none';
+  });
+});
+
+renderSummary();
+renderTable();
+renderPatterns();
+</script>
+</body>
+</html>

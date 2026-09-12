@@ -322,12 +322,17 @@ export class ProfileService {
         let photo_url: string | null = null;
         let photo_needs_review = false;
         if (profile.photo_id) {
-            const rows = await this.profileRepo.manager.query<{ file_url: string; needs_review: boolean }[]>(
-                'SELECT file_url, needs_review FROM media_uploads WHERE id = $1',
+            const rows = await this.profileRepo.manager.query<{ file_url: string; needs_review: boolean; moderation_status: string }[]>(
+                'SELECT file_url, needs_review, moderation_status FROM media_uploads WHERE id = $1',
                 [profile.photo_id],
             );
-            photo_url = rows[0]?.file_url ?? null;
             photo_needs_review = rows[0]?.needs_review ?? false;
+            // Same gate as audio below: unapproved photos never reach another
+            // user, regardless of needs_review (that flag is an admin-queue
+            // marker, not a visibility gate).
+            if (rows[0]?.moderation_status === ModerationStatus.APPROVED) {
+                photo_url = rows[0].file_url;
+            }
         }
 
         let audio_url: string | null = null;
@@ -455,11 +460,15 @@ export class ProfileService {
 
         let photo_url: string | null = null;
         if (profile.photo_id) {
-            const rows = await this.profileRepo.manager.query<{ file_url: string }[]>(
-                'SELECT file_url FROM media_uploads WHERE id = $1',
+            const rows = await this.profileRepo.manager.query<{ file_url: string; moderation_status: string }[]>(
+                'SELECT file_url, moderation_status FROM media_uploads WHERE id = $1',
                 [profile.photo_id],
             );
-            photo_url = rows[0]?.file_url ?? null;
+            // Same gate as getPublicProfile/searchProfiles — this endpoint
+            // resolves an arbitrary other user's photo by id.
+            if (rows[0]?.moderation_status === ModerationStatus.APPROVED) {
+                photo_url = rows[0].file_url;
+            }
         }
 
         return { nickname: profile.nickname, photo_id: profile.photo_id ?? null, photo_url };
@@ -608,13 +617,16 @@ export class ProfileService {
         const urlMap: Record<string, string> = {};
         const reviewMap: Record<string, boolean> = {};
         if (photoIds.length > 0) {
-            const rows = await this.profileRepo.manager.query<{ id: string; file_url: string; needs_review: boolean }[]>(
-                'SELECT id, file_url, needs_review FROM media_uploads WHERE id = ANY($1)',
+            const rows = await this.profileRepo.manager.query<{ id: string; file_url: string; needs_review: boolean; moderation_status: string }[]>(
+                'SELECT id, file_url, needs_review, moderation_status FROM media_uploads WHERE id = ANY($1)',
                 [photoIds],
             );
             for (const row of rows) {
-                urlMap[row.id] = row.file_url;
                 reviewMap[row.id] = row.needs_review;
+                // Same gate as getPublicProfile — unapproved photos don't show up in search.
+                if (row.moderation_status === ModerationStatus.APPROVED) {
+                    urlMap[row.id] = row.file_url;
+                }
             }
         }
 
@@ -788,11 +800,14 @@ export class ProfileService {
         const photoIds = profiles.filter(p => p.photo_id).map(p => p.photo_id as string);
         const urlMap: Record<string, string> = {};
         if (photoIds.length > 0) {
-            const rows = await this.profileRepo.manager.query<{ id: string; file_url: string }[]>(
-                'SELECT id, file_url FROM media_uploads WHERE id = ANY($1)',
+            const rows = await this.profileRepo.manager.query<{ id: string; file_url: string; moderation_status: string }[]>(
+                'SELECT id, file_url, moderation_status FROM media_uploads WHERE id = ANY($1)',
                 [photoIds],
             );
-            for (const row of rows) urlMap[row.id] = row.file_url;
+            // Same gate as getPublicProfile/searchProfiles/getProfileByUserId.
+            for (const row of rows) {
+                if (row.moderation_status === ModerationStatus.APPROVED) urlMap[row.id] = row.file_url;
+            }
         }
 
         return blocks.map(b => {

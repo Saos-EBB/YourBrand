@@ -1,3 +1,15 @@
+## 2026-09-12 — feat(profile): harter Moderation-Gate-Check für alle Foto-Auslieferungspfade
+**Was:** `docs/audit.html` (Read-only-Audit vom selben Tag) fand, dass Profilfotos in
+`getPublicProfile`, `searchProfiles`, `getProfileByUserId` und `getBlocks` immer ausgeliefert
+wurden — nur `needs_review` (Boolean) wurde mitgeschickt, ohne die Auslieferung zu blockieren.
+`matching.service.ts` prüfte für den Matching-Feed dagegen schon immer hart auf
+`moderation_status='approved'`, Audio ebenso (`profile.service.ts:339`). Alle vier Foto-Pfade in
+`profile.service.ts` lesen jetzt zusätzlich `moderation_status` und liefern die URL nur bei
+`APPROVED` aus — `needs_review` bleibt als reines UI-Flag erhalten. `getOwnProfileWithPhoto`
+bleibt bewusst ungegatet, da der Owner sein eigenes (noch ungeprüftes) Foto sehen soll.
+**Nicht gebaut:** kein neues DTO-Feld, kein Eingriff in den Upload-Flow oder die
+Moderation-Queue selbst — nur die Lesepfade wurden vereinheitlicht.
+
 ## 2026-09-11 — chore: drop stale HANDOFF.md, gitignore .idea/
 **Was:** `HANDOFF.md` (root, untracked) beschrieb den `belastung`-Branch-Stand vom 2026-07-31 —
 der Branch ist längst in `main` gemerged, der Loadtest-Dashboard-Stand ist seit `93c5c56`
