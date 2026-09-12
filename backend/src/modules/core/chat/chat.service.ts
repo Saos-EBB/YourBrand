@@ -19,6 +19,7 @@ import { ProfanityService } from '../moderation/profanity.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TypedEventBus, AppEvents } from '../../shared/events/app-events';
+import { ConversationsService } from './conversations.service';
 
 @Injectable()
 export class ChatService {
@@ -29,6 +30,7 @@ export class ChatService {
         private readonly contactRequestRepository: Repository<ContactRequest>,
         @InjectRepository(Conversation)
         private readonly conversationRepository: Repository<Conversation>,
+        private readonly conversationsService: ConversationsService,
         @InjectRepository(Message)
         private readonly messageRepository: Repository<Message>,
         @InjectRepository(Profile)
@@ -104,30 +106,11 @@ export class ChatService {
         request.status = ContactRequestStatus.ACCEPTED;
         await this.contactRequestRepository.save(request);
 
-        const existingConversation = await this.conversationRepository
-            .createQueryBuilder('c')
-            .where(
-                '(c.user_a_id = :a AND c.user_b_id = :b) OR (c.user_a_id = :b AND c.user_b_id = :a)',
-                { a: request.sender_id, b: request.receiver_id },
-            )
-            .getOne();
-
-        let savedConversation: Conversation;
-
-        if (existingConversation) {
-            existingConversation.deleted_at_a = null;
-            existingConversation.deleted_at_b = null;
-            existingConversation.purged_at = null;
-            existingConversation.contact_request_id = request.id;
-            savedConversation = await this.conversationRepository.save(existingConversation);
-        } else {
-            const conversation = this.conversationRepository.create({
-                user_a_id: request.sender_id,
-                user_b_id: request.receiver_id,
-                contact_request_id: request.id,
-            });
-            savedConversation = await this.conversationRepository.save(conversation);
-        }
+        const savedConversation = await this.conversationsService.getOrCreate(
+            request.sender_id,
+            request.receiver_id,
+            { contactRequestId: request.id },
+        );
 
         const acceptorProfile = await this.profileRepository.findOne({
             where: { user_id: userId },

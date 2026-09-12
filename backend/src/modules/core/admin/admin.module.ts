@@ -15,6 +15,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { ModerationModule } from '../moderation/moderation.module';
 import { MailModule } from '../../../common/mail/mail.module';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
+import { ChatModule } from '../chat/chat.module';
 
 @Module({
     imports: [
@@ -23,6 +24,7 @@ import { SystemSettingsModule } from '../system-settings/system-settings.module'
         ModerationModule,
         MailModule,
         SystemSettingsModule,
+        ChatModule,
     ],
     controllers: [AdminController],
     providers: [AdminService, JwtGuard, RolesGuard, OwnerGuard, PseudonymizationTask],

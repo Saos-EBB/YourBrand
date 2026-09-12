@@ -1,3 +1,18 @@
+## 2026-09-12 — refactor(chat): gemeinsamer ConversationsService.getOrCreate() für swipe/chat/admin
+**Was:** `swipe.service.ts` (Match), `chat.service.ts` (Kontaktanfrage-Annahme) und
+`admin.service.ts` (Direct-Chat) legten je eine eigene, leicht abweichende "existiert schon
+eine Conversation zwischen diesen beiden?"-Prüfung an — `conversations` hat keinen UNIQUE-
+Constraint auf `(user_a_id, user_b_id)`, der Duplikate verhindern würde. `swipe.service.ts`
+prüfte dabei nur auf eine existierende `Match`-Row, nie auf eine existierende Conversation —
+ein Match nach vorheriger Kontaktanfrage/Admin-Chat hätte eine zweite, doppelte Conversation
+erzeugt. Neuer `ConversationsService.getOrCreate(userIdA, userIdB, { contactRequestId? })` im
+Chat-Modul (exportiert), MatchingModule und AdminModule importieren jetzt `ChatModule` statt
+eigener `Conversation`-Repository-Injection bzw. Raw-SQL. Verhalten folgt dem bisherigen
+`chat.service.ts`-Pfad: eine gefundene Conversation (auch vollständig gelöschte/`purged_at`)
+wird reaktiviert statt dupliziert.
+**Nicht gebaut:** kein UNIQUE-Constraint/Migration für `(user_a_id, user_b_id)` — das wäre der
+nächste Schritt, aber eine eigene DB-Entscheidung außerhalb dieses Fixes.
+
 ## 2026-09-12 — fix(moderation): DB-Trigger für Ban-Aufhebung entfernt, App-Code ist einzige Wahrheit
 **Was:** `trg_strikes_check_ban_expiry`/`trigger_check_ban_expiry()` dupliziert dieselbe
 Ban-Aufhebungsregel wie `auth.service.ts` (Login-Pfad) und war zusätzlich fehlerhaft:

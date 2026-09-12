@@ -14,7 +14,9 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
 ## Module
 
 - `src/modules/core/*` — auth, profile, chat, notifications, moderation, admin, gdpr, media,
-  payment, system-settings, setup, support, cities.
+  payment, system-settings, setup, support, cities. `ChatModule` exportiert `ConversationsService`
+  (`getOrCreate`, einzige Wahrheit für "Conversation zwischen zwei Usern anlegen/reaktivieren") an
+  `MatchingModule` und `AdminModule`.
 - `src/modules/hidden/*` — beef, coin, teeth, badge. Beef treibt Coin-Awards/-Spends per
   `CoinService`-Injection; Badge wird intern von `BeefService` erzeugt.
 - `common/` — Guards, `crypto.helper.ts` (AES-256-CBC + SHA-256 Email-Hash), `rls.helper.ts`
@@ -86,6 +88,12 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-09-12 — `ConversationsService.getOrCreate()` lebt im `ChatModule` (exportiert), `MatchingModule`
+  und `AdminModule` importieren `ChatModule` statt eigener `Conversation`-Repository-Injection/Raw-SQL.
+  Grund: drei unabhängige "existiert schon eine Conversation zwischen diesen beiden?"-Implementierungen
+  (docs/audit.html) liefen auseinander — `conversations` hat keinen UNIQUE-Constraint, der Duplikate
+  verhindert hätte. Direkter Service-Import statt Event-Emitter-Pattern, weil der Aufrufer synchron
+  die `conversation_id` als Rückgabewert braucht, nicht nur eine Fire-and-forget-Benachrichtigung.
 - 2026-09-10 — Kein Framework-Wechsel, kein Microservice-Split, kein NoSQL-Swap für Postgres.
   Grund: kein Framework-Befund im Review; die eine Ursache (synchrone Arbeit im Request-Handler)
   lässt sich mit Redis/Queue/Object-Storage lösen, ein Rewrite würde den sauberen Kern (RLS,

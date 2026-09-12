@@ -33,6 +33,7 @@ import { SetVulnerableFlagDto } from './dto/set-vulnerable-flag.dto';
 import { AdminDashboardStatsDto } from './dto/admin-dashboard-stats.dto';
 import { UserDashboardStatsDto } from './dto/user-dashboard-stats.dto';
 import { AdminStatsDto } from './dto/admin-stats.dto';
+import { ConversationsService } from '../chat/conversations.service';
 
 @Injectable()
 export class AdminService {
@@ -56,6 +57,7 @@ export class AdminService {
         private readonly eventEmitter: EventEmitter2,
         private readonly profanityService: ProfanityService,
         private readonly systemSettingsService: SystemSettingsService,
+        private readonly conversationsService: ConversationsService,
     ) {}
 
     private calcBanExpiry(duration: BanDuration): Date | null {
@@ -617,19 +619,8 @@ export class AdminService {
     async createDirectConversation(adminId: string, targetUserId: string): Promise<{ conversation_id: string }> {
         if (adminId === targetUserId) throw new BadRequestException('Ungültige Anfrage');
 
-        const [existing] = await this.dataSource.query<{ id: string }[]>(
-            `SELECT id FROM conversations
-             WHERE ((user_a_id = $1 AND user_b_id = $2) OR (user_a_id = $2 AND user_b_id = $1))
-               AND deleted_at_a IS NULL AND deleted_at_b IS NULL`,
-            [adminId, targetUserId],
-        );
-        if (existing) return { conversation_id: existing.id };
-
-        const [created] = await this.dataSource.query<{ id: string }[]>(
-            `INSERT INTO conversations (user_a_id, user_b_id) VALUES ($1, $2) RETURNING id`,
-            [adminId, targetUserId],
-        );
-        return { conversation_id: created.id };
+        const conversation = await this.conversationsService.getOrCreate(adminId, targetUserId);
+        return { conversation_id: conversation.id };
     }
 
     // ── Admin tickets ──────────────────────────────────────────────────────────

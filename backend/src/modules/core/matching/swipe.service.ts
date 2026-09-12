@@ -9,7 +9,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, IsNull, MoreThan, Repository } from 'typeorm';
 import { Swipe, SwipeAction } from './entities/swipe.entity';
 import { Match } from './entities/match.entity';
-import { Conversation } from '../chat/entities/conversation.entity';
+import { ConversationsService } from '../chat/conversations.service';
 import { Profile } from '../profile/entities/profile.entity';
 import { Subscription } from '../payment/entities/subscription.entity';
 import { SwipeDto } from './dto/swipe.dto';
@@ -23,8 +23,7 @@ export class SwipeService {
         private readonly swipeRepo: Repository<Swipe>,
         @InjectRepository(Match)
         private readonly matchRepo: Repository<Match>,
-        @InjectRepository(Conversation)
-        private readonly conversationRepo: Repository<Conversation>,
+        private readonly conversationsService: ConversationsService,
         @InjectRepository(Profile)
         private readonly profileRepo: Repository<Profile>,
         @InjectRepository(Subscription)
@@ -91,23 +90,20 @@ export class SwipeService {
             return { matched: true, conversation_id: existing.conversation_id };
         }
 
-        // Create Conversation (no contact_request — match bypasses that flow)
-        const conversation = this.conversationRepo.create({
-            user_a_id: userA,
-            user_b_id: userB,
-            contact_request_id: null,
-        });
-        const savedConv = await this.conversationRepo.save(conversation);
+        // Reuses an existing conversation (e.g. from a prior contact request or
+        // admin chat) instead of creating a duplicate pair — conversations has
+        // no unique constraint on (user_a_id, user_b_id) to catch that itself.
+        const conversation = await this.conversationsService.getOrCreate(userA, userB);
 
         // Create Match
         const match = this.matchRepo.create({
             user_a_id: userA,
             user_b_id: userB,
-            conversation_id: savedConv.id,
+            conversation_id: conversation.id,
         });
         await this.matchRepo.save(match);
 
-        return { matched: true, conversation_id: savedConv.id };
+        return { matched: true, conversation_id: conversation.id };
     }
 
     async resetSwipes(userId: string): Promise<void> {

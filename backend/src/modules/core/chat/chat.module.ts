@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
+import { ConversationsService } from './conversations.service';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { ModerationModule } from '../moderation/moderation.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -20,7 +21,7 @@ import { Block } from '../profile/entities/block.entity';
         NotificationsModule,
     ],
     controllers: [ChatController],
-    providers: [ChatService, JwtGuard, ChatGateway],
-    exports: [ChatGateway],
+    providers: [ChatService, JwtGuard, ChatGateway, ConversationsService],
+    exports: [ChatGateway, ConversationsService],
 })
 export class ChatModule { }
