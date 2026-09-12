@@ -1,5 +1,15 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
+// Mirrors the DB enum public.user_role (migrations/001_baseline.sql) — single
+// source of truth for role values, referenced by admin/dto/update-user-role.dto.ts
+// instead of a second, independently-drifting copy.
+export enum UserRole {
+    USER  = 'user',
+    ADMIN = 'admin',
+    ORG   = 'org',
+    OWNER = 'owner',
+}
+
 @Entity('users')
 export class User {
     @PrimaryGeneratedColumn('uuid')
@@ -14,8 +24,8 @@ export class User {
     @Column({ type: 'varchar', nullable: true })
     google_id_hash!: string | null;
 
-    @Column({ type: 'enum', enum: ['user', 'admin', 'org', 'owner'], default: 'user' })
-    role!: string;
+    @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+    role!: UserRole;
 
     @Column({ type: 'boolean', default: false })
     is_verified!: boolean;

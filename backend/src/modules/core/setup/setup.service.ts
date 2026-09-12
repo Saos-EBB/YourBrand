@@ -5,7 +5,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { hashPassword } from '../../../common/bcrypt/bcrypt-pool.helper';
 import * as crypto from 'crypto';
-import { User } from '../auth/entities/user.entity';
+import { User, UserRole } from '../auth/entities/user.entity';
 import { Profile } from '../profile/entities/profile.entity';
 import { encryptField } from '../../../common/crypto/crypto.helper';
 import { CreateOwnerDto } from './dto/create-owner.dto';
@@ -40,7 +40,7 @@ export class SetupService {
             email_search_hash: emailHash,
             email: encryptField(dto.email),
             password_hash: passwordHash,
-            role: 'owner',
+            role: UserRole.OWNER,
             is_verified: true,
             email_verified_at: new Date(),
             public_id: publicId,

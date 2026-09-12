@@ -10,7 +10,7 @@ import { hashPassword } from '../../../common/bcrypt/bcrypt-pool.helper';
 import * as crypto from 'crypto';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { User } from '../auth/entities/user.entity';
+import { User, UserRole } from '../auth/entities/user.entity';
 import { FileType, MediaUpload, ModerationStatus } from '../media/entities/media-upload.entity';
 import { Report } from '../moderation/entities/report.entity';
 import { Strike } from '../moderation/entities/strike.entity';
@@ -383,7 +383,9 @@ export class AdminService {
 
         if (user.role === 'owner') throw new BadRequestException('Die Owner-Rolle kann nicht geändert werden.');
 
-        user.role = dto.role;
+        // AssignableRole is a hand-kept subset of UserRole (see its own doc
+        // comment) — validated by @IsEnum(AssignableRole) on the DTO already.
+        user.role = dto.role as unknown as UserRole;
         await this.userRepo.save(user);
 
         if (dto.role === 'admin') {
@@ -411,7 +413,7 @@ export class AdminService {
             email_search_hash: emailHash,
             email: encryptField(dto.email),
             password_hash: passwordHash,
-            role: 'admin',
+            role: UserRole.ADMIN,
             is_verified: true,
             email_verified_at: new Date(),
             public_id,

@@ -1,3 +1,18 @@
+## 2026-09-12 — refactor(auth): zentrales UserRole-Enum statt drei unabhängiger Definitionen
+**Was:** `user_role` existierte dreifach: als Postgres-ENUM (`migrations/001_baseline.sql`), als
+Inline-Array `['user','admin','org','owner']` auf `User.role` und als eigenes, unvollständiges
+`UserRole`-Enum (ohne `owner`) in `admin/dto/update-user-role.dto.ts`, das außerhalb der eigenen
+Datei nirgends importiert wurde — totes Duplikat. Neues `UserRole`-Enum jetzt einzig in
+`auth/entities/user.entity.ts` (`User.role` ist jetzt `UserRole` statt `string`); die DTO-Datei
+importiert nichts mehr eigenes, `AssignableRole` bleibt als bewusste, kommentierte Teilmenge
+bestehen (TS-String-Enums können keine Member von einem anderen Enum ableiten). Drei
+`userRepo.create({ role: 'admin' | 'owner' })`-Stellen (admin.service.ts, setup.service.ts) auf
+`UserRole.ADMIN`/`UserRole.OWNER` umgestellt; `admin.service.ts:setUserRole` castet die
+validierte `AssignableRole` explizit auf `UserRole` (mit Kommentar, warum das sicher ist).
+**Nicht gebaut:** keine Anpassung der JWT-Payload- oder Guard-Typen (`roles.guard.ts`,
+`owner.guard.ts`, `chat.gateway.ts` etc.) — die lesen `role` aus dem decodeten JWT-Payload
+(einem eigenen, losen Typ), nicht aus der `User`-Entity, und waren von diesem Fund nicht betroffen.
+
 ## 2026-09-12 — delete: tote TypeORM-Migration CreateCitiesTable.ts entfernt
 **Was:** `src/database/migrations/1748908800000-CreateCitiesTable.ts` legte `cities` an — die
 Tabelle steckt aber schon in `migrations/001_baseline.sql:1025-1034` mit identischen Spalten.
