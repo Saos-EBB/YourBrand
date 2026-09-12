@@ -1,3 +1,15 @@
+## 2026-09-12 — docs: Worker-Prozessrolle in CLAUDE.md + architecture.md nachgetragen
+**Was:** `src/worker.ts`/`src/worker.module.ts` (zweite Prozessrolle, `docker-compose.yml`s
+`worker`-Service, hostet alle BullMQ-`@Processor`) tauchte in `backend/CLAUDE.md`s
+Architektur-Baum gar nicht auf. `docs/architecture.md`s "Was neu / umgebaut werden muss"-Tabelle
+war zusätzlich inkonsistent: die Zeile "Queue / Object Storage" stand noch auf "Existiert nicht",
+obwohl alle zugehörigen Processor-Zeilen (Media-Pipeline, GDPR-Export, `checkAutoSuspend`,
+`createImageTicket`) schon einzeln als "Erledigt 2026-09-10" markiert waren — die
+zusammenfassende Zeile wurde beim jeweiligen Abhaken nicht mitgezogen. Beide Stellen jetzt
+korrigiert; `## Module`-Abschnitt in architecture.md bekam ebenfalls einen Eintrag für den Worker.
+**Nicht gebaut:** keine rückwirkende Datumsrecherche, wann genau der Worker fertig wurde — als
+"Datum nicht mehr rekonstruierbar" vermerkt statt geraten.
+
 ## 2026-09-12 — chore(notifications): Verweis-Kommentar auf DB-Enum ergänzt
 **Was:** `NotificationType` (TS-Union, 9 Werte) ist aktuell deckungsgleich mit dem DB-Enum
 `public.notification_type`, aber `notifications.type` ist im Entity `@Column() type!: string`

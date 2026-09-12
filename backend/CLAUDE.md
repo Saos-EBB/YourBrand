@@ -33,6 +33,9 @@ All routes are prefixed `/api/v1` (set globally in `main.ts`). Frontend runs on 
 src/
 ├── main.ts                    # bootstrap: CORS, helmet, cookie-parser, ValidationPipe, static /uploads
 ├── app.module.ts              # root module
+├── worker.ts                  # second process role (start:worker/start:worker:dev), boots WorkerModule
+├── worker.module.ts           # own root module, NOT AppModule — no controllers/guards/gateways,
+│                               # runs the BullMQ @Processor providers (media, auto-suspend, media-ticket, GDPR export)
 ├── common/
 │   ├── common.module.ts       # exports PremiumGuard + @RequiresPremium() globally
 │   ├── crypto/crypto.helper.ts  # AES-256-CBC encrypt/decrypt, SHA-256 email hash

@@ -25,7 +25,10 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   `LastActiveModule`), `auth/shared-jwt.module.ts` (globales `JwtModule.registerAsync`, ersetzt
   die 14-fache Kopie), zwei WebSocket-Gateways (`ChatGateway` default-namespace,
   `HiddenBeefGateway` `/hidden-beef`).
-- Geplant neu: BullMQ `QueueModule`, ein Worker-Entrypoint (`start:worker`, gleicher Codebase).
+- `src/worker.ts` + `src/worker.module.ts` — zweite Prozess-Rolle (`start:worker`/`start:worker:dev`,
+  `worker`-Service in `docker-compose.yml`), eigenes Root-Modul statt `AppModule` (kein HTTP, keine
+  Guards/Gateways), hostet die BullMQ-`@Processor`-Provider: `MediaProcessor`, `AutoSuspendProcessor`,
+  `MediaTicketProcessor`, `GdprExportProcessor`.
 
 ## Datenfluss (Ziel)
 
@@ -81,7 +84,7 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | ~~bcrypt~~ | ~~Lief im geteilten libuv-Threadpool, gleicher Pool wie `sharp`~~ | **Erledigt 2026-09-10:** eigener `piscina`-Worker-Thread-Pool (`common/bcrypt/`), alle `hash`/`compare`-Aufrufe (auth, admin, setup) laufen jetzt darüber statt direkt über das `bcrypt`-Package. Verifiziert per Loadtest: Ceiling von ~20–30 req/s auf ~70–90 req/s (≈3×). |
 | `beef.scheduler.ts` — alle `@Cron`-Jobs | Jede Instanz führt jeden Cron unabhängig aus — bei N Instanzen verarbeitet jede denselben abgelaufenen Beef parallel, kein verteilter Lock (gefunden 2026-09-10 beim Beef-Game-State-Rework, nicht Teil dieses Punkts) | Verteilter Lock (z.B. Redis `SET NX`) oder nur eine Instanz führt Crons aus |
 | ~~Redis~~ | ~~Existiert nicht~~ | **Infra erledigt 2026-09-10:** globales `RedisModule` (`ioredis`, `REDIS_CLIENT`-Token) in `AppModule`; `redis`-Service in `docker-compose.yml` (Demo) und `XXX_redis_load` in `docker-compose.loadtest.yml` (eigenes Netzwerk, analog zur Loadtest-DB). Noch kein Verbraucher — startet mit Beef-Game-State (nächster Punkt). |
-| Queue / Object Storage | Existiert nicht | Neu: BullMQ `QueueModule`, S3-kompatibler Client, Worker-Entrypoint `start:worker` (Phase 2) |
+| ~~Queue / Object Storage~~ | ~~Existiert nicht~~ | **Erledigt (Phase 2, Datum nicht mehr rekonstruierbar — diese Zeile war stehen geblieben):** BullMQ `QueueModule`, S3-kompatibler Client, `worker`-Service in `docker-compose.yml` (`start:worker`/`start:worker:dev`, `src/worker.module.ts`) — siehe die einzelnen Processor-Zeilen oben (Media-Pipeline, GDPR-Export, `checkAutoSuspend`, `createImageTicket`), die alle schon "Erledigt 2026-09-10" markiert waren, ohne dass diese zusammenfassende Zeile mitgezogen wurde. Gefunden über `docs/audit.html` (2026-09-12, Fund "Doku-Lücke": `worker`-Service fehlte auch in `backend/CLAUDE.md`s Architektur-Übersicht). |
 
 Track-B-Punkte (Correctness-Bugs, God-Objects, Duplikate — siehe Roadmap unten) sind Fixes,
 keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
