@@ -1,3 +1,17 @@
+## 2026-09-12 — chore(db): post-baseline-Migrationen 002-004 in db/Dockerfile gebacken
+**Was:** `db/Dockerfile` buk bisher nur `migrations/001_baseline.sql` in
+`/docker-entrypoint-initdb.d/`; ein frischer `docker compose up` (oder `docker-compose.loadtest.yml`)
+brauchte danach manuell `002_seed_system_user.sql`, `003_track_b_missing_indexes.sql` und das neue
+`004_drop_redundant_ban_expiry_trigger.sql`. Alle drei jetzt zusätzlich als `COPY` reingenommen
+(Dateinamen sortieren nach `000_schema.sql` schon richtig: 000 → 002 → 003 → 004 — Postgres führt
+`/docker-entrypoint-initdb.d/` in Dateiname-Reihenfolge aus). Lokal per `docker build` +
+Container-Start verifiziert: alle drei Skripte laufen ohne Fehler durch (INSERT, 5×CREATE INDEX,
+DROP TRIGGER/FUNCTION). Werden am Ende des laufenden Reworks ohnehin wieder in eine neue Baseline
+zusammengefasst — bis dahin hält das den Docker-Build synchron mit `migrations/`.
+**Nicht gebaut:** `scripts/deploy/ensure-db.js` (Railway-Boot-Pfad) nicht angepasst — der Auftrag
+war explizit der Docker-Build (`db/Dockerfile`), nicht der Railway-Boot-Guard. Der spielt weiterhin
+nur die Baseline ein; falls Railway dieselbe Automatisierung braucht, ist das ein eigener Punkt.
+
 ## 2026-09-12 — refactor(auth): zentrales UserRole-Enum statt drei unabhängiger Definitionen
 **Was:** `user_role` existierte dreifach: als Postgres-ENUM (`migrations/001_baseline.sql`), als
 Inline-Array `['user','admin','org','owner']` auf `User.role` und als eigenes, unvollständiges
