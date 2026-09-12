@@ -1,3 +1,13 @@
+## 2026-09-12 — fix(db): doppelten CHECK-Constraint auf beefs.status entfernt
+**Was:** `beefs` hatte zwei CHECK-Constraints mit identischer Werteliste (nur andere Reihenfolge
+im ARRAY-Literal): den auto-generierten `beefs_status_check` und den benannten `chk_beef_status`
+(folgt der Projekt-Namenskonvention `chk_*`, wie `chk_beef_no_self` in derselben Tabelle). Neue
+Migration `005_drop_duplicate_beef_status_check.sql` droppt `beefs_status_check`, `chk_beef_status`
+bleibt. In `db/Dockerfile` gebacken wie 002-004; per Docker-Build + Container-Start verifiziert
+(`pg_constraint` zeigt nur noch `chk_beef_status` auf `beefs`).
+**Nicht gebaut:** keine Änderung an den erlaubten Status-Werten selbst — nur der doppelte
+Constraint entfernt.
+
 ## 2026-09-12 — chore(db): Usage-Kommentar für delete-user.ts/run-sql.ts ergänzt
 **Was:** Beide Skripte hatten keinen Aufrufer im Repo und wurden im Audit als
 möglicherweise-verwaist markiert (Confidence "mittel", da plausible manuelle Ops-Tools). Statt
