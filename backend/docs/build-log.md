@@ -1,3 +1,12 @@
+## 2026-09-12 — chore(db): Usage-Kommentar für delete-user.ts/run-sql.ts ergänzt
+**Was:** Beide Skripte hatten keinen Aufrufer im Repo und wurden im Audit als
+möglicherweise-verwaist markiert (Confidence "mittel", da plausible manuelle Ops-Tools). Statt
+löschen: Kopfkommentar ergänzt, der explizit sagt, dass sie absichtlich nur manuell per CLI
+aufgerufen werden, plus den Aufruf-Befehl — damit ein künftiger Verwaist-Scan sie nicht wieder
+fälschlich als tot einstuft.
+**Nicht gebaut:** keine Löschung, kein Wrapper-Script/package.json-Eintrag dafür — bleiben
+bewusst Ad-hoc-Tools.
+
 ## 2026-09-12 — delete: verwaistes Debug-Skript check-columns.ts entfernt
 **Was:** `src/database/seeds/check-columns.ts` war eine hardcodierte `information_schema`-Query
 gegen die `conversations`-Tabelle — kein Aufrufer in package.json, keinem Entrypoint-Skript, keine

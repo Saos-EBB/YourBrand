@@ -1,3 +1,6 @@
+// Manual ops CLI, not called by any script or entrypoint — runs an arbitrary
+// .sql file against the configured DB. Run with: npx ts-node -r
+// tsconfig-paths/register src/database/seeds/run-sql.ts <path-to.sql>
 import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';

@@ -1,3 +1,6 @@
+// Manual ops CLI, not called by any script or entrypoint — hard-deletes a
+// user by nickname. Run with: npx ts-node -r tsconfig-paths/register
+// src/database/seeds/delete-user.ts <nickname>
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 
