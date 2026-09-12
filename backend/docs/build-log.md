@@ -1,3 +1,9 @@
+## 2026-09-12 — delete: verwaistes Debug-Skript check-columns.ts entfernt
+**Was:** `src/database/seeds/check-columns.ts` war eine hardcodierte `information_schema`-Query
+gegen die `conversations`-Tabelle — kein Aufrufer in package.json, keinem Entrypoint-Skript, keine
+Referenz sonst im Repo (`grep -rn "check-columns"` → 0 Treffer außerhalb der Datei selbst).
+**Nicht gebaut:** kein Ersatz — war ein Einweg-Debug-Skript, kein wiederverwendbares Tool.
+
 ## 2026-09-12 — chore(db): post-baseline-Migrationen 002-004 in db/Dockerfile gebacken
 **Was:** `db/Dockerfile` buk bisher nur `migrations/001_baseline.sql` in
 `/docker-entrypoint-initdb.d/`; ein frischer `docker compose up` (oder `docker-compose.loadtest.yml`)
