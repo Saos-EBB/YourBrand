@@ -1,3 +1,13 @@
+## 2026-09-12 — chore(notifications): Verweis-Kommentar auf DB-Enum ergänzt
+**Was:** `NotificationType` (TS-Union, 9 Werte) ist aktuell deckungsgleich mit dem DB-Enum
+`public.notification_type`, aber `notifications.type` ist im Entity `@Column() type!: string`
+ohne `enum:`-Option — nur die DB-Spalte erzwingt die Werteliste, TypeORM/TypeScript tun es nicht.
+Kommentar ergänzt, der das explizit macht, damit ein neuer Typ nicht nur im TS-Union ergänzt wird
+(würde zur Laufzeit an der DB scheitern, TypeScript bliebe aber grün).
+**Nicht gebaut:** kein `enum:`-Constraint auf der Spalte selbst — das wäre eine Verhaltensänderung
+(TypeORM würde dann bei Schreibversuchen mit unbekanntem Wert selbst validieren/werfen), nicht nur
+eine Doku-Ergänzung, und stand nicht zur Debatte.
+
 ## 2026-09-12 — fix(db): doppelten CHECK-Constraint auf beefs.status entfernt
 **Was:** `beefs` hatte zwei CHECK-Constraints mit identischer Werteliste (nur andere Reihenfolge
 im ARRAY-Literal): den auto-generierten `beefs_status_check` und den benannten `chk_beef_status`
