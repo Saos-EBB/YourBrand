@@ -139,6 +139,10 @@ export class AuthService {
             user.deleted_at = null;
         }
 
+        // Sole source of truth for lifting an expired temp ban — there is no
+        // scheduled job for this, only this login-time check and the manual
+        // admin.service.ts:unbanUser() path (migrations/004 dropped the old
+        // DB trigger that duplicated this rule and mislabeled manual unbans).
         if (user.is_banned) {
             if (user.ban_expires_at && user.ban_expires_at < new Date()) {
                 user.is_banned = false;

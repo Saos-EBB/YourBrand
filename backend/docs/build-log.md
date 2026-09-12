@@ -1,3 +1,15 @@
+## 2026-09-12 — fix(moderation): DB-Trigger für Ban-Aufhebung entfernt, App-Code ist einzige Wahrheit
+**Was:** `trg_strikes_check_ban_expiry`/`trigger_check_ban_expiry()` dupliziert dieselbe
+Ban-Aufhebungsregel wie `auth.service.ts` (Login-Pfad) und war zusätzlich fehlerhaft:
+`admin.service.ts:unbanUser()` setzt `strikes.ban_lifted_at` per UPDATE, was denselben
+BEFORE-UPDATE-Trigger feuert und bei bereits abgelaufenem `expires_at` `lifted_by_job = true`
+setzt — ein manueller Admin-Unban wurde damit fälschlich als job-gelifted markiert. Neue
+Migration `migrations/004_drop_redundant_ban_expiry_trigger.sql` droppt Trigger + Funktion;
+Kommentar in `auth.service.ts` dokumentiert den Login-Pfad jetzt als alleinige Quelle.
+**Nicht gebaut:** kein Ersatz-Cron-Job für Bans ohne nächsten Login — gab es vorher auch nicht
+(der Trigger feuerte nur bei einem UPDATE auf strikes, nie autonom). Spalten
+`strikes.ban_lifted_at`/`lifted_by_job` unverändert im Schema gelassen.
+
 ## 2026-09-12 — feat(profile): harter Moderation-Gate-Check für alle Foto-Auslieferungspfade
 **Was:** `docs/audit.html` (Read-only-Audit vom selben Tag) fand, dass Profilfotos in
 `getPublicProfile`, `searchProfiles`, `getProfileByUserId` und `getBlocks` immer ausgeliefert
