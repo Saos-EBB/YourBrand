@@ -1,3 +1,14 @@
+## 2026-09-12 — delete: tote TypeORM-Migration CreateCitiesTable.ts entfernt
+**Was:** `src/database/migrations/1748908800000-CreateCitiesTable.ts` legte `cities` an — die
+Tabelle steckt aber schon in `migrations/001_baseline.sql:1025-1034` mit identischen Spalten.
+`db/Dockerfile` und `scripts/deploy/ensure-db.js` spielen ausschließlich die Baseline ein, die
+TypeORM-Migration war auf jeder realen Umgebung ein permanentes No-op und irreführend für
+`npm run migration:run`. `grep -rn "CreateCitiesTable\|1748908800000"` findet danach keine
+Referenz mehr außerhalb der gelöschten Datei selbst.
+**Nicht gebaut:** kein Ersatz, keine neue Migration — `src/database/migrations/` ist jetzt leer,
+das ist beabsichtigt (siehe CLAUDE.md: dieser Mechanismus ist nur für die Cities-Tabelle gedacht
+und die steckt in der Baseline).
+
 ## 2026-09-12 — refactor(chat): gemeinsamer ConversationsService.getOrCreate() für swipe/chat/admin
 **Was:** `swipe.service.ts` (Match), `chat.service.ts` (Kontaktanfrage-Annahme) und
 `admin.service.ts` (Direct-Chat) legten je eine eigene, leicht abweichende "existiert schon
