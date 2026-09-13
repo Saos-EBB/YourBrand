@@ -110,23 +110,29 @@ echo "Logs: ${LOG_DIR}"
 echo ""
 
 # Aggregiert eine Step-CSV-Datei (gleiches Format wie loadtest.sh) zu
-# attempts/successes/avg/p95/max — success = 2xx, wie ueberall sonst im
-# Dashboard. Absichtlich NICHT dieselbe Funktion wie login-capacity.sh's
-# aggregate_step (die liest pro-Request-Dateien, hier ist alles schon in
-# einer gemeinsamen Step-CSV).
+# attempts/successes/avg/p95/max. success = "kein echter Fehler", nicht
+# "2xx" — gleiche Definition wie actions.sh's log_error_if_needed() und
+# des Dashboards aggregator.js categorizeStatus(): nur 5xx und eine tote
+# Verbindung ("000") sind echte Fehler. Ein 4xx ist bei diesem Lastansatz
+# erwarteter Traffic (doppelte Anfrage, zu wenig Coins, Admin-Endpoint von
+# einem Nicht-Owner-Token, ...) und darf success%/AUTO_STOP nicht
+# verfaelschen — siehe auch actions.sh's eigener Kommentar dazu. Absichtlich
+# NICHT dieselbe Funktion wie login-capacity.sh's aggregate_step (die liest
+# pro-Request-Dateien, hier ist alles schon in einer gemeinsamen Step-CSV).
 aggregate_step_csv() {
   local file="$1"
   awk -F',' '
     NR>1 {
       n++
-      if ($4 ~ /^2[0-9][0-9]$/) { ok++; sum+=$5; dur[ok_n++]=$5; if ($5>max) max=$5 }
+      if ($4 == "000" || ($4 ~ /^[0-9]+$/ && $4+0 >= 500)) { err++ }
+      else { ok++; sum+=$5; dur[ok_n++]=$5; if ($5>max) max=$5 }
     }
     END {
       printf "%d\t%d\n", n+0, ok+0
       if (ok_n > 0) {
-        for (i=0;i<ok_n;i++) for (j=i+1;j<ok_n;j++) if (dur[i]>dur[j]) {t=dur[i];dur[i]=dur[j];dur[j]=t}
-        p95idx = int(ok_n*0.95); if (p95idx>=ok_n) p95idx=ok_n-1
-        printf "%.0f\t%d\t%d\n", sum/ok_n, dur[p95idx], max
+        n_sorted = asort(dur)
+        p95idx = int(n_sorted*0.95); if (p95idx>=n_sorted) p95idx=n_sorted-1
+        printf "%.0f\t%d\t%d\n", sum/ok_n, dur[p95idx+1], max
       } else {
         printf "0\t0\t0\n"
       }
@@ -259,9 +265,9 @@ SUMMARY_FILE="${LOG_DIR}/summary.txt"
     END {
       for (p in arr) {
         m = n[p]
-        for (i=0;i<m;i++) for (j=i+1;j<m;j++) if (arr[p][i]>arr[p][j]) {t=arr[p][i];arr[p][i]=arr[p][j];arr[p][j]=t}
-        p95idx = int(m*0.95); if (p95idx>=m) p95idx=m-1
-        printf "%-30s avg=%.0f p95=%.0f max=%.0f n=%d\n", p, sum[p]/m, arr[p][p95idx], max[p], m
+        m_sorted = asort(arr[p])
+        p95idx = int(m_sorted*0.95); if (p95idx>=m_sorted) p95idx=m_sorted-1
+        printf "%-30s avg=%.0f p95=%.0f max=%.0f n=%d\n", p, sum[p]/m, arr[p][p95idx+1], max[p], m
       }
     }'
 } | tee "$SUMMARY_FILE"

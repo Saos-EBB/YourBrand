@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Paarship Backend Audit — 2026-09-12</title>
+<title>YourBrand Backend — Endpoint-Kapazitäts-Audit — 2026-09-13</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -116,34 +116,34 @@
 </head>
 <body>
 <header>
-  <h1>Paarship Backend Audit</h1>
-  <div class="meta">Scan-Datum: 2026-09-12 · Read-only Audit, keine Änderungen am Code · Quelle: backend/, frontend/, migrations/, docker-compose*.yml</div>
+  <h1>YourBrand Backend — Endpoint-Kapazitäts-Audit</h1>
+  <div class="meta">Session-Datum: 2026-09-13 · Load-Test gegen den Loadtest-Docker-Stack (localhost:3100/3102), Tool: <code>scripts/loadtest/endpoint-rate.sh</code> · Baseline: 1 Node-Prozess · Vergleich: 2- und 8-Worker-Cluster-Experiment (Node <code>cluster</code>-Modul, kompilierter Build, DB_POOL_MAX=10-15/Worker)</div>
 
   <div class="summary-grid" id="summary-grid"></div>
 
   <div class="top5">
-    <h2>Top 5 zuerst aufräumen (Risiko × Impact)</h2>
+    <h2>Wichtigste Funde dieser Session</h2>
     <ol>
-      <li><b>Media-Moderation-Gate uneinheitlich</b> — Fotos werden immer ausgeliefert (nur <code>needs_review</code>-Flag), während Audio &amp; Matching hart auf <code>moderation_status='approved'</code> prüfen. Trust-&amp;-Safety-Risiko. <span class="badge risk-hoch">hoch</span></li>
-      <li><b>Ban-Aufhebung doppelt implementiert</b> — DB-Trigger <code>trg_strikes_check_ban_expiry</code> und <code>auth.service.ts</code> setzen unabhängig dieselbe Regel; nur der App-Code ist in der Praxis wirksam. <span class="badge risk-mittel">mittel</span></li>
-      <li><b>Drei unabhängige „Conversation anlegen"-Implementierungen</b> — swipe.service.ts, chat.service.ts, admin.service.ts dupliziert statt ein gemeinsamer <code>getOrCreate()</code>. <span class="badge risk-niedrig">niedrig</span></li>
-      <li><b>Tote TypeORM-Migration</b> — <code>CreateCitiesTable.ts</code> ist seit der Baseline-Konsolidierung ein permanentes No-op, aber irreführend für <code>migration:run</code>. <span class="badge risk-niedrig">niedrig</span></li>
-      <li><b>user_role dreifach unabhängig definiert</b> — DB-Enum, Entity-Inline-Array, DTO-Enum; aktuell konsistent aber fragil bei Änderungen. <span class="badge risk-niedrig">niedrig</span></li>
+      <li><b>GET /admin/media/pending bricht bei 20 r/s zusammen</b> — <code>AdminService.getMediaPending()</code> hat kein <code>LIMIT</code>/Pagination, lädt alle 159.107 pending media_uploads-Zeilen bei jedem Aufruf. 80% Timeout, 9,2s Ø-Latenz selbst bei nur 20 gleichzeitigen Requests. <span class="badge risk-hoch">kritisch</span></li>
+      <li><b>Race Condition in zwei Services</b> — <code>ConversationsService.getOrCreate()</code> und <code>ChatService.sendContactRequest()</code> prüfen Existenz und inserten ohne Lock/Transaktion; unter Last kollidieren parallele Requests auf <code>uq_conversation_users</code>/<code>uq_contact_request_active</code> und werfen unbehandelte 500er. <span class="badge risk-mittel">mittel</span></li>
+      <li><b>Single-Node-Prozess war der eigentliche Flaschenhals, nicht die DB</b> — DB_POOL_MAX=40 hatte bei 1 Worker durchgehend >2x Headroom gegenüber der beobachteten Grenze. Skalierung auf 8 Worker hob praktisch jeden Endpoint von 200-580 r/s auf ≥1000-1950 r/s (Grenze meist nicht erreicht, sondern nur der Test ausgereizt). <span class="badge risk-niedrig">bestätigt</span></li>
+      <li><b>HttpExceptionFilter verschluckt Stacktraces</b> — bei jedem nicht-HttpException-Fehler wird nur eine generische Ein-Zeilen-Message geloggt; die beiden Race-Condition-500er mussten aus Schema + Timing rekonstruiert werden, nicht aus den Logs. <span class="badge risk-mittel">mittel</span></li>
+      <li><b>Load-Test-Harness selbst hatte zwei Bugs</b> (im Tool, nicht im Produkt) — O(n²)-Bubble-Sort in <code>endpoint-rate.sh</code> hing bei hohem Requestvolumen &gt;2h (gepatcht auf <code>asort()</code>); Token-TTL (15 min) kontaminierte lange Ramps mit 401ern, die der Aggregator fälschlich als „success“ zählte. <span class="badge risk-niedrig">gefixt/dokumentiert</span></li>
     </ol>
   </div>
 </header>
 
 <div class="tabs">
-  <button class="tab-btn active" data-tab="a">Cleanup &amp; Wahrheiten (Phase A)</button>
-  <button class="tab-btn" data-tab="b">Feed-Patterns (Phase B)</button>
+  <button class="tab-btn active" data-tab="a">Endpoint-Kapazität</button>
+  <button class="tab-btn" data-tab="b">Bugs &amp; Methodik</button>
 </div>
 
 <div class="controls">
   <input id="search" type="text" placeholder="Volltextsuche über alle Spalten…">
   <button class="filter-btn active" data-conf="alle">Alle</button>
-  <button class="filter-btn" data-conf="hoch">Confidence: hoch</button>
-  <button class="filter-btn" data-conf="mittel">Confidence: mittel</button>
-  <button class="filter-btn" data-conf="niedrig">Confidence: niedrig</button>
+  <button class="filter-btn" data-conf="hoch">Status: kritisch</button>
+  <button class="filter-btn" data-conf="mittel">Status: Bug gefunden</button>
+  <button class="filter-btn" data-conf="niedrig">Status: gut skaliert</button>
 </div>
 
 <main>
@@ -151,12 +151,12 @@
     <table id="findings-table">
       <thead>
         <tr>
-          <th data-key="category">Kategorie</th>
-          <th data-key="path">Pfad(e)</th>
-          <th data-key="evidence">Evidenz</th>
-          <th data-key="risk">Risiko</th>
-          <th data-key="recommendation">Empfehlung</th>
-          <th data-key="confidence">Confidence</th>
+          <th data-key="category">Gruppe</th>
+          <th data-key="path">Endpoint</th>
+          <th data-key="baseline">1 Worker (Baseline)</th>
+          <th data-key="cluster">8-Worker-Ergebnis</th>
+          <th data-key="evidence">Hinweis</th>
+          <th data-key="confidence">Status</th>
         </tr>
       </thead>
       <tbody id="findings-body"></tbody>
@@ -165,141 +165,118 @@
   </section>
 
   <section id="panel-b">
-    <div class="gap-note"><b>Hinweis:</b> Phase B dokumentiert bestehende Muster zum Wiederverwenden — keine Cleanup-Empfehlungen. Eine Ausnahme: Pagination hat sich als <b>Lücke</b> herausgestellt statt als Referenzmuster (siehe unten).</div>
+    <div class="gap-note"><b>Hinweis:</b> Dieser Tab dokumentiert die in dieser Session gefundenen Bugs (im Produkt) sowie Probleme im Load-Test-Werkzeug selbst — letztere haben Messungen zeitweise verfälscht und wurden während der Session live gepatcht.</div>
     <div id="patterns"></div>
   </section>
 </main>
 
-<footer>Erzeugt read-only aus Repo-Inspektion (grep/Codelesen). Keine Datei außer dieser wurde geschrieben.</footer>
+<footer>Erzeugt aus einer Load-Test-Session gegen den Docker-Loadtest-Stack (XXX_backend_load / XXX_backend_cluster_experiment, XXX_db_load, XXX_redis_load, minio-load). Ersetzt die vorherige Codebase-Audit-Version dieser Datei vollständig.</footer>
 
 <script>
 const findings = [
-  {category:"Verwaiste Files", path:"frontend/components/ui/ErrorCard.tsx",
-   evidence:"grep -rn \"ErrorCard\" app components lib hooks → nur eigene Definition, kein Import irgendwo. app/error.tsx und global-error.tsx nutzen eigenes inline Markup statt dieser Komponente.",
-   risk:"niedrig", recommendation:"delete-Kandidat — nie eingebundene Error-Card-Komponente.", confidence:"hoch"},
-  {category:"Verwaiste Files", path:"backend/src/database/seeds/check-columns.ts",
-   evidence:"grep -rn \"check-columns\" (ganzes Repo, exkl. node_modules/dist) → 0 Treffer. Nicht in package.json, nicht in docker-entrypoint*.sh. Hardcodierte information_schema-Debug-Query gegen conversations.",
-   risk:"niedrig", recommendation:"delete-Kandidat — Debug-Einwegskript.", confidence:"hoch"},
-  {category:"Verwaiste Files", path:"backend/src/database/seeds/delete-user.ts",
-   evidence:"grep -rn \"seeds/delete-user\" → 0 Treffer außerhalb der Datei selbst. Kein Aufrufer in package.json/Entrypoints. CLI-Tool: `ts-node delete-user.ts <nickname>`.",
-   risk:"niedrig", recommendation:"keep — plausibles manuelles Ops-Tool, aber unbelegt/undokumentiert.", confidence:"mittel"},
-  {category:"Verwaiste Files", path:"backend/src/database/seeds/run-sql.ts",
-   evidence:"Einzige Repo-Erwähnung liegt in docs/_archive/known-errors.md:63 (selbst archiviert). Kein aktiver Aufrufer.",
-   risk:"niedrig", recommendation:"keep — generisches Ops-Tool, aktuell von keiner lebenden Doku referenziert.", confidence:"mittel"},
-
-  {category:"Schema-Wahrheit", path:"backend/migrations/_archive/schema_v4.sql vs. migrations/001_baseline.sql",
-   evidence:"Tabellen-Diff: alle 23 Tabellen aus schema_v4.sql stecken in der Baseline; die Baseline hat 17 zusätzliche Tabellen (kompletter Hidden-Zone-Stack: beefs, beef_comments, beef_games, beef_votes, badges, teeth, tooth_chains, coin_transactions, matches, cities, system_settings, admin_tickets, profanity_flags/words, swipes, user_coin_balance, typeorm_migrations). user_role ENUM in schema_v4.sql (Zeile 38) fehlt 'owner', Baseline hat es (Zeile 473-478).",
-   risk:"niedrig", recommendation:"keep as-is in _archive/ — rein historischer Beleg, faktisch tot, schon korrekt gekennzeichnet.", confidence:"hoch"},
-  {category:"Schema-Wahrheit", path:"README.md, docs/ (root + backend)",
-   evidence:"grep -rn \"schema_v4|schema\\.sql\" --include=*.md → nur historische, bereits korrigierte Einträge (backend/docs/architecture.md:64 dokumentiert die Konsolidierung). Kein aktiver Verweis mehr auf den alten Pfad.",
-   risk:"—", recommendation:"keep — nichts zu tun, bereits sauber.", confidence:"hoch"},
-
-  {category:"Migrations-System", path:"backend/src/database/migrations/1748908800000-CreateCitiesTable.ts",
-   evidence:"cities existiert bereits in migrations/001_baseline.sql:1025-1034 mit identischen Spalten. db/Dockerfile und ensure-db.js spielen ausschließlich 001_baseline.sql ein — die TypeORM-Migration ist auf jeder realen Umgebung permanentes No-op (CREATE TABLE/INDEX IF NOT EXISTS).",
-   risk:"niedrig", recommendation:"delete-Kandidat — tote Migrationshistorie, irreführend für `npm run migration:run`.", confidence:"hoch"},
-  {category:"Migrations-System", path:"backend/migrations/002_seed_system_user.sql, 003_track_b_missing_indexes.sql",
-   evidence:"grep -rn nach beiden Dateinamen → nur Erwähnungen in backend/docs/build-log.md und architecture.md. Kein Runner-Skript, kein CI-Verzeichnis (.github/) im Repo.",
-   risk:"niedrig", recommendation:"keep — entspricht CLAUDE.md (\"not auto-run — run manually\"). Prozess-Risiko (leicht vergessen), kein Code-Risiko.", confidence:"hoch"},
-
-  {category:"Duplizierte Definition", path:"migrations/001_baseline.sql (Tabelle beefs, Zeile ~1000 &amp; ~1002)",
-   evidence:"Zwei CHECK-Constraints auf derselben Spalte mit identischer Werteliste: `beefs_status_check` (auto-generiert) und `chk_beef_status` (Projekt-Namenskonvention chk_*).",
-   risk:"niedrig", recommendation:"delete-Kandidat — beefs_status_check entfernen, chk_beef_status behalten.", confidence:"hoch"},
-  {category:"Duplizierte Definition", path:"migrations/001_baseline.sql:473 (user_role ENUM) + auth/entities/user.entity.ts:17 + admin/dto/update-user-role.dto.ts:3,10",
-   evidence:"DB-Enum ['user','admin','org','owner'] wird als Inline-Array in der TypeORM-Spalte wiederholt; UpdateUserRoleDto definiert zusätzlich eigene UserRole/AssignableRole-Enums mit nur 2-3 der 4 Werte (owner bewusst ausgeschlossen). Drei unabhängige Stellen, aktuell konsistent.",
-   risk:"niedrig", recommendation:"merge — zentrales TS-Enum, AssignableRole als Subset ableiten statt eigener String-Literale.", confidence:"mittel"},
-  {category:"Duplizierte Definition", path:"migrations/001_baseline.sql (moderation_status/report_status/notification_type) vs. media-upload.entity.ts:14, admin/dto/update-report.dto.ts:3, notifications/entity.ts:3",
-   evidence:"TS-Enums aktuell deckungsgleich mit DB-Enums. notifications.type ist im Entity aber `@Column() type!: string` OHNE enum-Constraint — nur die DB-Spalte erzwingt die Werteliste, TypeORM tut es nicht.",
-   risk:"niedrig", recommendation:"keep, aber Verweis-Kommentar auf die DB-Migration ergänzen, damit neue Typen nicht einseitig im TS ergänzt werden.", confidence:"hoch"},
-
-  {category:"Business-Logik doppelt", path:"migrations/001_baseline.sql:712 (trigger_check_ban_expiry / trg_strikes_check_ban_expiry) vs. auth.service.ts:141-149",
-   evidence:"DB-Trigger hebt Bans auf, feuert aber NUR bei UPDATE auf strikes. auth.service.ts reimplementiert dieselbe Regel eigenständig beim Login (ban_expires_at < now → is_banned=false, ban_reason=null, ban_expires_at=null). Praktisch ist der App-Code die wirksame Quelle, der Trigger greift kaum unabhängig.",
-   risk:"mittel", recommendation:"merge — auth.service.ts als einzige Wahrheit dokumentieren; Trigger entfernen oder explizit als Fallback kennzeichnen.", confidence:"hoch"},
-  {category:"Business-Logik doppelt", path:"media_uploads.moderation_status (enum) vs. media_uploads.needs_review (boolean) — profile.service.ts:73-79,322-330,339 vs. matching.service.ts:88,162,206",
-   evidence:"Foto-Auslieferung in profile.service.ts liefert das Foto IMMER aus und markiert nur needs_review — kein harter Gate-Check. matching.service.ts joint Profil-Fotos dagegen strikt mit moderation_status='approved'. Audio wird in profile.service.ts:339 korrekt nur bei moderation_status===APPROVED ausgeliefert. Zwei Felder für \"ist freigegeben\", je nach Aufrufer unterschiedlich geprüft.",
-   risk:"hoch", recommendation:"merge — einheitlich moderation_status='approved' als harten Gate-Check für alle Foto-Auslieferungspfade; needs_review nur noch als Admin-Queue-Flag, nicht als Sichtbarkeits-Gate.", confidence:"hoch"},
-
-  {category:"Konkurrierendes Datenmodell", path:"matches / contact_requests / conversations — swipe.service.ts, chat.service.ts:107-129, admin.service.ts:618-629",
-   evidence:"Drei unabhängige Code-Pfade legen jeweils direkt eine conversations-Zeile an: Swipe-Match, Contact-Request-Annahme, Admin→User-Chat. matches.conversation_id und conversations.contact_request_id sind beide nullable FKs. Keine Synchronisations-/Migrationslogik zwischen den Pfaden gefunden.",
-   risk:"niedrig", recommendation:"merge-Kandidat — gemeinsamer ConversationsService.getOrCreate(userA, userB, origin) statt drei duplizierter Inline-Implementierungen. Die Tabellen selbst sind laut Beleg keine echten Duplikate, sondern legitime getrennte Feature-Herkünfte.", confidence:"mittel"},
-
-  {category:"Redundante Infra", path:"backend/docker-entrypoint.sh vs. backend/docker-entrypoint.railway.sh",
-   evidence:"Beide rufen dieselben 8 Seed-Schritte in identischer Reihenfolge (demo-seed → demo-relations-seed → seed-extra-users → seed-coin-transactions → seed-subscriptions-payments → seed-media → seed-cities → backfill-profile-locations). Kein gemeinsamer Ort erzwingt das — ein neuer Schritt in einer Datei muss manuell in der anderen nachgezogen werden.",
-   risk:"niedrig", recommendation:"keep (optional: gemeinsame Seed-Liste in eine Datei extrahieren, die beide Entrypoints includen).", confidence:"hoch"},
-  {category:"Redundante Infra", path:"docker-compose.yml, docker-compose.loadtest.yml, backend/db/Dockerfile",
-   evidence:"docker-compose.loadtest.yml baut die Load-DB über denselben backend/db/Dockerfile (identischer Schema-Bake-Mechanismus über 001_baseline.sql), eigenes Volume/Netzwerk. Kein divergenter DB-Setup-Pfad gefunden.",
-   risk:"niedrig", recommendation:"keep — sauber getrennt, keine Überlappung.", confidence:"hoch"},
-  {category:"Redundante Infra", path:"backend/src/database/seeds/delete-user.ts, check-columns.ts, run-sql.ts",
-   evidence:"grep über *.sh/*.json/Dockerfile* im ganzen Repo findet keinen automatisierten Aufrufer für diese drei Dateien. Vermutlich manuelle Dev-Hilfsskripte.",
-   risk:"niedrig", recommendation:"keep — nicht ausgeschlossen, dass sie manuell/extern (README, Wiki) dokumentiert sind, hier nicht geprüft.", confidence:"niedrig"},
-
-  {category:"Doku-Lücke", path:"docker-compose.yml (worker-Service) → src/worker.ts + WorkerModule",
-   evidence:"docker-compose.yml definiert einen eigenständigen worker-Service (eigenes Bootstrap-Modul statt AppModule) — taucht in backend/CLAUDE.md's Architektur-Übersicht nicht auf.",
-   risk:"niedrig", recommendation:"keep (Code unverändert lassen), aber CLAUDE.md/architecture.md um den Worker-Prozess ergänzen.", confidence:"mittel"},
-  {category:"Doku-Lücke", path:"frontend/hooks/useTranslation.ts",
-   evidence:"Reiner Re-Export-Shim mit nur einem Nutzer im Repo — technisch nicht tot, aber ein Duplikat-Pfad zur eigentlichen Übersetzungs-Quelle statt direktem Import.",
-   risk:"niedrig", recommendation:"keep — geringe Priorität, bei Gelegenheit auf direkten Import konsolidieren.", confidence:"niedrig"},
+  {category:"Discover", path:"GET /discover/deck", baseline:"~220-340 r/s (Kollaps ab 340 r/s, PostGIS-Geo-Query, teuerste Query im Set)",
+   cluster:"≥1500 r/s @ 198ms Ø — testseitig tokenlimitiert (15-min-JWT-TTL lief während des Ramps ab), echte Grenze höher/unbekannt",
+   evidence:"Einzige Query mit ST_DWithin/ST_Distance + NOT EXISTS-Subquery (matching.service.ts:36). Trotzdem 4,5-7x höhere Kapazität mit 8 Workern.",
+   confidence:"niedrig"},
+  {category:"Discover", path:"GET /discover/matches", baseline:"~500-580 r/s",
+   cluster:"≥1925 r/s @ 112ms Ø — tokenlimitiert, echte Grenze höher",
+   evidence:"Bestes Verhältnis Baseline→Cluster unter den reinen Read-Endpoints.",
+   confidence:"niedrig"},
+  {category:"Coin", path:"GET /hidden/coin/balance", baseline:"~520-580 r/s",
+   cluster:"≥1950 r/s @ 100ms Ø — tokenlimitiert, echte Grenze höher",
+   evidence:"Einfacher Read, skaliert nahezu linear mit Worker-Anzahl.",
+   confidence:"niedrig"},
+  {category:"Coin", path:"POST /hidden/coin/test-purchase", baseline:"~420-440 r/s",
+   cluster:"≥1000 r/s @ 141ms Ø — Rate-Cap des Tests erreicht (nicht die App-Grenze), 100% Erfolg durchgehend",
+   evidence:"Write-Pfad, dennoch keinerlei Degradation bis zum Cap.",
+   confidence:"niedrig"},
+  {category:"Media", path:"POST /media/upload/profile-photo", baseline:"~340-360 r/s",
+   cluster:"≥1000 r/s @ 278ms Ø — Rate-Cap erreicht, 100% Erfolg",
+   evidence:"Einziger Endpoint mit echtem Datei-I/O (MinIO); höchste Ø-Latenz im Set, aber keine Fehlerquote.",
+   confidence:"niedrig"},
+  {category:"Chat", path:"GET /chat/conversations", baseline:"~420-440 r/s",
+   cluster:"≥1000 r/s @ 185ms Ø — Rate-Cap erreicht",
+   evidence:"—", confidence:"niedrig"},
+  {category:"Chat", path:"GET /chat/conversations/:id/messages", baseline:"~440 r/s",
+   cluster:"≥1000 r/s @ 208ms Ø — Rate-Cap erreicht",
+   evidence:"Verkettetes Szenario (GET conversations → GET messages) — Test zählt pro Ramp-Tick 2 echte HTTP-Calls.",
+   confidence:"niedrig"},
+  {category:"Chat", path:"POST /chat/conversations/:id/messages", baseline:"~260 r/s",
+   cluster:"≥1000 r/s @ 236ms Ø — Rate-Cap erreicht",
+   evidence:"Write-Pfad, größte relative Verbesserung unter den Chat-Endpoints.",
+   confidence:"niedrig"},
+  {category:"Contact Request", path:"POST /chat/requests (send)", baseline:"~60-140 r/s — schwächster Endpoint vor dieser Session",
+   cluster:"≥1000 r/s @ 253ms Ø — Rate-Cap erreicht, ABER 12× echte 500er unter Last",
+   evidence:"Race Condition in sendContactRequest() (chat.service.ts:46) — Check-then-Insert ohne Lock, kollidiert mit uq_contact_request_active.",
+   confidence:"mittel"},
+  {category:"Contact Request", path:"GET /chat/requests/incoming", baseline:"~200-360 r/s",
+   cluster:"≥1000 r/s @ 173ms Ø — Rate-Cap erreicht",
+   evidence:"—", confidence:"niedrig"},
+  {category:"Contact Request", path:"PATCH /chat/requests/:id/accept", baseline:"~160-180 r/s (mit vorab geseedetem Backlog von ~111k pending Requests erstmals sauber gemessen)",
+   cluster:"≥600 r/s @ 147-360ms — Rate-Cap erreicht, 1× echte 500er unter Last",
+   evidence:"Gleiche Race-Condition-Klasse wie oben, diesmal in ConversationsService.getOrCreate() (conversations.service.ts:18) — kollidiert mit uq_conversation_users.",
+   confidence:"mittel"},
+  {category:"Admin", path:"GET /admin/media/pending", baseline:"vorher nie real getestet (Test-Token ohne Admin-Rolle → nur 403-Guard-Pfad gemessen)",
+   cluster:"BRICHT BEI 20 r/s ZUSAMMEN — 80% Timeout (10s), Ø 9236ms Latenz bei den restigen 20%",
+   evidence:"AdminService.getMediaPending() (admin.service.ts:184-193) hat kein LIMIT/Pagination — lädt alle 159.107 pending media_uploads-Zeilen (inkl. JOIN + Sortierung) bei JEDEM Aufruf, unabhängig von der Rate.",
+   confidence:"hoch"},
 ];
 
 const patterns = [
-  {name:"WS-Gateway (HiddenBeefGateway)",
-   tagline:"Room-basiertes Realtime-Pattern für Namespace /hidden-beef — Vorlage für jedes weitere Live-Feature.",
+  {name:"KRITISCH: GET /admin/media/pending — fehlende Pagination",
+   tagline:"Der einzige Endpoint dieser Session, der unter Last real zusammenbricht — und zwar sofort, nicht erst bei hoher Rate.",
    how:[
-     "Handshake-Auth: <code>extractUserId()</code> liest Token aus <code>client.handshake.auth.token</code> oder <code>.query.token</code>, verifiziert per <code>JwtService.verify</code> (beef.gateway.ts:32-39).",
-     "<code>handleConnection()</code> (beef.gateway.ts:41-50): kein/ungültiger User → <code>client.disconnect()</code>; sonst DB-Check <code>SELECT EXISTS ... FROM users WHERE id=$1 AND deleted_at IS NULL</code> — gelöschte User werden ebenfalls getrennt. User-ID landet in <code>client.data.userId</code>.",
-     "Room-Beitritt über Event <code>join_beef</code> (<code>@SubscribeMessage('join_beef')</code>, beef.gateway.ts:53-56) mit <code>beefId</code> als Payload → <code>client.join(`beef:${beefId}`)</code>. Gegenstück <code>leave_beef</code>.",
-     "Emits laufen über <code>@OnEvent(AppEvents.beef*)</code> aus dem EventEmitter (nicht per Direktinjektion aus dem Service) → <code>server.to(`beef:${beefId}`).emit(...)</code>: <code>beef:vote_update</code>, <code>beef:comment_new</code>, <code>beef:closed</code>, <code>game:state_update</code>, <code>game:go</code>, <code>game:board_update</code>.",
-     "Rollenspezifische Redaktion: bei <code>game:board_update</code> (Mastermind) werden Sockets im Room einzeln iteriert (<code>fetchSockets()</code>) und je nach <code>client.data.userId</code> unterschiedliche, redaktierte Boards verschickt — der Server kennt beide Boards, der Client nur sein eigenes."
+     "<code>AdminService.getMediaPending()</code> (admin.service.ts:184-193): rohe SQL-Query ohne <code>LIMIT</code>/<code>OFFSET</code>/Cursor — <code>SELECT ... FROM media_uploads m LEFT JOIN profiles p ... WHERE m.moderation_status='pending' ... ORDER BY m.uploaded_at ASC</code>.",
+     "Aktueller Bestand in der Loadtest-DB: <b>159.107</b> pending Zeilen (teils durch die eigenen media_upload-Lasttests dieser Session erzeugt, aber das Muster selbst wächst auch organisch mit echtem Nutzerverkehr).",
+     "Test mit 20 echten Admin-Tokens (Rolle vorher via SQL + Re-Login korrekt gesetzt) bei nur 20 r/s: 80 von 100 Requests liefen in den 10s-curl-Timeout, die restlichen 20 brauchten im Schnitt 9,2s.",
+     "Root Cause: jede Anfrage muss die komplette Pending-Queue laden, joinen und als JSON serialisieren — Kosten pro Request skaliert mit der Gesamtgröße der Queue, nicht mit der angefragten Seite."
    ],
-   files:"backend/src/modules/hidden/beef/beef.gateway.ts",
-   reuse:"Jedes Feature mit Room-basiertem Live-Update (Typing-Indicator, Live-Feed-Kommentare) — Handshake-Auth- und rollenspezifisches Payload-Filtering direkt übertragbar."},
+   files:"backend/src/modules/core/admin/admin.service.ts:184-193, admin.controller.ts:28-30",
+   reuse:"Fix: LIMIT/Cursor-Pagination ergänzen (siehe auch die bereits dokumentierte Pagination-Lücke im Chat-Modul — offenbar ein wiederkehrendes Muster im Repo, unbegrenzte Listen-Endpoints ohne Pagination zu bauen)."},
 
-  {name:"Pagination-Konvention — LÜCKE, kein Referenzmuster",
-   tagline:"Es existiert keine Cursor-Pagination im Backend. Wird dokumentiert, weil der Auftrag danach fragte — nicht zum Kopieren geeignet.",
+  {name:"Race Condition — Check-then-Insert ohne Lock (2 Fundstellen)",
+   tagline:"Gleiche Bug-Klasse in zwei unabhängigen Services — beide bestätigt über echte 500er unter konkurrierender Last.",
    how:[
-     "<code>ChatService.getMessages()</code> (chat.service.ts:293-309) lädt mit <code>messageRepository.find({ where: { conversation_id }, order: { sent_at: 'ASC' } })</code> — ohne <code>take</code>/<code>skip</code>/Cursor, alle Nachrichten einer Conversation auf einmal.",
-     "Repo-weite Prüfung: <code>grep -rl \"cursor\" src/**/*.ts</code> liefert 0 Treffer — Cursor-Pagination existiert im gesamten Backend nicht als etabliertes Pattern.",
-     "Route: <code>GET conversations/:id/messages</code> (chat.controller.ts:63-65)."
+     "<code>ConversationsService.getOrCreate()</code> (conversations.service.ts:18-48): SELECT auf existierende Konversation, dann INSERT falls keine gefunden — kein Lock zwischen den beiden Schritten. Zwei parallele <code>accept()</code>-Aufrufe für denselben Sender/Empfänger können beide „nicht gefunden“ sehen und beide inserten → Kollision auf <code>uq_conversation_users</code> → unbehandelter <code>QueryFailedError</code> → roher 500.",
+     "<code>ChatService.sendContactRequest()</code> (chat.service.ts:46-79): identisches Muster — Existenz-Check auf pending Request, dann INSERT. Kollidiert unter Last auf <code>uq_contact_request_active</code> (EXCLUDE-Constraint).",
+     "Beobachtet: 1× 500 bei ~600 r/s auf accept, 12× 500 bei ~1000 r/s auf send — beide reproduzierbar unter genügend Nebenläufigkeit, nicht nur ein Lasttest-Artefakt (dieselbe Race kann in Produktion durch Doppel-Klicks oder Client-Retries entstehen).",
+     "HttpExceptionFilter (siehe unten) loggte für keinen der Fälle mehr als „Internal server error“ — die Diagnose erfolgte über Schema (uq_conversation_users, uq_contact_request_active) und Timing, nicht über Logs."
    ],
-   files:"backend/src/modules/core/chat/chat.controller.ts, chat.service.ts",
-   reuse:"Kein Muster zum Kopieren vorhanden. Bei Bedarf müsste Cursor-Pagination neu eingeführt werden — bei wachsenden Conversations ist das unbegrenzte Laden aller Nachrichten ein Skalierungsrisiko."},
+   files:"backend/src/modules/core/chat/conversations.service.ts:18-48, chat.service.ts:46-79",
+   reuse:"Fix-Optionen: Transaktion mit Row-Lock (<code>SELECT ... FOR UPDATE</code>) um Check+Insert, oder <code>INSERT ... ON CONFLICT DO NOTHING</code> + Re-Select statt Check-then-Insert."},
 
-  {name:"Media-Flow",
-   tagline:"Upload → S3-Storage → asynchrone Moderation/Verarbeitung über BullMQ.",
+  {name:"HttpExceptionFilter verschluckt Diagnoseinformationen",
+   tagline:"Jeder unbehandelte 500er landet im Log als eine generische Zeile — kein Stacktrace, keine Fehlerklasse, nirgendwo.",
    how:[
-     "Upload: <code>POST /media/upload/profile-photo</code>, <code>@UseGuards(JwtGuard)</code>, FileInterceptor mit memoryStorage (media.controller.ts:38-58); MIME-Whitelist im fileFilter plus Magic-Byte-Check im Service (media.service.ts:28-47, 62-64); max. 5 MB.",
-     "Speicherung: S3-kompatibler Object Storage über <code>common/storage/object-storage.helper.ts</code> (nicht das lokale /uploads-Verzeichnis — das dient laut main.ts nur alten Seed-Dateien).",
-     "media_uploads-Row wird sofort mit <code>moderation_status=PENDING, needs_review=true</code> angelegt (media-upload.entity.ts:46,58-59); Foto wird sofort auf <code>profiles.photo_id</code> gesetzt — Freigabe passiert NACH, nicht VOR der Anzeige.",
-     "Async-Pipeline über BullMQ: <code>MEDIA_TICKET_QUEUE</code> erzeugt ein Moderations-Ticket, <code>MEDIA_PROCESSING_QUEUE</code> resized/watermarked async — der Processor läuft nur im WorkerModule, nie im API-Prozess.",
-     "Moderation-Gate wird von admin.service.ts gesetzt (approve/reject, Zeilen 187-226).",
-     "⚠️ Auslieferung ist uneinheitlich zwischen Foto- und Audio-Pfad — siehe Phase-A-Fund „Business-Logik doppelt / media_uploads.moderation_status vs. needs_review“."
+     "<code>HttpExceptionFilter.catch()</code> (http-exception.filter.ts:8-38): für alles außer <code>HttpException</code> wird <code>status=500</code> gesetzt und nur <code>message ?? 'Internal server error'</code> geloggt — die eigentliche Exception (Stack, Name, Constraint-Name bei DB-Fehlern) wird nirgends ausgegeben.",
+     "Beide Race-Condition-500er dieser Session mussten daher indirekt rekonstruiert werden (Schema-Constraints + Timing-Analyse der Requests), nicht aus den Logs abgelesen werden.",
+     "In Produktion bedeutet das: jeder unerwartete 500er (nicht nur diese beiden Races) ist aktuell praktisch nicht debugbar aus den Logs allein."
    ],
-   files:"media.controller.ts, media.service.ts, media.processor.ts, media-upload.entity.ts, object-storage.helper.ts, profile.service.ts, matching.service.ts",
-   reuse:"Jeder neue Upload-Flow mit Vorab-Prüfung (z.B. Verifizierungs-Uploads) — Interceptor + Magic-Byte-Check + Queue-getriebene Nachbearbeitung + Moderations-Ticket ist die Vorlage."},
+   files:"backend/src/common/filters/http-exception.filter.ts",
+   reuse:"Fix: bei nicht-HttpException-Fehlern zusätzlich <code>exception.stack</code>/<code>exception.message</code> loggen (z.B. via <code>this.logger.error(exception)</code> vor dem sanitisierten Client-Response)."},
 
-  {name:"Notification-Erzeugung",
-   tagline:"DB-Row zuerst, dann Event — garantiert Persistenz vor Zustellung.",
+  {name:"Bestätigt: Single-Node-Prozess war der Flaschenhals, nicht Postgres",
+   tagline:"DB_POOL_MAX=40 hatte bei 1 Worker durchgehend 2x+ ungenutzten Headroom gegenüber der beobachteten Rate-Grenze — der Node-Event-Loop war der eigentliche Deckel.",
    how:[
-     "Domain-Services rufen NotificationsService-Methoden wie <code>notifyBeefWon()</code>, die intern <code>createNotification()</code> aufrufen (notifications.service.ts:21-57).",
-     "<code>createNotification()</code> blockt Admin-User (Rollen-Check per Raw-Query, Zeilen 67-71), legt die Row an (73-81) und emitted danach <code>notification.created</code> über EventEmitter2 (82) — die Row existiert in der DB BEVOR das Event feuert.",
-     "Zustellung: ChatGateway hört <code>@OnEvent('notification.created')</code> (chat.gateway.ts:96-99) und pusht per <code>emitToUser()</code> an den persönlichen Socket-Room <code>user:{userId}</code>, dem der Client beim Handshake (JWT-Verify, Zeilen 51-89) beitritt.",
-     "Weitere Events demselben Muster folgend: <code>user.banned</code>/<code>user.unbanned</code> (117-122), <code>ticket.new</code> an den <code>admin</code>-Room (127-129), <code>media.pending_review</code> ebenfalls an <code>admin</code> (132-140).",
-     "Pull-Pfad vorhanden: <code>GET /notifications</code>, <code>PATCH /notifications/read-all</code>, <code>PATCH /notifications/:id/read</code>, <code>DELETE /notifications/:id</code>, <code>GET/PUT /notifications/settings</code> — Route-Reihenfolge korrekt (named route vor parametrisch)."
+     "Rechnung: theoretische Pool-Grenze = <code>poolMax / unbelastete_Latenz</code>. Für /discover/matches (35ms) ergibt das ~1140 r/s theoretisch, beobachtet bei 1 Worker aber nur ~500-580 r/s — nur ~46% der Pool-Kapazität ausgenutzt.",
+     "2-Worker-Experiment (Node <code>cluster</code>-Modul, 2 Forks): /discover/matches hielt 100% Erfolg bis mindestens 740 r/s (Test lief in Token-Kontamination, echte Grenze unbekannt) — schon das bestätigte die Hypothese.",
+     "8-Worker-Experiment (gleicher Mechanismus, kompilierter Build statt ts-node — siehe Methodik-Sektion): fast jeder Endpoint sprang von 200-580 r/s auf ≥1000-1950 r/s, ohne dass die DB, Redis oder MinIO sichtbar unter Last gerieten (docker stats blieb durchgehend niedrig).",
+     "Einzige zwei Ausnahmen mit tatsächlich erreichter Grenze: <code>GET /admin/media/pending</code> (Bug, siehe oben) und die beiden Race-Condition-Fälle — beide sind Anwendungslogik-Probleme, keine Infrastruktur-Grenzen."
    ],
-   files:"notifications.service.ts, notifications.controller.ts, chat.gateway.ts",
-   reuse:"Jedes „Server-Event soll User live + als abrufbare Liste erreichen“-Feature — Row-erst-dann-Event garantiert Ordering/Persistenz vor Zustellung."},
+   files:"src/main.ts (kein Cluster-Modus im Produkt), src/config/database.config.ts (poolMax), app.module.ts (ThrottlerModule/TypeOrmModule)",
+   reuse:"Empfehlung: Node <code>cluster</code>-Modul oder PM2 Cluster-Mode für den echten Backend-Prozess in Betracht ziehen, wenn mehr als ~300-500 r/s pro Instanz gebraucht werden — Postgres/Redis/MinIO haben in diesem Setup deutlich mehr Headroom als der App-Prozess."},
 
-  {name:"Auth-Guards an Controllern",
-   tagline:"Kein globaler Auth-Guard — jeder Controller deklariert seinen Guard-Stack explizit; nur ThrottlerGuard ist global.",
+  {name:"Methodik-Hinweise &amp; Grenzen dieser Messung",
+   tagline:"Zwei Bugs im Load-Test-Werkzeug selbst plus eine Host-Kontention-Beobachtung — wichtig für die Einordnung der Zahlen oben.",
    how:[
-     "<b>JwtGuard</b> (jwt.guard.ts:11-46): verifiziert Bearer-Token, Redis-gecachte User-Existenzprüfung, schreibt <code>request.user</code>. Beispiel: <code>@UseGuards(JwtGuard)</code> auf <code>POST /media/upload/profile-photo</code>.",
-     "<b>OptionalJwtGuard</b>: identische Logik, gibt aber bei fehlendem/ungültigem Token trotzdem <code>true</code> zurück. Beispiel: <code>GET /profile/:nickname</code> — öffentliches Profil mit optionalem User-Kontext.",
-     "<b>RolesGuard</b>: liest <code>@Roles()</code> via Reflector, lässt <code>owner</code> implizit <code>admin</code>-Routen passieren. Immer kombiniert: <code>@UseGuards(JwtGuard, RolesGuard)</code> + <code>@Roles('admin')</code>, z.B. moderation.controller.ts.",
-     "<b>OwnerGuard</b>: einfacher Rollen-Check nur für <code>owner</code>. Beispiel: <code>system-settings.controller.ts</code>.",
-     "<b>PremiumGuard</b> + <code>@RequiresPremium()</code>: global von CommonModule bereitgestellt, kombiniert <code>@UseGuards(JwtGuard, PremiumGuard)</code>, prüft aktive Subscription. Beispiel: <code>GET /payment/logs</code>.",
-     "Global gilt nur <code>ThrottlerGuard</code> via <code>APP_GUARD</code> (app.module.ts:123)."
+     "<b>O(n²)-Bug in endpoint-rate.sh (gefixt):</b> die Latenz-Aggregation (p95/Ø via Bubble-Sort) skaliert quadratisch mit der Zeilenzahl. Bei hohem Requestvolumen (&gt;700k Zeilen) hing ein einzelner Report-Schritt &gt;2 Stunden. Auf <code>asort()</code> (gawk) umgestellt — seitdem läuft die Aggregation in Sekunden.",
+     "<b>Token-TTL-Kontamination:</b> JWTs laufen nach 15 Minuten ab; lange Ramps (durch obigen Bug künstlich verlangsamt) liefen darüber hinaus und produzierten massenhaft 401er, die der Aggregator als „success“ zählt (nur 000/5xx gelten als Fehler). Betrifft die ersten drei Cluster-Ergebnisse (discover/deck, discover/matches, coin/balance) — deren „≥N r/s“-Werte sind der letzte NACHWEISLICH saubere Messpunkt vor Kontaminationsbeginn, nicht das Ramp-Ende.",
+     "<b>TOKEN_POOL_SIZE-Default:</b> <code>endpoint-rate.sh</code> regeneriert die User-/Token-Datei automatisch, wenn sie kleiner als 500 Zeilen ist (Standardwert) — hat einen eigens für den Admin-Test angelegten 20-User-Pool überschrieben. Fix: <code>TOKEN_POOL_SIZE=20</code> explizit setzen.",
+     "<b>Host-Kontention:</b> bei Raten über ~1900-2000 r/s wuchs die Ausführungszeit pro Ramp-Step linear mit, und die Load Average des Test-Hosts stieg zeitweise auf 46-126 (16 Kerne) — teils durch den Bash/curl-Fork-Overhead des Test-Tools selbst, teils durch parallel laufende Desktop-Prozesse auf derselben Maschine. Zahlen oberhalb von ~1500-2000 r/s sind daher als „mindestens so viel, unter Störeinfluss“ zu lesen, nicht als präzise Obergrenze.",
+     "<b>Cluster-Setup:</b> 8 Node-Worker über das <code>cluster</code>-Modul, kompilierter Build (<code>dist/main.js</code>) statt <code>ts-node</code> — Piscina's Bcrypt-Worker-Threads (bcrypt-pool.helper.ts) laden <code>execArgv</code>-basiert einen ts-node-Loader, der in einem händisch zusammengesetzten ts-node-Wrapper-Prozess nicht zuverlässig in neue Worker-Threads propagiert; der kompilierte Build umgeht das Problem vollständig."
    ],
-   files:"src/common/guards/*.ts, src/common/decorators/requires-premium.decorator.ts, app.module.ts",
-   reuse:"Jeder neue geschützte Endpoint kombiniert diese Bausteine statt einen neuen Guard zu schreiben. Geprüft: cities/setup/support-Controller ohne Guard sind bewusst öffentlich und anderweitig abgesichert (Rate-Limit, Owner-Existenz-Check) — kein Guard-Gap gefunden."},
+   files:"scripts/loadtest/endpoint-rate.sh, scripts/loadtest/prefetch-tokens.sh, src/common/bcrypt/bcrypt-pool.helper.ts",
+   reuse:"Bei zukünftigen Lasttests: kleinere, dedizierte Token-Pools mit explizitem TOKEN_POOL_SIZE fahren, Ramps kurz genug für die Token-TTL halten (oder TTL für Testzwecke hochsetzen), und bei Raten &gt;1500-2000 r/s einen effizienteren Lastgenerator als bash+curl-per-request in Erwägung ziehen (z.B. autocannon)."},
 ];
 
 function badge(kind, val){
@@ -313,7 +290,7 @@ function renderSummary(){
   const counts = {};
   findings.forEach(f => counts[f.category] = (counts[f.category]||0)+1);
   const grid = document.getElementById('summary-grid');
-  grid.innerHTML = `<div class="summary-card"><div class="num">${findings.length}</div><div class="label">Funde gesamt</div></div>` +
+  grid.innerHTML = `<div class="summary-card"><div class="num">${findings.length}</div><div class="label">Endpoints getestet</div></div>` +
     Object.entries(counts).map(([cat,n]) =>
       `<div class="summary-card"><div class="num">${n}</div><div class="label">${cat}</div></div>`
     ).join('');
@@ -324,7 +301,7 @@ let confFilter = 'alle';
 
 function matchesSearch(f, q){
   if(!q) return true;
-  const hay = (f.category+' '+f.path+' '+f.evidence+' '+f.recommendation+' '+f.risk+' '+f.confidence).toLowerCase();
+  const hay = (f.category+' '+f.path+' '+f.baseline+' '+f.cluster+' '+f.evidence+' '+f.confidence).toLowerCase();
   return hay.includes(q);
 }
 
@@ -355,9 +332,9 @@ function renderTable(){
     <tr>
       <td><span class="cat-tag">${f.category}</span></td>
       <td class="path">${f.path}</td>
+      <td class="evidence">${f.baseline}</td>
+      <td class="evidence">${f.cluster}</td>
       <td class="evidence">${f.evidence}</td>
-      <td>${badge('risk', f.risk)}</td>
-      <td>${f.recommendation}</td>
       <td>${badge('conf', f.confidence)}</td>
     </tr>
   `).join('');
@@ -370,7 +347,7 @@ function renderPatterns(){
       <div class="tagline">${p.tagline}</div>
       <ul>${p.how.map(h => `<li>${h}</li>`).join('')}</ul>
       <div class="kv"><b>Key files:</b> <span class="path">${p.files}</span></div>
-      <div class="kv"><b>Reusable für:</b> ${p.reuse}</div>
+      <div class="kv"><b>Empfehlung:</b> ${p.reuse}</div>
     </div>
   `).join('');
 }
