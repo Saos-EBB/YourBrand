@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -29,7 +29,12 @@ async function bootstrap() {
     transform: true,
   }));
 
-  app.setGlobalPrefix('api/v1');
+  // /health bleibt unprefixed erreichbar (ngrok-Smoketest per curl auf den
+  // Tunnel-Port, ohne den /api/v1-Umweg) — der Railway-Healthcheck unter
+  // /api/v1 (AppController-Root-Route) ist davon unberuehrt.
+  app.setGlobalPrefix('api/v1', {
+    exclude: [{ path: 'health', method: RequestMethod.GET }],
+  });
 
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 

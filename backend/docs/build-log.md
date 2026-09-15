@@ -1,3 +1,18 @@
+## 2026-09-15 — feat(health): unprefixed /health-Endpoint fuer ngrok-Smoketest
+**Was:** Neue `@Get('health')`-Methode auf `AppController`, literal `{ status: 'ok' }` (nicht
+`AppService.getStatus()` — der bleibt unveraendert fuer den bestehenden Railway-Healthcheck unter
+`/api/v1` inkl. dessen `uptime`-Feld). `main.ts`s `setGlobalPrefix('api/v1', { exclude: [...] })`
+nimmt `health` (GET) vom Prefix aus, damit der Pfad direkt unter der ngrok-Tunnel-Root liegt statt
+unter `/api/v1/health`. Grund: der Fedora+ngrok-Demo-Hosting-Pfad (Option A, siehe kommender
+`docs/deployment/demo-hosting.md`) braucht einen simplen, prefix-freien Alive-Check zum Curl-Test,
+unabhaengig vom Railway-Vertrag.
+**Nicht gebaut:** kein `@nestjs/terminus`, kein DB-Check — reiner Prozess-Alive-Check.
+Laufzeit-Verifikation per `curl` nicht gemacht: der lokale Docker-Stack laeuft aktuell nur als
+Loadtest-Variante (`docker-compose.loadtest.yml`, andere Container-Namen/Ports); den
+Haupt-Stack (`docker-compose.yml`) parallel dazu hochzufahren haette Portkonflikte riskiert.
+`tsc --noEmit` lief sauber fuer die geaenderten Dateien (die einzigen zwei verbleibenden Fehler
+sind vorbestehend und liegen in `rps.handler.spec.ts`, unberuehrt von diesem Step).
+
 ## 2026-09-12 — docs: Worker-Prozessrolle in CLAUDE.md + architecture.md nachgetragen
 **Was:** `src/worker.ts`/`src/worker.module.ts` (zweite Prozessrolle, `docker-compose.yml`s
 `worker`-Service, hostet alle BullMQ-`@Processor`) tauchte in `backend/CLAUDE.md`s
