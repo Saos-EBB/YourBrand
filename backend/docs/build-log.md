@@ -1,3 +1,16 @@
+## 2026-09-15 — docs(deployment): Runbook fuer Vercel+ngrok-Demo-Hosting
+**Was:** `docs/deployment/demo-hosting.md` neu — Gegenstueck zu `railway.md` fuer den lokalen
+ngrok-Pfad (Option A). Deckt ab: Env-Var-Tabelle (`CORS_ORIGIN`, `NEXT_PUBLIC_API_URL`,
+`NEXT_PUBLIC_WS_URL`, `BACKEND_INTERNAL_URL`, Kontaktformular-Vars), ngrok-Setup inkl.
+`config add-authtoken` als Nutzer `saosgone` (nicht root — der `.service` laeuft mit
+`User=saosgone`), systemd-Install/Enable-Befehle fuer alle 3 Units aus dem vorigen Step, Vercel-
+Projekt-Setup (Root Directory `frontend`, Standard-Build/Install, kein `vercel.json`),
+Web3Forms/Formspree-Option, und eine Checkliste aller MANUELL-Schritte. Enthaelt auch den Hinweis,
+dass `BACKEND_INTERNAL_URL` auf Vercel die ngrok-URL braucht (sonst zeigt der `/uploads`-Rewrite
+in `next.config.ts` von Vercels Servern aus ins Leere) und den Suspend-nicht-Poweroff-Merker.
+**Nicht gebaut:** kein eigener `vercel.json` (Root-Directory-Dashboard-Einstellung reicht,
+siehe Step 5 im urspruenglichen Plan — kein eigener Commit dafuer, floss direkt in dieses Doc).
+
 ## 2026-09-15 — chore(deploy): systemd-Units fuer Fedora-Autostart + Wake-Timer
 **Was:** `backend/deploy/systemd/` neu: `yourbrand-ngrok.service` (tunnelt Port 3000 auf die
 reservierte ngrok Static Domain, `After=docker.service`, laeuft als `saosgone`),
