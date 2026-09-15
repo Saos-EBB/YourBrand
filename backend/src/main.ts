@@ -6,10 +6,11 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { getCorsOrigins } from './common/config/cors-origins.helper';
 
 async function bootstrap() {
   if (!process.env.CORS_ORIGIN) throw new Error('CORS_ORIGIN env var is not set');
-  const corsOrigin = process.env.CORS_ORIGIN;
+  const corsOrigin = getCorsOrigins('http://localhost:3001');
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
@@ -19,6 +20,10 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigin,
     credentials: true,
+    // ngrok-skip-browser-warning: ngrok Free zeigt sonst eine HTML-Warnseite
+    // vor jedem GET, wenn dieser Header fehlt — bricht sonst jeden Fetch/WS-
+    // Handshake vom Frontend gegen den ngrok-Tunnel.
+    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
   });
 
   app.useGlobalFilters(new HttpExceptionFilter());

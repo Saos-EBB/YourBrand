@@ -17,11 +17,13 @@ import { Conversation } from './entities/conversation.entity';
 import { Message, MessageType } from './entities/message.entity';
 import { Profile } from '../profile/entities/profile.entity';
 import { ProfanityService } from '../moderation/profanity.service';
+import { getCorsOrigins } from '../../../common/config/cors-origins.helper';
 
 @WebSocketGateway({
     cors: {
-        origin: process.env.CORS_ORIGIN ?? 'http://localhost:3001',
+        origin: getCorsOrigins('http://localhost:3001'),
         credentials: true,
+        allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
     },
 })
 export class ChatGateway implements OnGatewayConnection {

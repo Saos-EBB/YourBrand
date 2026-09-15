@@ -1,3 +1,16 @@
+## 2026-09-15 — feat(cors): Multi-Origin-CORS + ngrok-skip-browser-warning
+**Was:** `CORS_ORIGIN` wird jetzt komma-separiert gelesen — neuer Helper
+`common/config/cors-origins.helper.ts` (`getCorsOrigins(fallback)`, splittet/trimmt/filtert),
+verwendet von `main.ts` (REST), `chat.gateway.ts` und `beef.gateway.ts` (beide WebSocket-CORS) —
+alle drei lasen bisher `process.env.CORS_ORIGIN` direkt als Einzelstring. Grund: der
+Fedora+ngrok-Demo-Pfad braucht CORS gleichzeitig fuer `localhost:3001` (lokal), das
+Vercel-Frontend und die Portfolio-Seite. Alle drei CORS-Configs bekamen zusaetzlich
+`allowedHeaders` explizit mit `ngrok-skip-browser-warning` (plus `Content-Type`/`Authorization`,
+per grep die einzigen vom Frontend gesetzten Header) — ngrok Free zeigt sonst eine
+HTML-Warnseite vor jedem GET/WS-Handshake ohne diesen Header.
+**Nicht gebaut:** keine Wildcard-Origin-Option, kein Origin-Callback/Function — eine feste,
+komma-separierte Liste reicht fuer die bekannten drei Domains.
+
 ## 2026-09-15 — feat(health): unprefixed /health-Endpoint fuer ngrok-Smoketest
 **Was:** Neue `@Get('health')`-Methode auf `AppController`, literal `{ status: 'ok' }` (nicht
 `AppService.getStatus()` — der bleibt unveraendert fuer den bestehenden Railway-Healthcheck unter

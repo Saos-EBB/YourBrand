@@ -11,12 +11,14 @@ import { DataSource } from 'typeorm'
 import { AppEvents } from '../../shared/events/app-events'
 import type { BeefGameStateUpdateEvent, BeefGameFinishedEvent, BeefGameGoEvent, BeefGameBoardUpdateEvent } from '../../shared/events/app-events'
 import { BeefGameService } from './beef-game.service'
+import { getCorsOrigins } from '../../../common/config/cors-origins.helper'
 
 @WebSocketGateway({
   namespace: '/hidden-beef',
   cors: {
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3001',
+    origin: getCorsOrigins('http://localhost:3001'),
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
   },
 })
 export class HiddenBeefGateway implements OnGatewayConnection {
