@@ -1,3 +1,19 @@
+## 2026-09-15 — chore(deploy): systemd-Units fuer Fedora-Autostart + Wake-Timer
+**Was:** `backend/deploy/systemd/` neu: `yourbrand-ngrok.service` (tunnelt Port 3000 auf die
+reservierte ngrok Static Domain, `After=docker.service`, laeuft als `saosgone`),
+`wake-stack.sh` (`docker compose up -d` im Repo-Root + `systemctl restart yourbrand-ngrok.service`),
+`yourbrand-wake.service` (Oneshot, ruft `wake-stack.sh`, laeuft als root), `yourbrand-wake.timer`
+(`OnCalendar=*-*-* 06:00:00`, `WakeSystem=true` — weckt aus `systemctl suspend`, kein Poweroff/
+Hibernate). Docker selbst brauchte keine Compose-Aenderung: alle Services in `docker-compose.yml`
+haben bereits `restart: unless-stopped` — nur `systemctl enable docker` fehlt noch (Runbook).
+Keine der Dateien wurde live installiert/enabled — das sind bewusst MANUELL-Schritte im Runbook
+(`docs/deployment/demo-hosting.md`), inkl. `ngrok config add-authtoken`.
+**Nicht gebaut:** kein automatisches Ausschalten/Hibernate (explizit nicht gewuenscht), keine
+Weekday-Einschraenkung im `OnCalendar` (Vorgabe war explizit taeglich `06:00:00` — der Timer feuert
+ohnehin nur, wenn die Maschine tatsaechlich im Suspend war).
+Verifiziert: `systemd-analyze verify` auf allen 3 Units — einzige Meldung ist der erwartungsgemaess
+fehlende `/usr/bin/ngrok` (noch nicht installiert, MANUELL-Schritt).
+
 ## 2026-09-15 — feat(cors): Multi-Origin-CORS + ngrok-skip-browser-warning
 **Was:** `CORS_ORIGIN` wird jetzt komma-separiert gelesen — neuer Helper
 `common/config/cors-origins.helper.ts` (`getCorsOrigins(fallback)`, splittet/trimmt/filtert),

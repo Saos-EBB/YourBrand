@@ -1,0 +1,10 @@
+[Unit]
+Description=Wake YourBrand demo host from suspend at 06:00
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+WakeSystem=true
+Unit=yourbrand-wake.service
+
+[Install]
+WantedBy=timers.target

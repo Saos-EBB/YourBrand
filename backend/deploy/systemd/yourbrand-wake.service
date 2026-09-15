@@ -1,0 +1,8 @@
+[Unit]
+Description=Ensure YourBrand demo stack is up after waking from suspend
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/saosgone/Schreibtisch/YourBrand/backend/deploy/systemd/wake-stack.sh
