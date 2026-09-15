@@ -1,3 +1,20 @@
+## 2026-09-15 — feat(offline): Fullscreen-Fallback wenn Backend nicht erreichbar
+**Was:** `hooks/useBackendHealth.ts` pollt `<Origin von NEXT_PUBLIC_API_URL>/health` alle 30s
+(4s-Timeout via `AbortController`, sendet `NGROK_HEADER`); Status `'checking' | 'healthy' |
+'unhealthy'`. `components/OfflineFallback.tsx` zeigt Text (nie nur Farbe, `role="status"` +
+`aria-label`) + statische Betriebszeiten + Primär-Button "Anfrage senden" (mailto mit
+`NEXT_PUBLIC_CONTACT_EMAIL`, oder ein kleines POST-Formular wenn
+`NEXT_PUBLIC_CONTACT_FORM_ENDPOINT` gesetzt ist) + Link zu `NEXT_PUBLIC_DEMO_VIDEO_URL`.
+`components/BackendHealthGate.tsx` (in `app/layout.tsx` um `{children}` gelegt) rendert den
+Fallback nur bei `'unhealthy'` — der initiale `'checking'`-Zustand rendert die App normal weiter,
+um keinen Flash bei schnellen Verbindungen zu zeigen.
+**Nicht gebaut:** kein i18n fuer den Fallback-Text (App ist ohnehin primaer Deutsch, siehe
+`app/layout.tsx`s Metadata), kein Retry-Button (die 30s-Poll-Schleife deckt das ab).
+Verifikation: `tsc --noEmit` + `eslint` sauber; visuelle Browser-Pruefung (Fallback erscheint bei
+`/health`-Fehlschlag, verschwindet bei Erfolg) **nicht** gemacht — keine Headless-Browser-Tooling
+(Playwright/Puppeteer/Chromium) in dieser Umgebung verfuegbar, `curl` sieht nur den
+serverseitig gerenderten Erstzustand (`'checking'`), nicht das clientseitige Poll-Ergebnis.
+
 ## 2026-09-15 — feat(api): NEXT_PUBLIC_WS_URL + zentraler ngrok-Header
 **Was:** `lib/socket.ts`s `NEXT_PUBLIC_SOCKET_URL` umbenannt zu `NEXT_PUBLIC_WS_URL` (Vorgabe des
 Demo-Hosting-Tasks, `.env` ist gitignored, betrifft nur den lokalen Dev-Wert). Neue Export-Konstante
