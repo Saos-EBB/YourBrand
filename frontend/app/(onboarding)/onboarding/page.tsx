@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Camera, Check, ChevronDown, ChevronLeft, Loader2, Sparkles } from 'lucide-react'
-import { fetchApi } from '@/lib/api'
+import { fetchApi, NGROK_HEADER } from '@/lib/api'
 import { useAuthStore } from '@/lib/store/authStore'
 import { useTranslation } from '@/hooks/useTranslation'
 import { CityAutocomplete } from '@/components/ui/CityAutocomplete'
@@ -534,7 +534,7 @@ function StepDone({
           {
             method: 'POST',
             credentials: 'include',
-            headers: { Authorization: `Bearer ${freshToken}` },
+            headers: { Authorization: `Bearer ${freshToken}`, ...NGROK_HEADER },
             body: fd,
           }
         )

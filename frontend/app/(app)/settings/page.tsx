@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Type, Globe, Bell, Eye, EyeOff, Mail, Check, AlertCircle, Loader2, ChevronDown, Lock, LogOut, Download, CreditCard, Flag, Shield, User,
 } from 'lucide-react'
-import { fetchApi } from '@/lib/api'
+import { fetchApi, NGROK_HEADER } from '@/lib/api'
 import { useAccessibilityStore } from '@/lib/store/accessibilityStore'
 import { useAuthStore } from '@/lib/store/authStore'
 import { useThemeStore } from '@/lib/store/themeStore'
@@ -549,7 +549,7 @@ export default function SettingsPage() {
     try {
       const token = useAuthStore.getState().accessToken
       const res = await fetch(`${API_BASE}/gdpr/export`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, ...NGROK_HEADER },
         credentials: 'include',
       })
       if (!res.ok) {

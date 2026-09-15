@@ -1,4 +1,5 @@
 import leoProfanity from 'leo-profanity'
+import { NGROK_HEADER } from '@/lib/api'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1'
 
@@ -6,7 +7,7 @@ let cachedWords: string[] = []
 
 export async function initProfanityFilter(): Promise<void> {
   try {
-    const res = await fetch(`${BASE_URL}/moderation/wordlist`)
+    const res = await fetch(`${BASE_URL}/moderation/wordlist`, { headers: NGROK_HEADER })
     if (!res.ok) return
     const data = await res.json() as { words: string[] }
     cachedWords = data.words
