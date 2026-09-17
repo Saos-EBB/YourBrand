@@ -1,3 +1,26 @@
+## 2026-09-17 — fix(media): ngrok-Free-Concurrency-Limit + fehlendes SkipThrottle
+**Was:** Nach dem MinIO-Proxy-Fix meldete der User weiterhin fehlende Fotos — aber "vorher
+schon welche gesehen, jetzt nicht mehr". Browser-Konsole zeigte
+`net::ERR_HTTP2_SERVER_REFUSED_STREAM` fuer viele Bild-URLs gleichzeitig. Live geprueft: die
+eigenen curl-Testrequests fuer `/api/v1/media/file/...` erscheinen im lokalen ngrok-Inspector
+(`localhost:4040/api/requests/http`) als `200 OK` — die vom User gemeldeten, abgelehnten
+Requests dagegen NIRGENDS in dieser Historie. Das heisst: sie wurden schon an ngroks
+Cloud-Edge verweigert, bevor sie ueberhaupt beim lokalen Agent ankamen — ein bekanntes
+ngrok-Free-Verhalten bei zu vielen gleichzeitigen Streams auf einem Tunnel. Seiten wie
+Discover/Matches/Beef-Listen laden mehrere Profilfotos gleichzeitig, alle durch denselben
+einzigen Tunnel (Backend + jedes einzelne Bild teilen sich eine Verbindung) — das reisst das
+Limit. Frontend-seitiger Mitigation-Fix (`loading="lazy"` auf allen Profilfoto-`<img>`s) steht
+im `frontend/docs/build-log.md`-Eintrag vom selben Tag.
+Hier zusaetzlich gefunden und gefixt: die neue `/api/v1/media/file/*`-Route hatte kein
+`@SkipThrottle()` (anders als `/health` und die Railway-Root-Route) — jedes geladene Bild
+verbrauchte zusaetzlich vom globalen 100-Requests/60s-Limit pro IP, komplett unabhaengig vom
+ngrok-Limit und rein selbstverschuldet.
+**Nicht gebaut:** kein Cache-Control-Header auf der Proxy-Route (haette Wiederholungsbesuche
+entlastet, aber nicht den ersten Seitenaufruf), kein ngrok-Plan-Upgrade (ausserhalb meiner
+Kontrolle) — das ngrok-Limit selbst bleibt eine echte Plan-Grenze, `loading="lazy"` mildert nur.
+Verifiziert: `tsc --noEmit` sauber. `curl`-Check bestaetigt: keine `x-ratelimit-*`-Header mehr
+auf der Media-Route nach dem SkipThrottle-Fix.
+
 ## 2026-09-17 — fix(media): MinIO war weder getunnelt noch HTTPS — Medien app-weit kaputt
 **Was:** Folge-Fund aus dem Admin-MediaTab-Fix: das war nur ein Symptom, nicht die Ursache.
 `media_uploads.file_url` zeigt (aus `S3_PUBLIC_URL_BASE`) direkt auf MinIO

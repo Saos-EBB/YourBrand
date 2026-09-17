@@ -209,6 +209,7 @@ function SwipeView({
                 <img
                   src={current.file_url}
                   alt={t.admin.mediaAlt.replace('{nickname}', current.nickname ?? current.uploaded_by)}
+                  loading="lazy"
                   className="w-full aspect-square object-contain bg-surface-container"
                   draggable={false}
                 />
@@ -397,6 +398,7 @@ export function MediaTab({ showToast }: Props) {
                 <img
                   src={m.file_url}
                   alt={t.admin.mediaAlt.replace('{nickname}', m.nickname ?? m.uploaded_by)}
+                  loading="lazy"
                   className="w-full aspect-square object-cover"
                 />
               )}

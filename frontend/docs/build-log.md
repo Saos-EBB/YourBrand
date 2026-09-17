@@ -1,3 +1,21 @@
+## 2026-09-17 — fix(media): loading="lazy" gegen ngrok-Free-Concurrency-Refusals
+**Was:** Nach dem Backend-Proxy-Fix (siehe `backend/docs/build-log.md`) meldete der User weiterhin
+fehlende Fotos, Browser-Konsole zeigte `net::ERR_HTTP2_SERVER_REFUSED_STREAM` fuer viele
+Bild-Requests gleichzeitig — bestaetigt als ngrok-Free-Tier-Limit fuer gleichzeitige Streams auf
+einem Tunnel, ausgeloest weil Seiten wie Discover/Matches/Beef-Listen mehrere Profilfotos auf
+einmal laden, alle durch denselben einzigen Tunnel. `loading="lazy"` auf allen ~15 `<img>`-Stellen
+ergaenzt, die echte, ueber's Netzwerk geladene Profilfotos rendern: Discover, Matches (Card +
+Grid), Chat-Liste + Chat-Detail (3 Stellen), Beef-Liste + Beef-Detail (2 Stellen), WinnerScreen,
+GameOverlay, eigenes Profil (2 Seiten), Settings-Blocklist, Admin-MediaTab (Grid + Swipe-View).
+NICHT ergaenzt: `RaygunButton.tsx`s statische Icons, `onboarding/page.tsx`s Foto-Vorschau
+(`URL.createObjectURL`, lokaler Blob, kein Netzwerk-Request) — beide irrelevant fuer das Problem.
+**Nicht gebaut:** keine Pagination/Lazy-Rendering der Listen selbst — reduziert gleichzeitige
+Requests beim initialen Laden, loest aber nicht zwingend jede Seite, die trotzdem viele Fotos auf
+einmal im sichtbaren Bereich zeigt. Das ist eine echte ngrok-Free-Plan-Grenze, kein Code-Bug.
+Verifiziert: `tsc --noEmit` sauber, `eslint`-Delta gegen unberuehrte Kopien der 2 Dateien mit
+zusaetzlichen Treffern (GameOverlay.tsx, WinnerScreen.tsx) zeigt identische, vorbestehende
+Befunde — keine Regression. `npm run build` gruen, 25 Routen.
+
 ## 2026-09-17 — fix(admin): Media-Bilder/Audio im Admin-Tool zeigten nichts
 **Was:** `components/admin/shared/utils.ts`s `toProxyUrl(url)` machte `new URL(url).pathname` —
 warf Protokoll+Host komplett weg. `media_uploads.file_url` ist aber eine volle absolute URL zum

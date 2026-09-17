@@ -265,6 +265,7 @@ export default function LiveBeefPage({ params }: { params: Promise<{ id: string 
             <img
               src={initiatorPhotoUrl.replace('http://localhost:3000', '')}
               alt=""
+              loading="lazy"
               className="h-12 w-12 rounded-full object-cover flex-shrink-0"
             />
           ) : (
@@ -296,6 +297,7 @@ export default function LiveBeefPage({ params }: { params: Promise<{ id: string 
             <img
               src={targetPhotoUrl.replace('http://localhost:3000', '')}
               alt=""
+              loading="lazy"
               className="h-12 w-12 rounded-full object-cover flex-shrink-0"
             />
           ) : (

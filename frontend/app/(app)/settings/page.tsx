@@ -1138,7 +1138,7 @@ export default function SettingsPage() {
                     {/* Avatar */}
                     <div className="flex-shrink-0 h-9 w-9 rounded-full bg-surface-container overflow-hidden flex items-center justify-center">
                       {b.photo_url ? (
-                        <img src={b.photo_url} alt="" className="h-full w-full object-cover" aria-hidden="true" />
+                        <img src={b.photo_url} alt="" loading="lazy" className="h-full w-full object-cover" aria-hidden="true" />
                       ) : (
                         <User className="h-4 w-4 text-outline" aria-hidden="true" />
                       )}

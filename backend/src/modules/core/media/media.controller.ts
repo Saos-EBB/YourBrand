@@ -17,6 +17,7 @@ import {
     HttpException,
 } from '@nestjs/common';
 import type { Request as ExpressRequest, Response } from 'express';
+import { SkipThrottle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
@@ -70,6 +71,10 @@ export class MediaController {
     // ist (Mixed-Content-Block auf der HTTPS-Vercel-Seite). Wildcard-Key per
     // req.path statt @Param — path-to-regexp-Wildcard-Syntax variiert je
     // Express-Version, string-slice ist stabil.
+    // SkipThrottle wie /health und die Railway-Root-Route: eine Seite mit
+    // mehreren Profilfotos verbraucht sonst pro geladenem Bild ein Kontingent
+    // vom globalen 100-Requests/60s-Limit pro IP.
+    @SkipThrottle()
     @Get('file/*')
     async serveFile(@Req() req: ExpressRequest, @Res() res: Response) {
         const marker = '/media/file/';

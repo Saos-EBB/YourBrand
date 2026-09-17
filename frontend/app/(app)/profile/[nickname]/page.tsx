@@ -230,6 +230,7 @@ export default function PublicProfilePage() {
               <img
                 src={photoUrl}
                 alt={t.profile.profilePhoto}
+                loading="lazy"
                 className={`w-full h-full object-cover rounded-3xl${profile.photoNeedsReview ? ' blur-sm ring-2 ring-error' : ''}`}
               />
             ) : (

@@ -608,6 +608,7 @@ export default function BeefPage() {
                               <img
                                 src={u.photo_url.replace('http://localhost:3000', '')}
                                 alt={u.nickname}
+                                loading="lazy"
                                 className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                               />
                             ) : (

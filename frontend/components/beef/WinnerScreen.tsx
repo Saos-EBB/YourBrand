@@ -34,6 +34,7 @@ function Avatar({
       <img
         src={photoUrl.replace('http://localhost:3000', '')}
         alt={nickname}
+        loading="lazy"
         className="h-24 w-24 rounded-full object-cover border-4 border-primary-fixed-dim shadow-lg"
       />
     )

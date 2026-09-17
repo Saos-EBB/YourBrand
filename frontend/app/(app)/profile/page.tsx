@@ -529,6 +529,7 @@ export default function ProfilePage() {
               <img
                 src={displayPhoto}
                 alt={t.profile.profilePhoto}
+                loading="lazy"
                 className={`w-full h-full object-cover rounded-3xl${profile.photoNeedsReview && !pendingPhotoPreview ? ' ring-2 ring-error' : ''}`}
               />
             ) : (

@@ -185,6 +185,7 @@ function SearchProfileCard({
           <img
             src={profile.photo_url.replace('http://localhost:3000', '')}
             alt=""
+            loading="lazy"
             className={`h-full w-full object-cover${profile.photo_needs_review ? ' blur-sm' : ''}`}
           />
         ) : (

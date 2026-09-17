@@ -65,6 +65,7 @@ function Avatar({
       <img
         src={photoUrl.replace('http://localhost:3000', '')}
         alt={nickname}
+        loading="lazy"
         className={`${dim} rounded-full object-cover flex-shrink-0`}
       />
     )

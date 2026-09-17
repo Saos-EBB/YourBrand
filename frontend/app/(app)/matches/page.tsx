@@ -92,6 +92,7 @@ function SwipeCard({ candidate }: { candidate: DeckCandidate }) {
           <img
             src={toProxyUrl(candidate.photo_url)!}
             alt=""
+            loading="lazy"
             className="h-full w-full object-cover"
           />
         ) : (
@@ -384,7 +385,7 @@ function MatchCard({ match }: { match: MatchListItem }) {
       <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-surface-variant">
         {photoSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoSrc} alt={match.nickname} className="w-full h-full object-cover" />
+          <img src={photoSrc} alt={match.nickname} loading="lazy" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Heart className="h-6 w-6 text-on-surface-variant" aria-hidden />

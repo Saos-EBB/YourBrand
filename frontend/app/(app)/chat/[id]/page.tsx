@@ -108,6 +108,7 @@ function MessageBubble({
           <img
             src={avatarUrl.replace('http://localhost:3000', '')}
             alt=""
+            loading="lazy"
             className="flex-shrink-0 h-7 w-7 rounded-full object-cover mb-0.5"
           />
         ) : (
@@ -555,6 +556,7 @@ export default function ConversationPage() {
           <img
             src={partnerPhotoUrl.replace('http://localhost:3000', '')}
             alt=""
+            loading="lazy"
             className="flex-shrink-0 h-9 w-9 rounded-full object-cover"
           />
         ) : (
@@ -693,6 +695,7 @@ export default function ConversationPage() {
               <img
                 src={partnerPhotoUrl.replace('http://localhost:3000', '')}
                 alt=""
+                loading="lazy"
                 className="flex-shrink-0 h-7 w-7 rounded-full object-cover mb-0.5"
               />
             ) : (
