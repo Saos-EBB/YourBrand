@@ -1,3 +1,23 @@
+## 2026-09-17 — fix(admin): Media-Bilder/Audio im Admin-Tool zeigten nichts
+**Was:** `components/admin/shared/utils.ts`s `toProxyUrl(url)` machte `new URL(url).pathname` —
+warf Protokoll+Host komplett weg. `media_uploads.file_url` ist aber eine volle absolute URL zum
+MinIO-Objektspeicher (`http://localhost:9000/yourbrand-media/...`, per DB-Abfrage verifiziert,
+kommt aus `S3_PUBLIC_URL_BASE`). Nach dem Strip blieb nur `/yourbrand-media/...` — eine relative
+URL, die der Browser gegen den EIGENEN Frontend-Origin aufloest (z.B. `:3001/yourbrand-media/...`),
+nicht gegen MinIOs Port 9000. Es gibt dafuer auch kein Rewrite in `next.config.ts` (nur eines fuer
+`/uploads/:path*`, ein anderer, separater Pfad). Ergebnis: jedes Bild/Audio im MediaTab (Grid +
+Swipe-Modus) zeigte nichts, ausser vielleicht rein zufaellig auf einer Maschine, wo Frontend und
+MinIO denselben Port teilen. `toProxyUrl` war nur in `MediaTab.tsx` importiert (verifiziert per
+grep) — komplett entfernt statt nur angepasst, `<img>`/`<audio src>` brauchen fuer eine
+Cross-Origin-URL kein Rewrite (das betrifft nur `fetch()`/CORS, nicht das reine Anzeigen).
+**Nicht gebaut:** `app/(app)/matches/page.tsx` hat eine GLEICHNAMIGE, aber eigenstaendige
+(nicht importierte) `toProxyUrl`-Funktion fuer `photo_url` — separater Code, nicht Teil dieses
+Fixes, nicht geprueft (User-Anfrage war explizit "Admin-Tool").
+Verifiziert: `tsc --noEmit` sauber; `eslint`-Vergleich vor/nach Fix zeigt exakt dieselben
+6 Fehler/2 Warnungen (alle vorbestehend, keine neuen durch diese Aenderung). `curl` gegen die
+echte MinIO-URL aus der DB (`http://localhost:9000/yourbrand-media/profiles/admin1.png`) ->
+200 — die absolute URL ist direkt erreichbar, die relative (vorher) waere es nicht gewesen.
+
 ## 2026-09-17 — feat(auth): /forgot-password Seite gegen den 404 aus login/page.tsx
 **Was:** `login/page.tsx` verlinkt `/forgot-password`, das es als Route nie gab (404 beim
 Prefetch). Backend hat echte, funktionierende Endpoints dafuer

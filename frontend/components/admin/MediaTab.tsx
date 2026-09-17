@@ -9,7 +9,7 @@ import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { ModalOverlay } from './shared/ModalOverlay'
 import { Spinner } from './shared/Spinner'
-import { btnPrimary, btnOutline, inputCls, toProxyUrl, fmtDate } from './shared/utils'
+import { btnPrimary, btnOutline, inputCls, fmtDate } from './shared/utils'
 import type { PendingMedia, MediaFilter } from './shared/types'
 
 // ─── SwipeView ────────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ function SwipeView({
                   {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                   <audio
                     ref={audioRef}
-                    src={toProxyUrl(current.file_url)}
+                    src={current.file_url}
                     onEnded={() => setIsPlaying(false)}
                     className="hidden"
                     preload="metadata"
@@ -207,7 +207,7 @@ function SwipeView({
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={toProxyUrl(current.file_url)}
+                  src={current.file_url}
                   alt={t.admin.mediaAlt.replace('{nickname}', current.nickname ?? current.uploaded_by)}
                   className="w-full aspect-square object-contain bg-surface-container"
                   draggable={false}
@@ -390,12 +390,12 @@ export function MediaTab({ showToast }: Props) {
                 <div className="w-full aspect-square bg-surface-container flex flex-col items-center justify-center gap-2 p-3">
                   <Music className="h-8 w-8 text-on-surface-variant" aria-hidden="true" />
                   {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <audio controls src={toProxyUrl(m.file_url)} className="w-full" />
+                  <audio controls src={m.file_url} className="w-full" />
                 </div>
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                  src={toProxyUrl(m.file_url)}
+                  src={m.file_url}
                   alt={t.admin.mediaAlt.replace('{nickname}', m.nickname ?? m.uploaded_by)}
                   className="w-full aspect-square object-cover"
                 />
