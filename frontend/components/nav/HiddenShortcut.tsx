@@ -43,7 +43,7 @@ export function HiddenLogoButton() {
       className="text-xl font-bold text-on-surface tracking-tight"
       aria-label="Paarship home"
     >
-      YourBrand
+      YourDemo
     </button>
   )
 }

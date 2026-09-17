@@ -1,3 +1,18 @@
+## 2026-09-17 — chore(branding): YourBrand -> YourDemo auf Anzeige-Ebene
+**Was:** `grep -rl "YourBrand"` ueber `app`/`components`/`lib`/`config`/`hooks` lieferte 15 Treffer.
+14 davon sind reine Anzeige-Strings umbenannt: `<title>` (`app/layout.tsx`), Logo/Wortmarke in
+Header/Sidebar (`components/nav/HiddenShortcut.tsx`s `HiddenLogoButton`, tatsaechlich in
+`TopNav.tsx`/`DesktopSidebar.tsx` gerendert), Auth-/Onboarding-Layout-Wortmarken, die B2B-
+Marketingseite (`app/(public)/b2b/page.tsx`) und alle Marketing-/Willkommenstexte in den 9
+Sprachdateien (`lib/i18n/*.ts`) + `config/translations.ts`.
+**Nicht gebaut:** `hooks/useHiddenZone.ts`s `MASTER_KEY = 'YourBrand'` bewusst NICHT umbenannt —
+das ist kein Anzeige-Text, sondern das Passwort, das `HiddenEntryOverlay.tsx` gegen die
+Nutzereingabe prueft (`input === MASTER_KEY`), um die Hidden Zone freizuschalten. Umbenennen
+waere eine Verhaltensaenderung (der bekannte Freischalt-Code wuerde nicht mehr funktionieren),
+keine reine Anzeige-Aenderung — ausserhalb des Auftrags ("nur Anzeige-Ebene").
+Verifiziert: `tsc --noEmit` sauber, kein `yourbrand`-Treffer (case-insensitive) mehr ausser der
+bewusst ausgenommenen `MASTER_KEY`-Zeile.
+
 ## 2026-09-17 — fix(auth): kaputtes Cookie-Gate aus der Middleware entfernt
 **Was:** Login lief backendseitig komplett durch (200, Cookie gesetzt, Logs zeigen Erfolg), aber
 das Frontend blieb nach dem Login auf `/login` stehen — kein Fehler, kein Redirect. Ursache lag

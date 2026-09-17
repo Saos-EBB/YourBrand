@@ -158,7 +158,7 @@ export const en = {
     next: 'Next',
     finish: 'Finish',
     back: 'Back',
-    welcomeTitle: 'Welcome to YourBrand!',
+    welcomeTitle: 'Welcome to YourDemo!',
     welcomeBody: 'Set up your profile so others can find you.',
     start: "Let's go",
     photoSubtitle: '(optional, but recommended)',
@@ -839,13 +839,13 @@ export const en = {
       line1: 'The social platform',
       line2_light: 'for responsible organizations.',
       line2_dark: 'with a hidden side.',
-      sub_light: 'YourBrand is a licensable SaaS solution — GDPR-compliant, accessible, and safe for vulnerable user groups.',
-      sub_dark: 'YourBrand includes a Hidden Zone with Beef battles, Coin economy, and a monetization loop — exclusive for power users.',
+      sub_light: 'YourDemo is a licensable SaaS solution — GDPR-compliant, accessible, and safe for vulnerable user groups.',
+      sub_dark: 'YourDemo includes a Hidden Zone with Beef battles, Coin economy, and a monetization loop — exclusive for power users.',
       cta: 'Request demo',
       video: 'Watch product video',
     },
     features: {
-      label: 'What YourBrand includes',
+      label: 'What YourDemo includes',
     },
     tiers: {
       label: 'License Tiers',
@@ -861,7 +861,7 @@ export const en = {
       heading: 'For decision-makers with a technical background',
     },
     footer: {
-      text: '© 2025 YourBrand · White-Label SaaS for organizations',
+      text: '© 2025 YourDemo · White-Label SaaS for organizations',
     },
   },
 } satisfies Translations

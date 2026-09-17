@@ -359,7 +359,7 @@ export default function B2BPage() {
 
           <div className="flex items-center gap-2">
             <Building2 size={20} className="text-primary-fixed-dim" aria-hidden />
-            <span className="text-lg font-bold tracking-tight text-on-surface">YourBrand</span>
+            <span className="text-lg font-bold tracking-tight text-on-surface">YourDemo</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1" aria-label="B2B navigation">

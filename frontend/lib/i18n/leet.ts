@@ -148,7 +148,7 @@ export const leetspeak = {
     next: 'N3x7',
     finish: 'F1n15h',
     back: 'B4ck',
-    welcomeTitle: 'W31c0m3 70 YourBrand!',
+    welcomeTitle: 'W31c0m3 70 YourDemo!',
     welcomeBody: '537 up y0ur pr0f113 s0 07h3r5 c4n f1nd y0u.',
     start: "137'5 60",
     photoSubtitle: '(0p710n41, bu7 r3c0mm3nd3d)',

@@ -158,7 +158,7 @@ export const deEasy = {
     next: 'Weiter',
     finish: 'Fertig machen',
     back: 'Zurück',
-    welcomeTitle: 'Willkommen bei YourBrand!',
+    welcomeTitle: 'Willkommen bei YourDemo!',
     welcomeBody: 'Mach dein Profil fertig. Dann können andere dich finden.',
     start: 'Los geht es',
     photoSubtitle: '(Das ist freiwillig, aber gut)',
@@ -829,11 +829,11 @@ export const deEasy = {
 
   b2b: {
     nav: { features: 'Features', licensing: 'Lizenzmodelle', contact: 'Kontakt', cta: 'Demo anfragen' },
-    hero: { badge: 'White-Label SaaS · Ihre Plattform.', line1: 'Die soziale Plattform', line2_light: 'für verantwortungsvolle Organisationen.', line2_dark: 'mit einer versteckten Seite.', sub_light: 'YourBrand ist eine lizenzierbare SaaS-Lösung — DSGVO-konform, barrierefrei und sicher für vulnerable Nutzergruppen.', sub_dark: 'YourBrand enthält eine Hidden Zone mit Beef-Battles, Coin-Economy und Monetarisierungs-Loop.', cta: 'Demo anfragen', video: 'Produkt-Video ansehen' },
-    features: { label: 'Was YourBrand mitbringt' },
+    hero: { badge: 'White-Label SaaS · Ihre Plattform.', line1: 'Die soziale Plattform', line2_light: 'für verantwortungsvolle Organisationen.', line2_dark: 'mit einer versteckten Seite.', sub_light: 'YourDemo ist eine lizenzierbare SaaS-Lösung — DSGVO-konform, barrierefrei und sicher für vulnerable Nutzergruppen.', sub_dark: 'YourDemo enthält eine Hidden Zone mit Beef-Battles, Coin-Economy und Monetarisierungs-Loop.', cta: 'Demo anfragen', video: 'Produkt-Video ansehen' },
+    features: { label: 'Was YourDemo mitbringt' },
     tiers: { label: 'Lizenzmodelle', popular: 'Beliebt', cta: 'Angebot anfragen' },
     contact: { heading: 'Kontakt aufnehmen', sub: 'Für Demos, Angebote und technische Fragen stehen wir jederzeit zur Verfügung.' },
     tech: { toggle: 'Technische Details', heading: 'Für Entscheider mit technischem Hintergrund' },
-    footer: { text: '© 2025 YourBrand · White-Label SaaS für Organisationen' },
+    footer: { text: '© 2025 YourDemo · White-Label SaaS für Organisationen' },
   },
 } satisfies Translations

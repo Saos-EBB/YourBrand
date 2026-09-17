@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               className="text-3xl font-bold text-on-surface tracking-tight"
               aria-label="XXX home"
             >
-              YourBrand
+              YourDemo
             </Link>
           </div>
           {children}

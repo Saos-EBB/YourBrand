@@ -37,7 +37,7 @@ const de = {
     skip:               'Überspringen',
     next:               'Weiter',
     finish:             'Abschließen',
-    welcomeTitle:       'Willkommen bei YourBrand!',
+    welcomeTitle:       'Willkommen bei YourDemo!',
     welcomeBody:        'Richte dein Profil ein damit andere dich finden können.',
     start:              "Los geht's",
     photoSubtitle:      '(optional, aber empfohlen)',

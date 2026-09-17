@@ -158,7 +158,7 @@ export const ru = {
     next: 'Далее',
     finish: 'Завершить',
     back: 'Назад',
-    welcomeTitle: 'Добро пожаловать в YourBrand!',
+    welcomeTitle: 'Добро пожаловать в YourDemo!',
     welcomeBody: 'Настройте свой профиль, чтобы другие могли вас найти.',
     start: 'Поехали',
     photoSubtitle: '(необязательно, но рекомендуется)',
@@ -830,11 +830,11 @@ export const ru = {
 
   b2b: {
     nav: { features: 'Features', licensing: 'Licensing', contact: 'Contact', cta: 'Request demo' },
-    hero: { badge: 'White-Label SaaS · Your Platform.', line1: 'The social platform', line2_light: 'for responsible organizations.', line2_dark: 'with a hidden side.', sub_light: 'YourBrand is a licensable SaaS solution — GDPR-compliant, accessible, and safe for vulnerable user groups.', sub_dark: 'YourBrand includes a Hidden Zone with Beef battles, Coin economy, and a monetization loop — exclusive for power users.', cta: 'Request demo', video: 'Watch product video' },
-    features: { label: 'What YourBrand includes' },
+    hero: { badge: 'White-Label SaaS · Your Platform.', line1: 'The social platform', line2_light: 'for responsible organizations.', line2_dark: 'with a hidden side.', sub_light: 'YourDemo is a licensable SaaS solution — GDPR-compliant, accessible, and safe for vulnerable user groups.', sub_dark: 'YourDemo includes a Hidden Zone with Beef battles, Coin economy, and a monetization loop — exclusive for power users.', cta: 'Request demo', video: 'Watch product video' },
+    features: { label: 'What YourDemo includes' },
     tiers: { label: 'License Tiers', popular: 'Most popular', cta: 'Request a quote' },
     contact: { heading: 'Get in touch', sub: 'Available for demos, quotes, and technical inquiries — anytime.' },
     tech: { toggle: 'Technical Details', heading: 'For decision-makers with a technical background' },
-    footer: { text: '© 2025 YourBrand · White-Label SaaS for organizations' },
+    footer: { text: '© 2025 YourDemo · White-Label SaaS for organizations' },
   },
 } satisfies Translations
