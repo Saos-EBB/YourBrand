@@ -1,3 +1,20 @@
+## 2026-09-17 — feat(demo): fixierter Demo-Banner auf allen Seiten
+**Was:** `components/DemoBanner.tsx`, in `app/layout.tsx` ganz oben (vor `ThemeInitializer`,
+ausserhalb von `BackendHealthGate` — soll auch sichtbar bleiben, wenn das Backend offline ist)
+eingehaengt, damit er wirklich auf jeder Seite steht, eingeloggt wie ausgeloggt.
+`position: sticky top-0` (nicht `fixed`) — bleibt oben, ohne dass andere fixierte Elemente
+(TopNav/DesktopSidebar) manuell um seine Hoehe verschoben werden muessten. Wegklick-Zustand in
+`localStorage` (Key `xxx-demo-banner-dismissed`), Lesen/Schreiben je in try/catch — schlaegt das
+fehl (privater Modus etc.), zeigt der Banner beim naechsten Aufruf einfach wieder, kein Crash.
+Status als Text + `role="status"` + `aria-label`, nicht nur Farbe (Icon ist rein dekorativ,
+`aria-hidden`). Link auf `/datenschutz`.
+**Nicht gebaut:** kein neuer Zustand-Store fuer den Dismiss-Flag — lokaler `useState` reicht fuer
+einen einzelnen Boolean. Dafuer ein inline `eslint-disable-next-line react-hooks/set-state-in-effect`
+(gleiches Muster wie `useBootstrap.ts`s `exhaustive-deps`-Disable) — der Mount-Read aus
+`localStorage` MUSS in einem Effect passieren, sonst kein Hydration-Match zwischen Server- und
+Client-Render moeglich.
+Verifiziert: `tsc --noEmit` + `eslint` beide sauber.
+
 ## 2026-09-17 — chore(branding): YourBrand -> YourDemo auf Anzeige-Ebene
 **Was:** `grep -rl "YourBrand"` ueber `app`/`components`/`lib`/`config`/`hooks` lieferte 15 Treffer.
 14 davon sind reine Anzeige-Strings umbenannt: `<title>` (`app/layout.tsx`), Logo/Wortmarke in
