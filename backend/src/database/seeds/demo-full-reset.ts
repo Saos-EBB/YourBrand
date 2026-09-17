@@ -26,6 +26,15 @@
  * bleiben unberuehrt. Die YAML-eigenen "id"-Felder (z.B. "admin1") sind KEINE
  * DB-UUIDs — nur interne Referenz-Slugs innerhalb der Seed-Skripte. Die
  * echte Identitaet ist der Nickname (demo-seed.ts prueft Idempotenz darueber).
+ *
+ * Danach: repariert zusaetzlich file_url auf allen (auch kuratierten)
+ * media_uploads-Zeilen, die noch nicht mit dem aktuellen S3_PUBLIC_URL_BASE
+ * anfangen. demo-seed.ts ist idempotent und ueberspringt schon vorhandene
+ * Nicknames komplett — es schreibt file_url also nie neu, egal wie oft der
+ * Container neu startet. Aendert sich S3_PUBLIC_URL_BASE (z.B. neue
+ * ngrok-Domain, oder Umstellung auf den Media-Proxy statt direkter
+ * MinIO-URL), blieben die 45 kuratierten Fotos/Audios sonst dauerhaft auf der
+ * alten, moeglicherweise unerreichbaren URL stehen.
  */
 
 import 'dotenv/config';
@@ -71,47 +80,75 @@ async function main() {
 
     if (ids.length === 0) {
         console.log('demo-full-reset: nichts zu tun, nur kuratierte User vorhanden');
-        await ds.destroy();
-        return;
-    }
+    } else {
+        const mediaRows: { file_url: string }[] = await ds.query(
+            `SELECT file_url FROM media_uploads WHERE uploaded_by = ANY($1::uuid[])`,
+            [ids],
+        );
 
-    const mediaRows: { file_url: string }[] = await ds.query(
-        `SELECT file_url FROM media_uploads WHERE uploaded_by = ANY($1::uuid[])`,
-        [ids],
-    );
+        // RESTRICT-Tabellen vorher leeren (Reihenfolge wegen
+        // payment_logs_subscription_id_fkey RESTRICT auf subscriptions).
+        await ds.query(`DELETE FROM consent_logs WHERE user_id = ANY($1::uuid[])`, [ids]);
+        await ds.query(`DELETE FROM payment_logs WHERE user_id = ANY($1::uuid[])`, [ids]);
+        await ds.query(`DELETE FROM subscriptions WHERE user_id = ANY($1::uuid[])`, [ids]);
+        await ds.query(`DELETE FROM organizations WHERE owner_user_id = ANY($1::uuid[])`, [ids]);
+        await ds.query(`DELETE FROM strikes WHERE issued_by = ANY($1::uuid[])`, [ids]);
 
-    // RESTRICT-Tabellen vorher leeren (Reihenfolge wegen
-    // payment_logs_subscription_id_fkey RESTRICT auf subscriptions).
-    await ds.query(`DELETE FROM consent_logs WHERE user_id = ANY($1::uuid[])`, [ids]);
-    await ds.query(`DELETE FROM payment_logs WHERE user_id = ANY($1::uuid[])`, [ids]);
-    await ds.query(`DELETE FROM subscriptions WHERE user_id = ANY($1::uuid[])`, [ids]);
-    await ds.query(`DELETE FROM organizations WHERE owner_user_id = ANY($1::uuid[])`, [ids]);
-    await ds.query(`DELETE FROM strikes WHERE issued_by = ANY($1::uuid[])`, [ids]);
+        const [deletedUsers] = await ds.query(
+            `DELETE FROM users WHERE id = ANY($1::uuid[]) RETURNING id`,
+            [ids],
+        );
 
-    const [deletedUsers] = await ds.query(
-        `DELETE FROM users WHERE id = ANY($1::uuid[]) RETURNING id`,
-        [ids],
-    );
-
-    let deletedObjects = 0;
-    for (const { file_url } of mediaRows) {
-        const key = keyFromPublicUrl(file_url);
-        if (!key) continue;
-        try {
-            await deleteObject(key);
-            deletedObjects++;
-        } catch (err) {
-            console.error(`demo-full-reset: Objekt ${key} nicht loeschbar:`, (err as Error).message);
+        let deletedObjects = 0;
+        for (const { file_url } of mediaRows) {
+            const key = keyFromPublicUrl(file_url);
+            if (!key) continue;
+            try {
+                await deleteObject(key);
+                deletedObjects++;
+            } catch (err) {
+                console.error(`demo-full-reset: Objekt ${key} nicht loeschbar:`, (err as Error).message);
+            }
         }
+
+        console.log(
+            `demo-full-reset: ${deletedUsers.length} nicht-kuratierte User geloescht ` +
+            `(Profile/Nachrichten/Matches/Beefs/etc. kaskadierten mit), ` +
+            `${deletedObjects}/${mediaRows.length} Objekte im Object Storage geloescht`,
+        );
     }
 
-    console.log(
-        `demo-full-reset: ${deletedUsers.length} nicht-kuratierte User geloescht ` +
-        `(Profile/Nachrichten/Matches/Beefs/etc. kaskadierten mit), ` +
-        `${deletedObjects}/${mediaRows.length} Objekte im Object Storage geloescht`,
+    await repairStaleMediaUrls();
+    await ds.destroy();
+}
+
+// demo-seed.ts schreibt file_url nur beim erstmaligen Anlegen — bereits
+// vorhandene (kuratierte) User bekommen es nie neu, egal wie oft der
+// Container startet. Holt jede Zeile, die nicht mit der aktuellen
+// S3_PUBLIC_URL_BASE anfaengt, wieder auf den aktuellen Stand, indem der
+// Storage-Key (immer "profiles/<file>" oder "audio/<file>", siehe
+// media.service.ts/demo-seed.ts) aus der alten URL herausgeschnitten und mit
+// der neuen Basis neu zusammengesetzt wird.
+async function repairStaleMediaUrls() {
+    const base = (process.env.S3_PUBLIC_URL_BASE ?? '').replace(/\/$/, '');
+    if (!base) return;
+
+    const stale: { id: string; file_url: string }[] = await ds.query(
+        `SELECT id, file_url FROM media_uploads WHERE file_url NOT LIKE $1`,
+        [`${base}/%`],
     );
 
-    await ds.destroy();
+    let fixed = 0;
+    for (const row of stale) {
+        const match = row.file_url.match(/(profiles|audio)\/[^/]+$/);
+        if (!match) continue;
+        await ds.query(`UPDATE media_uploads SET file_url = $1 WHERE id = $2`, [`${base}/${match[0]}`, row.id]);
+        fixed++;
+    }
+
+    if (fixed > 0 || stale.length > 0) {
+        console.log(`demo-full-reset: ${fixed}/${stale.length} veraltete media_uploads.file_url auf die aktuelle S3_PUBLIC_URL_BASE aktualisiert`);
+    }
 }
 
 main().catch((err) => {

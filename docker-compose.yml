@@ -115,7 +115,7 @@ services:
       S3_ACCESS_KEY_ID:     ${MINIO_ROOT_USER}
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET:   yourbrand-media
-      S3_PUBLIC_URL_BASE: http://localhost:9000/yourbrand-media
+      S3_PUBLIC_URL_BASE: ${BACKEND_URL:-http://localhost:3000}/api/v1/media/file
       JWT_SECRET:  ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
       DEMO_MEDIA_PATH: /app
@@ -160,7 +160,7 @@ services:
       S3_ACCESS_KEY_ID:     ${MINIO_ROOT_USER}
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET:   yourbrand-media
-      S3_PUBLIC_URL_BASE: http://localhost:9000/yourbrand-media
+      S3_PUBLIC_URL_BASE: ${BACKEND_URL:-http://localhost:3000}/api/v1/media/file
     depends_on:
       XXX_db:
         condition: service_healthy

@@ -64,3 +64,21 @@ export function keyFromPublicUrl(fileUrl: string): string | null {
     const base = getPublicUrlBase() + '/';
     return fileUrl.startsWith(base) ? fileUrl.slice(base.length) : null;
 }
+
+const MIME_BY_EXT: Record<string, string> = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.mp3': 'audio/mpeg',
+    '.ogg': 'audio/ogg',
+    '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4',
+    '.webm': 'audio/webm',
+};
+
+/** Guesses a Content-Type from a storage key's extension (matches demo-seed.ts's map). */
+export function guessContentType(key: string): string {
+    const ext = key.slice(key.lastIndexOf('.')).toLowerCase();
+    return MIME_BY_EXT[ext] ?? 'application/octet-stream';
+}

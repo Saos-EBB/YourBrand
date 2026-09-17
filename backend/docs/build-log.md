@@ -1,3 +1,46 @@
+## 2026-09-17 — fix(media): MinIO war weder getunnelt noch HTTPS — Medien app-weit kaputt
+**Was:** Folge-Fund aus dem Admin-MediaTab-Fix: das war nur ein Symptom, nicht die Ursache.
+`media_uploads.file_url` zeigt (aus `S3_PUBLIC_URL_BASE`) direkt auf MinIO
+(`http://localhost:9000/...`). Live geprueft: `curl http://localhost:4040/api/tunnels` zeigt
+GENAU EINEN ngrok-Tunnel, auf Port 3000 (Backend) — Port 9000 (MinIO) ist nie getunnelt, also
+von jedem echten Besucher der Vercel-Seite aus unerreichbar. Zusaetzlich reines HTTP: selbst
+waere MinIO erreichbar, blockt der Browser das Laden von `http://`-Bildern auf einer
+HTTPS-Seite (Mixed Content) — betraf nicht nur Admin, sondern JEDES Profilfoto/Audio in der
+ganzen App.
+Fix: neue oeffentliche (kein Guard) Proxy-Route `GET /api/v1/media/file/*` in
+`media.controller.ts`, nutzt das schon vorhandene `downloadObject()` aus
+`object-storage.helper.ts` und liefert die Bytes ueber den bereits getunnelten,
+HTTPS-Backend-Origin aus. Content-Type per neuer `guessContentType()`-Funktion (Endungs-Map,
+identisch zu `demo-seed.ts`s `MIME_BY_EXT` — kein neues `mime`-Package). `S3_PUBLIC_URL_BASE`
+zeigt jetzt auf diese Route statt direkt auf MinIO — in `docker-compose.yml` ueber
+`${BACKEND_URL:-http://localhost:3000}/api/v1/media/file` (repariert `BACKEND_URL` gleich mit:
+war in `.env.example` schon dokumentiert als "used in media file_url storage", aber nirgends im
+Code referenziert — toter Env-Var-Kommentar seit der MinIO-Migration). `BACKEND_URL` in der
+Root-`.env` (Docker-Compose-Substitution, getrennt von `backend/.env`) auf die ngrok-Domain
+gesetzt.
+Zweites, eigenstaendiges Problem gefunden und mitgefixt: `demo-seed.ts` ist idempotent und
+schreibt `file_url` nur beim erstmaligen Anlegen — die 45 kuratierten Demo-User haetten ihre
+alte, MinIO-direkte URL fuer immer behalten, unabhaengig von Neustarts. `demo-full-reset.ts`
+(laeuft eh bei jedem Start) reicht darum jetzt zusaetzlich `repairStaleMediaUrls()`: sucht alle
+`media_uploads`-Zeilen, deren `file_url` nicht mit der aktuellen `S3_PUBLIC_URL_BASE` beginnt,
+extrahiert den Storage-Key (`profiles/...`/`audio/...`) per Regex aus der alten URL und schreibt
+die Zeile auf die neue Basis um. Selbstheilend fuer jede zukuenftige Domain-/Schema-Aenderung,
+nicht nur diesen einen Fix.
+**Nicht gebaut:** kein zweiter ngrok-Tunnel (User-Entscheidung: Proxy-Route statt Multi-Tunnel,
+letzteres braucht ngrok Paid fuer mehrere gleichzeitige Endpoints). Die 199 `seed_filler`-Zeilen
+aus `seed-media.ts` (Fake-URLs `https://seed.local/...`, siehe deren eigener Kommentar "kein
+echtes File auf Disk") bleiben bewusst unrepariert — 64/199 reparierte Zeilen waren die echten
+kuratierten Uploads, der Rest hat kein reales Gegenstueck in MinIO, Reparieren wuerde nichts
+sichtbar machen.
+Verifiziert: `tsc --noEmit` sauber. `eslint` auf den 3 geaenderten Dateien zeigt viele
+`prettier`-Treffer — per Vergleich gegen eine komplett unberuehrte Nachbardatei
+(`seed-media.ts`, 80 identische Treffer) bestaetigt: repo-weite, vorbestehende Indentation-
+Abweichung im ganzen `seeds/`-Ordner (4 statt 2 Leerzeichen), keine Regression durch diese
+Aenderung — nicht mitgefixt, haette sonst einen unrelated riesigen Reformat-Diff erzeugt.
+Live end-to-end verifiziert: `docker compose up -d nestjs worker` (Env-Aenderung, `docker
+restart` allein haette die neue `S3_PUBLIC_URL_BASE` nicht uebernommen), danach `curl` auf die
+echte ngrok-URL fuer `admin1`s echtes Foto -> 200, `image/png`, gueltige PNG-Bytes.
+
 ## 2026-09-17 — feat(demo): echter Full-Reset auf kuratierten Zustand bei jedem Neustart
 **Was:** Geprueft, was `SEED_RESET=true` tatsaechlich macht (in seed-extra-users/-media/
 -coin-transactions/-subscriptions-payments): loescht NUR die eigenen `seed_user_%`/
