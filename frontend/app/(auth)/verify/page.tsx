@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
@@ -8,7 +8,24 @@ import { fetchApi } from '@/lib/api'
 
 type Status = 'loading' | 'success' | 'error'
 
-export default function VerifyPage() {
+function VerifyingFallback() {
+  return (
+    <div className="text-center space-y-4" aria-live="polite" aria-busy="true">
+      <Loader2
+        className="h-12 w-12 text-primary-fixed-dim animate-spin mx-auto"
+        aria-hidden="true"
+      />
+      <p className="text-on-surface font-semibold">E-Mail wird bestätigt…</p>
+    </div>
+  )
+}
+
+// useSearchParams() zwingt die ganze Seite in einen Client-Side-Bailout beim
+// Prerendern, wenn es nicht in <Suspense> steckt (siehe
+// https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout) — der
+// gesamte Seiteninhalt haengt hier vom Token ab, daher wandert er komplett in
+// diese Komponente statt nur ein Teilstueck auszulagern.
+function VerifyContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const [status, setStatus] = useState<Status>('loading')
@@ -26,15 +43,7 @@ export default function VerifyPage() {
   }, [token])
 
   if (status === 'loading') {
-    return (
-      <div className="text-center space-y-4" aria-live="polite" aria-busy="true">
-        <Loader2
-          className="h-12 w-12 text-primary-fixed-dim animate-spin mx-auto"
-          aria-hidden="true"
-        />
-        <p className="text-on-surface font-semibold">E-Mail wird bestätigt…</p>
-      </div>
-    )
+    return <VerifyingFallback />
   }
 
   if (status === 'success') {
@@ -83,5 +92,13 @@ export default function VerifyPage() {
         Zurück zum Login
       </Link>
     </div>
+  )
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={<VerifyingFallback />}>
+      <VerifyContent />
+    </Suspense>
   )
 }

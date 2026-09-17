@@ -1,3 +1,18 @@
+## 2026-09-17 — fix(verify): useSearchParams in Suspense-Boundary gewrappt
+**Was:** Gleiche Ursache wie beim `/login`-Fix eben (siehe Eintrag darunter), zweiter von genau
+zwei Fundstellen (`grep -rln useSearchParams` ueber `app`/`components`/`hooks`/`lib` lieferte nur
+diese beiden). Bei `/verify` haengt der komplette Seiteninhalt vom `token`-Query-Param ab, daher
+wanderte hier die ganze bisherige `VerifyPage`-Logik unveraendert in eine neue `VerifyContent`-
+Komponente; `VerifyPage` selbst ist jetzt nur noch `<Suspense fallback={<VerifyingFallback
+/>}><VerifyContent /></Suspense>`. Der Fallback ist derselbe Loader2-Spinner-Block, den
+`VerifyContent` intern sowieso schon fuer den `status === 'loading'`-Fall zeigt — eine Komponente,
+zwei Verwendungen, kein neuer Baustein.
+**Nicht gebaut:** ein vorbestehender, unabhaengiger ESLint-Fehler (`react-hooks/set-state-in-effect`
+auf dem `setStatus('error')` im `!token`-Zweig) blieb unangetastet — schon vor diesem Fix da,
+nicht Teil dieser Aufgabe (verifiziert per Diff gegen den Stand vor der Aenderung).
+Verifiziert: `npm run build` laeuft komplett durch, `/verify` erscheint in der Route-Tabelle als
+`○` (static prerendered), 0 Prerender-Fehler ueber alle 24 Routen.
+
 ## 2026-09-17 — fix(login): useSearchParams in Suspense-Boundary gewrappt
 **Was:** `npm run build` brach beim Prerendern von `/login` ab (`useSearchParams() should be
 wrapped in a suspense boundary`, siehe
