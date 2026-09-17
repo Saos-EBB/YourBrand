@@ -33,6 +33,10 @@ export class MatchingService {
         private readonly dataSource: DataSource,
     ) {}
 
+    // Deck-Groesse bewusst klein (6, nicht 20): das Discover-Grid rendert alle
+    // Kandidaten gleichzeitig, jeder mit eigenem Foto-Request durch den
+    // ngrok-Tunnel. Live gemessen (30 gleichzeitige Requests -> nur 9 von 30
+    // kamen durch), das Free-Tier vertraegt keine 15-20 Bilder auf einmal.
     async buildDeck(viewerUserId: string): Promise<DeckCandidate[]> {
         // Fetch viewer's location and search radius in a single query.
         // location is select:false in the entity, so we use raw SQL.
@@ -130,7 +134,7 @@ export class MatchingService {
             FROM candidates c
             LEFT JOIN interest_scores iss ON iss.user_id = c.user_id
             ORDER BY match_score DESC
-            LIMIT 20
+            LIMIT 6
             `,
             [viewerUserId, radiusMeters],
         );
@@ -235,7 +239,7 @@ export class MatchingService {
             FROM candidates c
             LEFT JOIN interest_scores iss ON iss.user_id = c.user_id
             ORDER BY match_score DESC
-            LIMIT 20
+            LIMIT 6
             `,
             [viewerUserId],
         );

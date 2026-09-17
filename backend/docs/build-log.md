@@ -1,3 +1,16 @@
+## 2026-09-17 — fix(discover): Deck-Groesse 20 -> 6 gegen ngrok-Refusals
+**Was:** Live-Messung gegen den echten Tunnel (30 gleichzeitige Requests auf dieselbe
+Media-Datei): nur 9/30 kamen durch, 21 scheiterten (`000`, verbindungslos). `loading="lazy"`
+(voriger Fix) reicht nicht, weil `discover/page.tsx` ein Grid ist, das alle Kandidaten
+gleichzeitig rendert (`grid-cols-2 sm:grid-cols-3`), nicht ein Ein-Karte-nach-der-anderen-Stapel
+— auf normalen Bildschirmen sind da 6-15 Karten sofort im sichtbaren Bereich. `buildDeck()` /
+`buildDeckWithoutLocation()` in `matching.service.ts` hatten beide `LIMIT 20` — auf User-Vorgabe
+("nur 6 laden") auf `LIMIT 6` reduziert.
+**Nicht gebaut:** kein konfigurierbarer Wert (Env-Var/System-Setting) fuer die Deck-Groesse —
+User hat explizit "6" vorgegeben, kein "mach es einstellbar" verlangt.
+Verifiziert: `tsc --noEmit` sauber. Live per echtem Login + `GET /discover/deck` bestaetigt:
+`deck size: 6`.
+
 ## 2026-09-17 — fix(media): ngrok-Free-Concurrency-Limit + fehlendes SkipThrottle
 **Was:** Nach dem MinIO-Proxy-Fix meldete der User weiterhin fehlende Fotos — aber "vorher
 schon welche gesehen, jetzt nicht mehr". Browser-Konsole zeigte
