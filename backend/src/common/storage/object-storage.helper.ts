@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 let client: S3Client | undefined;
 
@@ -49,4 +49,18 @@ export async function downloadObject(key: string): Promise<Buffer> {
     }));
     const bytes = await response.Body!.transformToByteArray();
     return Buffer.from(bytes);
+}
+
+/** Deletes the object at `key`. */
+export async function deleteObject(key: string): Promise<void> {
+    await getClient().send(new DeleteObjectCommand({
+        Bucket: getBucket(),
+        Key: key,
+    }));
+}
+
+/** Strips getPublicUrlBase() off a stored file_url to recover the S3 key. */
+export function keyFromPublicUrl(fileUrl: string): string | null {
+    const base = getPublicUrlBase() + '/';
+    return fileUrl.startsWith(base) ? fileUrl.slice(base.length) : null;
 }

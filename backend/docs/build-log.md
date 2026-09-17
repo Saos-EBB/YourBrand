@@ -1,3 +1,36 @@
+## 2026-09-17 — feat(demo): echter Full-Reset auf kuratierten Zustand bei jedem Neustart
+**Was:** Geprueft, was `SEED_RESET=true` tatsaechlich macht (in seed-extra-users/-media/
+-coin-transactions/-subscriptions-payments): loescht NUR die eigenen `seed_user_%`/
+`seed_filler`/`seed:%`-Zeilen dieser Skripte — nie echte `/register`-Accounts, deren
+Media/Nachrichten/Consent-Logs. Die Postgres-Daten liegen zusaetzlich in einem persistenten
+Docker-Volume (`XXX_pgdata`), das ein normaler Neustart gar nicht antastet. Fuer eine
+oeffentliche Demo mit offener Registrierung ("Full-Reset bei jedem Neustart" als Aussage im
+Banner/Datenschutz) reicht das nicht — User-Entscheidung: echten Full-Wipe bauen statt nur den
+Text zu relativieren.
+Neu: `demo-full-reset.ts`, laeuft immer (nicht SEED_RESET-gesteuert) als allererster Schritt in
+`docker-entrypoint.sh`. Loescht jeden User, dessen Profil-Nickname nicht in `demo-users.yaml`
+steht (45 kuratierte User bleiben, identifiziert ueber Nickname — die YAML-eigenen `id`-Felder
+wie "admin1" sind keine DB-UUIDs, nur interne Referenz-Slugs). FK-`ON DELETE CASCADE` raeumt
+Profile/Media/Nachrichten/Matches/Beefs/Coins etc. automatisch mit; 5 `RESTRICT`-Tabellen
+(`consent_logs`, `payment_logs`, `subscriptions`, `organizations.owner_user_id`,
+`strikes.issued_by`) werden vorher explizit geleert. Object-Storage-Dateien der geloeschten
+User werden zusaetzlich per neuer `deleteObject()`/`keyFromPublicUrl()`-Funktion in
+`object-storage.helper.ts` entfernt (kein neues Package — nur `DeleteObjectCommand` aus dem
+schon vorhandenen `@aws-sdk/client-s3`). `docker-compose.yml`: `SEED_RESET`-Default auf `true`
+(betrifft nur noch die vier bestehenden Skripte, die dadurch nach dem Full-Reset ohnehin nichts
+mehr zum Loeschen vorfinden — redundant, aber harmlos und macht die Env-Var-Doku konsistent).
+**Nicht gebaut:** kein zusaetzliches Gate/Env-Var fuer den neuen Full-Reset (laeuft immer,
+User-Entscheidung: "bei Backend-Neustart würde ich sowieso einen Docker-Build laufen lassen,
+damit die Demo im gewollten Zustand ist" — betrifft also auch lokale Dev-Neustarts auf
+derselben Maschine, bewusst in Kauf genommen).
+Verifiziert: `tsc --noEmit` sauber. Dry-Run-Query gegen die echte laufende DB bestaetigt exakt
+45 kuratierte + 50 `seed_user_*` (95 total, keine User ohne Profil). Echter Container-Restart
+durchgefuehrt: Log zeigt "50 nicht-kuratierte User geloescht ... 0/150 Objekte im Object Storage
+geloescht" (0 ist korrekt — `seed-media.ts`s Fake-Uploads haben laut eigenem Kommentar
+"kein echtes File auf Disk", `keyFromPublicUrl()` erkennt das korrekt und uebersprang sie ohne
+Fehler). Backend danach gesund neu gestartet (`/health` -> 200, `NestApplication successfully
+started`).
+
 ## 2026-09-15 — docs(deployment): Runbook fuer Vercel+ngrok-Demo-Hosting
 **Was:** `docs/deployment/demo-hosting.md` neu — Gegenstueck zu `railway.md` fuer den lokalen
 ngrok-Pfad (Option A). Deckt ab: Env-Var-Tabelle (`CORS_ORIGIN`, `NEXT_PUBLIC_API_URL`,

@@ -1,6 +1,13 @@
 #!/bin/sh
 set -e
 
+# Oeffentliche Demo mit offener Registrierung: jeder Neustart soll wieder der
+# kuratierte Ausgangszustand sein. Loescht jeden User ausserhalb von
+# demo-users.yaml (echte Registrierungen + alte seed_user_*), inkl. ihrer
+# Object-Storage-Dateien. Laeuft immer, nicht SEED_RESET-gesteuert — siehe
+# demo-full-reset.ts fuer den Grund.
+npx ts-node -r tsconfig-paths/register src/database/seeds/demo-full-reset.ts
+
 # demo-seed and demo-relations-seed are idempotent (skip existing
 # nicknames/emails/beef pairs) — no-op on an already-seeded volume.
 # seed-cities always truncates+reloads cities from the CSV (pure reference

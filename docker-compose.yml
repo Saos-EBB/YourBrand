@@ -117,11 +117,12 @@ services:
       S3_BUCKET:   yourbrand-media
       S3_PUBLIC_URL_BASE: http://localhost:9000/yourbrand-media
       JWT_SECRET:  ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
       DEMO_MEDIA_PATH: /app
       SEED_USERS:  ${SEED_USERS:-50}
       SEED_TX_PER_USER: ${SEED_TX_PER_USER:-20}
       SEED_MEDIA_PER_USER: ${SEED_MEDIA_PER_USER:-3}
-      SEED_RESET:  ${SEED_RESET:-false}
+      SEED_RESET:  ${SEED_RESET:-true}
     ports:
       - "3000:3000"
     depends_on:
