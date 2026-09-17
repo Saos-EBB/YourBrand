@@ -27,7 +27,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span aria-hidden="true">·</span>{' '}
             <Link href="/impressum" className="hover:text-on-surface transition-colors">{t.footer.impressum}</Link>{' '}
             <span aria-hidden="true">·</span>{' '}
-            <Link href="/datenschutz" className="hover:text-on-surface transition-colors">{t.footer.datenschutz}</Link>
+            <Link href="/datenschutz" className="hover:text-on-surface transition-colors">{t.footer.datenschutz}</Link>{' '}
+            <span aria-hidden="true">·</span>{' '}
+            <Link href="/agb" className="hover:text-on-surface transition-colors">AGB</Link>
           </footer>
         </div>
         <BottomNav />

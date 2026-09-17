@@ -1,3 +1,28 @@
+## 2026-09-17 — feat(legal): Impressum/Datenschutz/AGB ausfuehrlich + verifiziert
+**Was:** `config/public.config.ts`s neue `LEGAL_INFO`-Konstante (`name`/`address`/`email`,
+Platzhalter `<NAME>`/`<ANSCHRIFT>`/`<EMAIL>`) — die EINE Stelle fuer die eigenen Daten, ersetzt
+die vorher komplett undefinierten `process.env.NEXT_PUBLIC_COMPANY_*`-Referenzen in Impressum/
+Datenschutz (die Env-Vars existierten nirgends, waren also schon vorher immer `undefined`).
+Neue `components/LegalPageNotice.tsx` (Demo-Hinweis + Rechtsberatungs-Disclaimer, auf allen 3
+Seiten). `/agb` bekam echten Inhalt (war `[PLATZHALTER]`-Stub): Demo-Charakter, keine
+Verfuegbarkeitsgarantie, kein Anspruch auf Datenerhalt, eigenes Risiko, keine kommerzielle
+Nutzung, Verbot echter Drittdaten. `/agb`-Links in allen 3 Footern ergaenzt (auth/public/app-Layout
+— app-Layout hardcoded "AGB" statt uebersetzt, konsistent mit den anderen beiden Footern, die
+Impressum/Datenschutz dort auch nicht uebersetzen).
+`/datenschutz` komplett neu, jede Aussage einzeln gegen den Code geprueft (siehe Backend-Build-Log
+vom selben Tag fuer die Belege): Erhobene Daten (Registrierung/Profil/Chat/Consent/Zahlung),
+Verschluesselung (bcrypt fuer Passwoerter, AES-256 fuer E-Mail, SHA-256 fuer Such-Hash/IP-Hash/
+Token-Hash), Zugriffsschutz (RLS NUR auf `profile_sensitive_data`, sonst Anwendungs-Guards —
+explizit so benannt, nicht als generelles RLS verkauft), Hosting-Kette (Vercel + privater Rechner
+via ngrok), Speicherdauer (Full-Reset bei jedem Neustart, max. ca. 12h), keine Mail-Verifizierung,
+Stripe im Testmodus, Betroffenenrechte inkl. der ehrlichen Nuance dass Soft-Delete/Pseudonymisierung
+in der Praxis vom automatischen Full-Reset ueberholt wird.
+**Nicht gebaut:** keine i18n-Uebersetzung der Rechtstexte (Aufgabe verlangte explizit Deutsch),
+kein `t.footer.agb`-Key in allen 9 Sprachdateien (siehe oben, Konsistenz mit den zwei anderen
+Footern reichte).
+Verifiziert: `tsc --noEmit` + `eslint` sauber, `npm run build` komplett gruen (0 Fehler),
+`/impressum`/`/datenschutz`/`/agb` erscheinen als statische Routen.
+
 ## 2026-09-17 — feat(register): Demo-Hinweis am E-Mail-Feld
 **Was:** `app/(auth)/register/page.tsx` — kurzer Hinweistext direkt unter dem E-Mail-Input,
 per `aria-describedby` verknuepft: keine echte/fremde Mail-Adresse verwenden, keine

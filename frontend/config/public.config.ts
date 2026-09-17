@@ -1,3 +1,11 @@
+// MANUELL: einzige Stelle fuer die Impressum-Pflichtangaben — hier die
+// eigenen Daten eintragen (verwendet von /impressum und /datenschutz).
+export const LEGAL_INFO = {
+  name: '<NAME>',
+  address: '<ANSCHRIFT>',
+  email: '<EMAIL>',
+} as const
+
 export const PUBLIC_CONFIG = {
   banScreen: {
     text: process.env.NEXT_PUBLIC_BAN_SCREEN_TEXT ?? 'Dein Account wurde gesperrt.',

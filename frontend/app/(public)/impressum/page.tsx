@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { RaygunButton } from '@/components/RaygunButton'
+import { LEGAL_INFO } from '@/config/public.config'
+import { LegalPageDemoNotice, LegalPageDisclaimer } from '@/components/LegalPageNotice'
 
 export default function ImpressumPage() {
   const router = useRouter()
@@ -19,15 +21,25 @@ export default function ImpressumPage() {
 
         <h1 className="text-2xl font-bold text-on-surface">Impressum</h1>
 
+        <LegalPageDemoNotice />
+
         <section className="space-y-1">
           <h2 className="text-sm font-semibold text-on-surface">
             Angaben gemäß § 5 ECG (AT) / § 5 TMG (DE)
           </h2>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            {process.env.NEXT_PUBLIC_COMPANY_NAME}<br />
-            {process.env.NEXT_PUBLIC_COMPANY_STREET}<br />
-            {process.env.NEXT_PUBLIC_COMPANY_CITY}, {process.env.NEXT_PUBLIC_COMPANY_COUNTRY}<br />
-            E-Mail: {process.env.NEXT_PUBLIC_COMPANY_EMAIL}
+            {LEGAL_INFO.name}<br />
+            {LEGAL_INFO.address}<br />
+            E-Mail: {LEGAL_INFO.email}
+          </p>
+        </section>
+
+        <section className="space-y-1">
+          <h2 className="text-sm font-semibold text-on-surface">Art des Angebots</h2>
+          <p className="text-sm text-on-surface-variant leading-relaxed">
+            Privates, nicht-kommerzielles Demo-/Portfolio-Projekt zur Vorstellung eigener
+            Software-Entwicklungsarbeit. Kein kommerzielles Angebot, keine Registrierung eines
+            Gewerbes für dieses Projekt.
           </p>
         </section>
 
@@ -46,6 +58,8 @@ export default function ImpressumPage() {
             Urheberrecht.
           </p>
         </section>
+
+        <LegalPageDisclaimer />
       </div>
     </main>
     <RaygunButton />

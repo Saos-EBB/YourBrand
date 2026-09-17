@@ -22,7 +22,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <span aria-hidden="true">·</span>{' '}
         <Link href="/impressum" className="hover:text-on-surface transition-colors">Impressum</Link>{' '}
         <span aria-hidden="true">·</span>{' '}
-        <Link href="/datenschutz" className="hover:text-on-surface transition-colors">Datenschutz</Link>
+        <Link href="/datenschutz" className="hover:text-on-surface transition-colors">Datenschutz</Link>{' '}
+        <span aria-hidden="true">·</span>{' '}
+        <Link href="/agb" className="hover:text-on-surface transition-colors">AGB</Link>
       </footer>
     </div>
   )
