@@ -1,3 +1,32 @@
+## 2026-09-17 — fix(auth): kaputtes Cookie-Gate aus der Middleware entfernt
+**Was:** Login lief backendseitig komplett durch (200, Cookie gesetzt, Logs zeigen Erfolg), aber
+das Frontend blieb nach dem Login auf `/login` stehen — kein Fehler, kein Redirect. Ursache lag
+NICHT bei Cookie-Flags (waren schon korrekt/konfigurierbar) oder `credentials`/CORS (beide schon
+gesetzt), sondern in `proxy.ts` (Next 16s Middleware-Aequivalent, im Build als `ƒ Proxy
+(Middleware)` gelistet): sie gatete `/dashboard`, `/consent` etc. ueber
+`request.cookies.get('refreshToken')` — dieses Cookie wird aber vom Backend auf der ngrok-Domain
+gesetzt (host-only, kein `Domain`-Attribut) und kann in einem Split-Domain-Deploy (Frontend auf
+Vercel, Backend auf ngrok) STRUKTURELL NIE in einem Request an die Vercel-Domain auftauchen —
+unabhaengig von `SameSite`/`Secure`. Jede Navigation zu einer geschuetzten Route nach erfolgreichem
+Login wurde dadurch sofort wieder auf `/login` zurueckgeschickt. Datei komplett geloescht statt nur
+die zwei Redirect-Zweige zu entkernen — ohne sie waere die Middleware ein reiner No-Op gewesen
+(totes `PROTECTED_PREFIXES`/`AUTH_ROUTES`), und der Schutz laeuft bereits clientseitig:
+`fetchApi()` (`lib/api.ts`) versucht bei 401 ein Refresh, scheitert das, ruft
+`useAuthStore.logout()`, was hart auf `/login` umleitet — ueber den Access-Token
+(Zustand/localStorage), nicht ueber ein Cookie, das serverseitig ueberhaupt sichtbar waere.
+Zusaetzlich (Config, nicht Code): `backend/.env`s `COOKIE_SAMESITE` war gar nicht gesetzt (Default
+`'lax'`) — fuer das cross-site `/auth/refresh` waere das Cookie sonst separat auch nicht
+mitgeschickt worden. Auf `none` gesetzt, Backend neu gestartet.
+**Nicht gebaut:** kein Ersatz-Cookie/-Mechanismus fuer serverseitigen Redirect-Schutz (das waere
+ein Umbau am Auth-Flow) — das bestehende clientseitige Fallback reicht, nur etwas weniger instant
+(kurzer Render der Seite, bevor der 401-Refresh-Fail redirectet) statt eines sofortigen
+Server-Redirects. Betrifft lokal (same-site) wie cross-site gleich, keine Sonderfaelle.
+Verifiziert: `npm run build` durchgelaufen (0 Fehler), `ƒ Proxy (Middleware)` erscheint nicht mehr
+in der Route-Tabelle. Live-Login mit echten Zugangsdaten nicht getestet (keine Testdaten
+verfuegbar, kein Erraten von Seed-User-Passwoertern) — Cookie-Flag-Logik per Codereview bestaetigt
+(`sameSite: 'none'`, `secure: true` bei `COOKIE_SAMESITE=none`, war schon vor diesem Fix korrekt
+implementiert, nur der Env-Wert fehlte).
+
 ## 2026-09-17 — fix(verify): useSearchParams in Suspense-Boundary gewrappt
 **Was:** Gleiche Ursache wie beim `/login`-Fix eben (siehe Eintrag darunter), zweiter von genau
 zwei Fundstellen (`grep -rln useSearchParams` ueber `app`/`components`/`hooks`/`lib` lieferte nur
