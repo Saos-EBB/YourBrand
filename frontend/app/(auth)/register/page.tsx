@@ -60,8 +60,13 @@ export default function RegisterPage() {
             required
             autoComplete="email"
             placeholder="name@beispiel.de"
+            aria-describedby="email-demo-hint"
             className={inputClass}
           />
+          <p id="email-demo-hint" className="text-xs text-on-surface-variant leading-snug">
+            Demo-Umgebung: bitte keine echte oder fremde E-Mail-Adresse verwenden. Es gibt keine
+            Mail-Verifizierung, und alle Daten werden bei jedem Neustart gelöscht.
+          </p>
         </div>
 
         <div className="flex flex-col gap-1.5">

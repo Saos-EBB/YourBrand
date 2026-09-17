@@ -1,3 +1,11 @@
+## 2026-09-17 — feat(register): Demo-Hinweis am E-Mail-Feld
+**Was:** `app/(auth)/register/page.tsx` — kurzer Hinweistext direkt unter dem E-Mail-Input,
+per `aria-describedby` verknuepft: keine echte/fremde Mail-Adresse verwenden, keine
+Mail-Verifizierung aktiv, Daten werden bei Neustart geloescht. Minimal, keine Aenderung an
+Formular-Logik/Validierung.
+**Nicht gebaut:** —
+Verifiziert: `tsc --noEmit` + `eslint` sauber.
+
 ## 2026-09-17 — feat(demo): fixierter Demo-Banner auf allen Seiten
 **Was:** `components/DemoBanner.tsx`, in `app/layout.tsx` ganz oben (vor `ThemeInitializer`,
 ausserhalb von `BackendHealthGate` — soll auch sichtbar bleiben, wenn das Backend offline ist)
