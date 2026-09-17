@@ -1,3 +1,21 @@
+## 2026-09-17 — feat(auth): /forgot-password Seite gegen den 404 aus login/page.tsx
+**Was:** `login/page.tsx` verlinkt `/forgot-password`, das es als Route nie gab (404 beim
+Prefetch). Backend hat echte, funktionierende Endpoints dafuer
+(`POST /auth/forgot-password`, `POST /auth/reset-password`, `auth.service.ts`), also Seite
+angelegt statt Link zu entfernen — analog zu `login`/`register`/`verify`: E-Mail-Formular,
+generische Erfolgsmeldung unabhaengig davon ob die Mail existiert (deckt sich mit dem
+Backend-Verhalten, das aus demselben Grund nie verraet ob ein Account existiert).
+**Nicht gebaut:** `/reset-password` (die Seite, die den Token aus der Mail entgegennimmt) —
+war nicht Teil des Auftrags (nur `/forgot-password` war genannt). Gefunden, aber bewusst nicht
+mitgefixt: `mail.service.ts`s `sendPasswordResetEmail` baut den Link aktuell als
+`${APP_URL}/auth/reset-password?token=...` — mit `/auth`-Prefix, den es im Frontend-Routing gar
+nicht gibt (`login`/`register`/`verify` liegen alle ohne Prefix direkt unter `/`). Der Link in der
+tatsaechlich versendeten Mail waere also selbst mit einer angelegten `/reset-password`-Seite falsch
+verdrahtet (`/auth/reset-password` statt `/reset-password`) — vorbestehender, separater Bug,
+nicht Teil dieses Auftrags, hier nur dokumentiert.
+Verifiziert: `tsc --noEmit` + `eslint` sauber, `npm run build` gruen (25 Routen, 0 Fehler),
+`/forgot-password` erscheint als statische Route.
+
 ## 2026-09-17 — feat(legal): Impressum/Datenschutz/AGB ausfuehrlich + verifiziert
 **Was:** `config/public.config.ts`s neue `LEGAL_INFO`-Konstante (`name`/`address`/`email`,
 Platzhalter `<NAME>`/`<ANSCHRIFT>`/`<EMAIL>`) — die EINE Stelle fuer die eigenen Daten, ersetzt
