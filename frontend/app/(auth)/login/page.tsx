@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/lib/store/authStore'
 import { fetchApi } from '@/lib/api'
 import ContactSupportModal from '@/components/ui/ContactSupportModal'
@@ -14,13 +15,36 @@ interface LoginResponse {
   user?: { id: string; email: string; role: 'user' | 'admin' | 'owner'; [key: string]: unknown }
 }
 
+// useSearchParams() zwingt die ganze Seite in einen Client-Side-Bailout beim
+// Prerendern, wenn es nicht in <Suspense> steckt (siehe
+// https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout) — daher
+// in eine eigene Komponente ausgelagert statt direkt in LoginPage.
+function SetupDoneBanner() {
+  const searchParams = useSearchParams()
+  const { t } = useTranslation()
+  if (searchParams.get('setup') !== 'done') return null
+  return (
+    <div
+      role="status"
+      className="mb-6 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 text-center"
+    >
+      {t.login.setupDone}
+    </div>
+  )
+}
+
+function SetupDoneFallback() {
+  return (
+    <div className="mb-6 flex justify-center" aria-hidden="true">
+      <Loader2 className="h-5 w-5 text-outline animate-spin" />
+    </div>
+  )
+}
+
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { setAccessToken, setUser } = useAuthStore()
   const { t } = useTranslation()
-
-  const setupDone = searchParams.get('setup') === 'done'
 
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -54,14 +78,9 @@ export default function LoginPage() {
 
   return (
     <>
-      {setupDone && (
-        <div
-          role="status"
-          className="mb-6 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 text-center"
-        >
-          {t.login.setupDone}
-        </div>
-      )}
+      <Suspense fallback={<SetupDoneFallback />}>
+        <SetupDoneBanner />
+      </Suspense>
 
       <h1 className="text-2xl font-bold text-on-surface mb-8 text-center">
         {t.login.title}

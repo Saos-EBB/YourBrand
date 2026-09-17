@@ -1,3 +1,16 @@
+## 2026-09-17 — fix(login): useSearchParams in Suspense-Boundary gewrappt
+**Was:** `npm run build` brach beim Prerendern von `/login` ab (`useSearchParams() should be
+wrapped in a suspense boundary`, siehe
+https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout). `LoginPage` rief
+`useSearchParams()` direkt auf, nur um das `?setup=done`-Banner zu zeigen — dieser Teil wanderte
+in eine eigene Komponente `SetupDoneBanner`, eingewickelt in `<Suspense fallback={<SetupDoneFallback
+/>}>`. `SetupDoneFallback` ist ein kleiner Spinner (`Loader2`, gleiche Bibliothek wie ueberall sonst
+im Projekt), kein `null`. Rest der Login-Logik (Form-State, `handleSubmit`) unveraendert.
+**Nicht gebaut:** keine `force-dynamic`-Umgehung — Suspense ist hier die Standardloesung und
+funktioniert, weil nur ein kleiner, unabhaengiger Teil der Seite von den Query-Params abhaengt.
+Verifiziert: `npm run build` laeuft komplett durch, `/login` erscheint in der Route-Tabelle als
+`○` (static prerendered).
+
 ## 2026-09-15 — feat(offline): Fullscreen-Fallback wenn Backend nicht erreichbar
 **Was:** `hooks/useBackendHealth.ts` pollt `<Origin von NEXT_PUBLIC_API_URL>/health` alle 30s
 (4s-Timeout via `AbortController`, sendet `NGROK_HEADER`); Status `'checking' | 'healthy' |
