@@ -19,6 +19,7 @@ denen das Backend offline ist.
 | Var | Wo | Wert |
 |---|---|---|
 | `CORS_ORIGIN` | `backend/.env` | komma-separiert: `http://localhost:3001,<Vercel-URL>,https://saos-repo.vercel.app` |
+| `BACKEND_URL` | `.env` (root, fuer `docker-compose.yml`) | `https://<static-domain>.ngrok-free.app` — s. Abschnitt "Medien" unten |
 | `NEXT_PUBLIC_API_URL` | Vercel Project Settings | `https://<static-domain>.ngrok-free.app/api/v1` |
 | `NEXT_PUBLIC_WS_URL` | Vercel Project Settings | `wss://<static-domain>.ngrok-free.app` |
 | `BACKEND_INTERNAL_URL` | Vercel Project Settings | `https://<static-domain>.ngrok-free.app` (ohne `/api/v1` — nur der `/uploads`-Rewrite in `next.config.ts` braucht das) |
@@ -28,6 +29,36 @@ denen das Backend offline ist.
 
 `backend/.env.example` und `frontend/.env.example` haben dieselben Keys mit
 Platzhaltern.
+
+## Medien (Profilfotos/Audio)
+
+MinIO (Port 9000) ist in diesem Setup **nicht** getunnelt — ngrok Free bietet
+nur eine stabile Domain, und ein oeffentlicher Object-Store waere fuer eine
+Demo unnoetige Angriffsflaeche. `media_uploads.file_url` zeigt deshalb nie
+direkt auf MinIO, sondern auf die bereits getunnelte Backend-Origin: das
+Backend liest die Datei intern von `http://minio:9000` und liefert sie ueber
+`GET /api/v1/media/file/<key>` (`media.controller.ts`) aus.
+
+Gesteuert wird das ueber `S3_PUBLIC_URL_BASE`, das in `docker-compose.yml`
+automatisch aus `BACKEND_URL` gebaut wird
+(`${BACKEND_URL:-http://localhost:3000}/api/v1/media/file`):
+
+- Lokal (kein `BACKEND_URL` gesetzt): faellt auf `http://localhost:3000` zurueck,
+  Medien laufen unveraendert ueber den lokalen Stack.
+- Oeffentliche Demo: `BACKEND_URL=https://<static-domain>.ngrok-free.app` in der
+  root-`.env` setzen (Docker-Compose-Variable, nicht `backend/.env` — die
+  `nestjs`/`worker`-Services lesen `S3_PUBLIC_URL_BASE` als bereits
+  zusammengesetzten Wert aus der Compose-Umgebung). **Zwingend `https://`** —
+  MinIO waere sonst zwar erreichbar, aber `http://`-Bild-URLs auf der
+  HTTPS-Vercel-Seite werden als Mixed Content vom Browser blockiert, egal ob
+  getunnelt oder nicht.
+
+Nach einer Aenderung von `BACKEND_URL` reicht `docker restart` nicht — die
+Compose-Umgebung wird nur bei `docker compose up` (Neuerzeugung der Container)
+neu eingelesen. `demo-full-reset.ts` repariert bei jedem Container-Start
+zusaetzlich `file_url` auf allen `media_uploads`-Zeilen, die noch mit der
+alten `S3_PUBLIC_URL_BASE` anfangen — eine Domain-Aenderung "heilt" die
+kuratierten Demo-Fotos also automatisch mit.
 
 ## 1. ngrok (MANUELL)
 
@@ -106,6 +137,8 @@ Fedora-Maschine gerade aus ist.
 
 - [ ] ngrok-Account + Static Domain reservieren, `ngrok config add-authtoken`
 - [ ] `<your-static-domain>` in `yourbrand-ngrok.service` eintragen
+- [ ] `BACKEND_URL` in der root-`.env` auf die ngrok-Domain (https) setzen,
+      `docker compose up` (nicht nur `restart`) fuer die neuen Medien-URLs
 - [ ] Vercel-Projekt anlegen, Root Directory + Env-Vars setzen
 - [ ] Vercel-URL in `backend/.env`s `CORS_ORIGIN` eintragen
 - [ ] `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_DEMO_VIDEO_URL` mit echten Werten
