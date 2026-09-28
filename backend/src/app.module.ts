@@ -1,4 +1,6 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { RlsContextMiddleware } from './common/middleware/rls-context.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -112,7 +114,12 @@ import databaseConfig from './config/database.config';
     BadgeModule,
     MatchingModule,
   ],
+  // AppController war bis hierhin nicht registriert — die Root-Route gab es
+  // also gar nicht. Jetzt verdrahtet, weil GET /api/v1 der healthcheckPath
+  // aus railway.json ist.
+  controllers: [AppController],
   providers: [
+    AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

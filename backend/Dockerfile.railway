@@ -1,0 +1,44 @@
+# Prod-Image fuer Railway. Das normale Dockerfile bleibt unangetastet — es ist
+# das Dev-Image fuer docker-compose (nest --watch + gemountetes ./backend) und
+# als Deploy-Artefakt unbrauchbar: ohne Volume-Mount enthaelt es keinen Code-
+# Stand, den es beobachten koennte, und ts-node-Watch-Mode gehoert nicht auf
+# einen oeffentlichen Host.
+#
+# Offen (docs/architecture.md, Deploy-Descriptoren): noch kein Multi-Stage-
+# Build und laeuft als root. Bewusst zurueckgestellt: dieses Image ist bereits
+# lokal verifiziert (siehe docs/deployment/railway.md, "Was davon verifiziert
+# ist") und devDependencies muessten wegen der ts-node-Seeds im Entrypoint
+# ohnehin im finalen Image bleiben — Multi-Stage braechte hier keinen
+# Groessenvorteil, nur Root-Layer-Trennung + non-root User. Umbau erst als
+# eigener Haertungsschritt, dann neu verifizieren.
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Layer-Caching: erst nur die Manifeste, damit npm ci nur bei echten
+# Dependency-Aenderungen neu laeuft. `ci` statt `install`, weil auf einem
+# Deploy-Host der Lockfile-Stand gelten soll, nicht das Range-Aufloesen.
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+RUN npm run build
+
+# devDependencies bleiben absichtlich installiert: die Seeds im Entrypoint
+# laufen ueber ts-node (siehe docker-entrypoint.railway.sh), und ts-node +
+# tsconfig-paths + typescript stehen in devDependencies. Ein npm prune --omit=dev
+# hier wuerde den Seed-Schritt beim ersten Boot brechen.
+
+RUN chmod +x docker-entrypoint.railway.sh
+
+# uploads/ ist in .dockerignore und existiert im Image daher nicht. main.ts
+# haengt express.static darauf, und der Media-Seed kopiert hier rein — das
+# Verzeichnis muss also da sein, bevor der Prozess startet.
+RUN mkdir -p uploads
+
+# Nur Doku: Railway injiziert PORT und routet dorthin, main.ts liest
+# process.env.PORT mit Fallback 3000.
+EXPOSE 3000
+
+CMD ["sh", "./docker-entrypoint.railway.sh"]

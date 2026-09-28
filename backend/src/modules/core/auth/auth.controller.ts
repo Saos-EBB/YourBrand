@@ -11,13 +11,29 @@ import { ConsentDto } from './dto/consent.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeEmailDto } from './dto/change-email.dto';
 
+// Lokal liegen Frontend und Backend auf derselben Site (localhost:3001 /
+// localhost:3000) — SameSite=Lax reicht, das Refresh-Cookie geht mit.
+// Im Split-Deploy (Frontend z.B. *.vercel.app, Backend *.up.railway.app) ist
+// jeder Request cross-site: der Browser haengt ein Lax-Cookie dann nicht an,
+// POST /auth/refresh kommt ohne Token an und jede Session ist nach Ablauf des
+// Access-Tokens tot. Fuer diesen Fall COOKIE_SAMESITE=none setzen.
+const COOKIE_SAMESITE = (process.env.COOKIE_SAMESITE ?? 'lax') as 'lax' | 'strict' | 'none';
+
 const REFRESH_COOKIE_OPTIONS = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    // SameSite=None akzeptieren Browser ausschliesslich zusammen mit Secure —
+    // ohne das wird das Cookie kommentarlos verworfen.
+    secure: COOKIE_SAMESITE === 'none' || process.env.NODE_ENV === 'production',
+    sameSite: COOKIE_SAMESITE,
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/',
 };
+
+// clearCookie loescht nur, wenn der Browser das Loesch-Cookie ueberhaupt
+// annimmt — cross-site heisst das SameSite=None + Secure, sonst verwirft
+// Chrome das Set-Cookie und der Refresh-Token bleibt im Browser stehen.
+// Deshalb dieselben Attribute wie beim Setzen, nur ohne maxAge.
+const { maxAge: _maxAge, ...CLEAR_COOKIE_OPTIONS } = REFRESH_COOKIE_OPTIONS;
 
 @Controller('auth')
 export class AuthController {
@@ -51,7 +67,7 @@ export class AuthController {
             res.cookie('refreshToken', rawRefreshToken, REFRESH_COOKIE_OPTIONS);
             return { accessToken };
         } catch (err) {
-            res.clearCookie('refreshToken', { path: '/' });
+            res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
             throw err;
         }
     }
@@ -61,7 +77,7 @@ export class AuthController {
     async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
         const token: string | undefined = req.cookies?.refreshToken;
         if (token) await this.authService.logout(token);
-        res.clearCookie('refreshToken', { path: '/' });
+        res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
         return { message: 'Erfolgreich ausgeloggt' };
     }
 
@@ -123,7 +139,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async deleteAccount(@Req() req: any, @Res({ passthrough: true }) res: Response) {
         const result = await this.authService.deleteAccount(req.user.sub);
-        res.clearCookie('refreshToken', { path: '/' });
+        res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
         return result;
     }
 

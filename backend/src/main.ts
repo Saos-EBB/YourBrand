@@ -15,7 +15,14 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
   app.use(cookieParser());
-  app.use(helmet());
+
+  // helmet setzt per Default Cross-Origin-Resource-Policy: same-origin. Lokal
+  // faellt das nicht auf (Frontend und /uploads liegen beide auf localhost),
+  // im Split-Deploy schon: liegt das Frontend auf einer anderen Domain als das
+  // Backend, blockt der Browser damit jedes Profilbild und jede Audiodatei aus
+  // /uploads — sichtbar nur als leeres <img>, die Requests selbst sind 200.
+  // CORS erlaubt das nicht mit, CORP ist eine eigene Entscheidung.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
   app.enableCors({
     origin: corsOrigin,
@@ -36,7 +43,7 @@ async function bootstrap() {
 
   // /health bleibt unprefixed erreichbar (ngrok-Smoketest per curl auf den
   // Tunnel-Port, ohne den /api/v1-Umweg) — der Railway-Healthcheck unter
-  // /api/v1 (AppController-Root-Route) ist davon unberuehrt.
+  // /api/v1 (AppController.getStatus) ist davon unberuehrt.
   app.setGlobalPrefix('api/v1', {
     exclude: [{ path: 'health', method: RequestMethod.GET }],
   });
