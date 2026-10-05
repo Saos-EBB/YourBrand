@@ -23,7 +23,7 @@ import { getCorsOrigins } from '../../../common/config/cors-origins.helper';
     cors: {
         origin: getCorsOrigins('http://localhost:3001'),
         credentials: true,
-        allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
     },
 })
 export class ChatGateway implements OnGatewayConnection {

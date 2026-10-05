@@ -67,11 +67,11 @@ auch `sharp` läuft (das erklärt die ~76/s-Wand aus dem Loadtest).
 | Teil | Ist-Zustand (verifiziert) | Ziel |
 |---|---|---|
 | ~~DB-Schema~~ | ~~42 einzelne Migrationen (`migrations/002`–`043`) + zwei parallele Schema-Dateien `schema_v4.sql` und `db/schema.sql`~~ | **Erledigt 2026-09-10:** `db/schema.sql` war bereits ein aktueller `pg_dump --schema-only`-Snapshot (verifiziert: enthält `matches`/`swipes` aus 037, `exile_until` aus 023, `contact_request_id` nullable aus 038, und *alle* PL/pgSQL-Trigger aus `schema_v4.sql` inkl. `pseudonymize_user` — schema_v4.sql war bereits vollständig überholt, kein manuelles Trigger-Portieren nötig). Umbenannt zu `migrations/001_baseline.sql`, 002–043 + `schema_v4.sql` nach `migrations/_archive/` verschoben, `db/Dockerfile` + README + CLAUDE.md + Seed-Kommentare auf den neuen Pfad umgestellt. |
-| Deploy-Descriptoren | ~~Drei parallel: `render.yaml`, `railway.json` + `Dockerfile.railway`, `db/Dockerfile`/`Dockerfile`~~ | **Teilweise erledigt 2026-09-10:** Railway als der eine Pfad gewählt (Render-Postgres hat kein PostGIS, Railway löst das schon über `db/Dockerfile`s Custom-Image); `render.yaml` nach `_archive/` verschoben. **Bewusst zurückgestellt:** `Dockerfile.railway` bleibt Single-Stage/root — ist bereits lokal verifiziert (`docs/deployment/railway.md`), und devDependencies müssen wegen der ts-node-Seeds im Entrypoint ohnehin im finalen Image bleiben, Multi-Stage brächte keinen Größenvorteil. Umbau erst als eigener Härtungsschritt mit Re-Verifikation. |
+| Deploy-Descriptoren | ~~Drei parallel: `render.yaml`, `railway.json` + `Dockerfile.railway`, `db/Dockerfile`/`Dockerfile`~~ | **Erledigt 2026-10-05:** Einziger Deploy-Pfad ist Docker Compose (`docker-compose.yml`, `db/Dockerfile`, `Dockerfile`). Railway-, Render- und ngrok-Artefakte entfernt. |
 | ~~`render.yaml`~~ | ~~`DB_HOST`/`DB_NAME`/`DB_USER` im Klartext im Repo (Passwörter korrekt als `sync: false`)~~ | **Erledigt 2026-09-10:** Datei archiviert, kein aktiver Pfad mehr — Secret-Sorge entfällt damit. |
 | ~~Beef-Game-State (`beef-game.service.ts`)~~ | ~~In-Memory (Ready-Sets, Turn-Timer als Prozess-`Map`)~~ | **Erledigt 2026-09-10:** Reaction-Ready-Set → Redis (`SADD`/`SCARD`/`EXPIRE`, TTL als Leak-Schutz). TicTacToe-Turn-Timer bleibt bewusst ein lokaler JS-Timer (ein Timer-Handle kann nicht in Redis liegen) — dabei einen echten Multi-Instance-Bug gefunden und gefixt: `applyRandomTttMove` prüfte `move_deadline_at` nicht, ein auf Instanz A gestellter Timer konnte nach einem Move auf Instanz B noch einen zweiten, ungültigen Zufallszug draufsetzen. Jetzt derselbe Deadline-Check wie im Cron-Backstop — ein verwaister Timer wird zum sicheren No-Op statt zum Bug. |
 | ~~Rate-Limiting~~ | ~~Prozess-lokale IP-Map (`setup.controller.ts`) + globaler Throttler ohne Shared-Store~~ | **Erledigt 2026-09-10:** `setup.controller.ts` nutzt jetzt `redis.incr()` (gleiche Semantik: 5 erlaubt, ab dem 6. Versuch blockiert, aber jetzt geteilt statt pro Prozess). Globaler `ThrottlerGuard` nutzt `ThrottlerStorageRedisService` (`@nest-lab/throttler-storage-redis`, MIT, ioredis-basiert) mit dem geteilten `REDIS_CLIENT` statt eigener Verbindung. Verifiziert gegen echten Redis-Container: Limit greift nach N Requests, Block-Duration korrekt. |
-| ~~Media-Storage (`media.service.ts`, `profile.service.ts` uploadProfileAudio)~~ | ~~`fs.*Sync` gegen `process.cwd()` — überlebt keinen Container-Restart, kein Shared Storage~~ | **Erledigt 2026-09-10:** `src/common/storage/object-storage.helper.ts` (plain functions wie `crypto.helper.ts`, kein DI — auch von Standalone-Seed-Skripten importierbar), `@aws-sdk/client-s3` gegen S3-kompatiblen Endpoint (`forcePathStyle`, provider-agnostisch über Env-Vars: `S3_ENDPOINT`/`S3_REGION`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`/`S3_BUCKET`/`S3_PUBLIC_URL_BASE`). Provider für Railway-Prod (R2/B2) bewusst noch offen — User-Entscheidung vertagt. Lokal: MinIO in beiden Compose-Stacks (`minio`/`minio-init`, `XXX_minio_load`/`_init`), Bucket + Public-Read-Policy per `minio/mc`-Einmal-Container. `demo-seed.ts`s `seedMediaFile` ebenfalls migriert (User-Entscheidung: Seeds mit). Verifiziert End-to-End gegen echtes MinIO: Upload + öffentlicher HTTP-Fetch. |
+| ~~Media-Storage (`media.service.ts`, `profile.service.ts` uploadProfileAudio)~~ | ~~`fs.*Sync` gegen `process.cwd()` — überlebt keinen Container-Restart, kein Shared Storage~~ | **Erledigt 2026-09-10:** `src/common/storage/object-storage.helper.ts` (plain functions wie `crypto.helper.ts`, kein DI — auch von Standalone-Seed-Skripten importierbar), `@aws-sdk/client-s3` gegen S3-kompatiblen Endpoint (`forcePathStyle`, provider-agnostisch über Env-Vars: `S3_ENDPOINT`/`S3_REGION`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`/`S3_BUCKET`/`S3_PUBLIC_URL_BASE`). Provider für einen Cloud-Betrieb (R2/B2) bewusst offen — aktuell nur MinIO. Lokal: MinIO in beiden Compose-Stacks (`minio`/`minio-init`, `XXX_minio_load`/`_init`), Bucket + Public-Read-Policy per `minio/mc`-Einmal-Container. `demo-seed.ts`s `seedMediaFile` ebenfalls migriert (User-Entscheidung: Seeds mit). Verifiziert End-to-End gegen echtes MinIO: Upload + öffentlicher HTTP-Fetch. |
 | ~~`jwt.guard`~~ | ~~`SELECT EXISTS` pro Request + fire-and-forget `last_active`-Update, liegt auf Hot-Path von ~27 Dateien~~ | **Erledigt 2026-09-10:** `user:exists:{id}`-Redis-Cache mit 15-Min-TTL (akzeptiertes Staleness-Fenster laut Plan) statt `SELECT EXISTS` pro Request. `last_active_at` läuft über neue `LastActiveService` (`common/last-active/`): `touch()` schreibt nur nach Redis, ein `@Cron(EVERY_MINUTE)` `flush()` bulk-updated Postgres per `unnest()`. |
 | ~~`optional-jwt.guard.ts`~~ | ~~Duplizierte Logik gegenüber `jwt.guard`~~ | **Erledigt 2026-09-10:** Token-Extraktion + gecachter Exists-Check jetzt in `common/guards/jwt-verify.helper.ts` geteilt (plain functions), beide Guards nutzen dieselbe Logik. Das `JwtModule.registerAsync`-Duplikat über 14 Module ist mit dem separaten Roadmap-Punkt "Shared Auth-Modul" (siehe unten) ebenfalls erledigt. |
 | `hashEmail` | Zwei lokale Kopien neben `crypto.helper.ts` | Nur noch `crypto.helper.ts` |
@@ -198,16 +198,15 @@ Deploy-Pfad-Entscheidungen werden vor jedem Schritt einzeln bestätigt (workmode
 immer fragen).
 
 - **Phase 0 — Fundament: ✅ erledigt 2026-09-10.** Eine Schema-Baseline (`migrations/001_baseline.sql`),
-  ein Deploy-Pfad (Railway), kein Plaintext-Secret im aktiven Pfad. Validiert: frischer
+  ein Deploy-Pfad (seit 2026-10-05: Docker Compose), kein Plaintext-Secret im aktiven Pfad. Validiert: frischer
   `docker build -f db/Dockerfile` gegen leeres Volume erzeugt alle 45 Tabellen inkl.
-  `pseudonymize_user` + 9 Trigger, ohne Fehler. Offen gelassen (bewusst, siehe Tabelle oben):
-  `Dockerfile.railway` Multi-Stage/non-root.
+  `pseudonymize_user` + 9 Trigger, ohne Fehler.
 - **Phase 1 — Stateless (Redis + Object Storage): ✅ komplett 2026-09-10.** Alle 7 Punkte laut
   Plan erledigt: (1) Redis, (2) Beef-Game-State, (3) Rate-Limiting, (4) Media → Object Storage,
   (5) `jwt.guard`, (6) system-settings-Cache, (7) Shared Auth-Modul. Details siehe "Was neu /
   umgebaut werden muss" oben. Damit ist Horizontal (mehrere API-Instanzen gleichzeitig) technisch
-  möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle) und die
-  Dockerfile.railway-Härtung, beide bewusst zurückgestellt.
+  möglich — offen bleibt die `beef.scheduler.ts`-Cron-Dopplung (siehe Tabelle), bewusst
+  zurückgestellt.
 - **Phase 2 — Async (Worker + Queue): ✅ abgeschlossen 2026-09-10** (5 von 6 Punkten umgesetzt,
   Punkt 6 bewusst zurückgestellt — siehe unten).
   Design-Entscheidungen (siehe Entscheidungen unten): (1) BullMQ + `src/worker.ts` ✅ — eigenes,
@@ -248,8 +247,6 @@ innerhalb einer Gruppe ist keine Priorität, nur Herkunft.
 **Phase 3 — Messen & hochrechnen:** ✅ erledigt — siehe "Phase-3-Messung" unten.
 
 **Aus Phase 0–2 zurückgestellt (kein neuer Scope, nur nicht sofort gemacht):**
-- [ ] `Dockerfile.railway` Multi-Stage + non-root (Phase 0) — bereits lokal verifiziert,
-  Umbau bräuchte Re-Verifikation.
 - [ ] `beef.scheduler.ts`: alle `@Cron`-Jobs laufen unabhängig auf jeder Instanz, kein verteilter
   Lock — bei N API-Instanzen verarbeitet jede denselben abgelaufenen Beef parallel (gefunden beim
   Beef-Game-State-Rework, Phase 1).

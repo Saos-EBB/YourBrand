@@ -32,9 +32,9 @@ export default function DatenschutzPage() {
         <section className="space-y-1">
           <h2 className="text-sm font-semibold text-on-surface">Hosting</h2>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            Das Frontend läuft dauerhaft bei Vercel. Das Backend (Server, Datenbank, Datei-Speicher)
-            läuft auf einem privaten Rechner des Betreibers und ist nur zeitweise über einen
-            ngrok-Tunnel erreichbar — beide Verbindungen sind per HTTPS verschlüsselt.
+            Die gesamte Anwendung (Frontend, Backend, Datenbank, Datei-Speicher) läuft
+            containerisiert per Docker auf einem Rechner des Betreibers. Es werden keine
+            externen Hosting-Anbieter eingesetzt.
           </p>
         </section>
 

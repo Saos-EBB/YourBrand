@@ -114,9 +114,7 @@ import databaseConfig from './config/database.config';
     BadgeModule,
     MatchingModule,
   ],
-  // AppController war bis hierhin nicht registriert — die Root-Route gab es
-  // also gar nicht. Jetzt verdrahtet, weil GET /api/v1 der healthcheckPath
-  // aus railway.json ist.
+  // AppController: GET /api/v1 (Status) und GET /health (Alive-Check).
   controllers: [AppController],
   providers: [
     AppService,

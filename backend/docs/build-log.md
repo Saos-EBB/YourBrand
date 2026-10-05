@@ -1,3 +1,17 @@
+## 2026-10-05 — chore(deploy): Railway, ngrok, Vercel und Render entfernt — nur noch Docker
+**Was:** Einziger Betriebsweg ist jetzt `docker compose` (lokal). Geloescht: `railway.json`,
+`Dockerfile.railway`, `docker-entrypoint.railway.sh`, `scripts/deploy/ensure-db.js` (nur vom
+Railway-Entrypoint benutzt), `_archive/render.yaml`, `deploy/systemd/` (ngrok-Tunnel + Wake-Timer),
+`docs/deployment/railway.md` + `demo-hosting.md`. `ngrok-skip-browser-warning` aus den CORS-
+`allowedHeaders` von `main.ts`, `chat.gateway.ts`, `beef.gateway.ts` entfernt. `SEED_ON_BOOT` und
+die Vercel-Origins aus `.env.example` raus. Kommentare, die Railway/ngrok als Begruendung nannten,
+neutral umformuliert; `architecture.md` nachgezogen.
+**Nicht geaendert:** Media-Proxy (`/media/file/*`), `/health`, `COOKIE_SAMESITE` und die
+Deck-Groesse 6 bleiben — alle auch ohne Tunnel sinnvoll bzw. Verhaltensaenderung waere eigener Scope.
+Aeltere Build-Log-Eintraege bleiben als Historie unveraendert.
+Verifiziert: `tsc --noEmit -p tsconfig.build.json` sauber (die 2 Fehler in
+`rps.handler.spec.ts` bestehen schon auf dem Stand davor).
+
 ## 2026-09-17 — fix(discover): Deck-Groesse 20 -> 6 gegen ngrok-Refusals
 **Was:** Live-Messung gegen den echten Tunnel (30 gleichzeitige Requests auf dieselbe
 Media-Datei): nur 9/30 kamen durch, 21 scheiterten (`000`, verbindungslos). `loading="lazy"`

@@ -1,3 +1,10 @@
+## 2026-10-05 — chore(deploy): ngrok/Vercel-Reste entfernt — nur noch Docker
+**Was:** `NGROK_HEADER` aus `lib/api.ts` und allen Verwendern (`profanity.ts`, `useBackendHealth.ts`,
+Onboarding, Settings) entfernt, ebenso die `extraHeaders` in `lib/socket.ts`. `.env.example` ohne
+ngrok/Vercel-Varianten. Datenschutz-Seite (Hosting) beschreibt jetzt den Docker-Betrieb ohne
+externe Hoster, B2B-Seite nennt "Docker Compose" statt "Railway-ready".
+Verifiziert: `tsc --noEmit` sauber.
+
 ## 2026-09-17 — fix(media): loading="lazy" gegen ngrok-Free-Concurrency-Refusals
 **Was:** Nach dem Backend-Proxy-Fix (siehe `backend/docs/build-log.md`) meldete der User weiterhin
 fehlende Fotos, Browser-Konsole zeigte `net::ERR_HTTP2_SERVER_REFUSED_STREAM` fuer viele

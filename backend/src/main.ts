@@ -27,10 +27,7 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigin,
     credentials: true,
-    // ngrok-skip-browser-warning: ngrok Free zeigt sonst eine HTML-Warnseite
-    // vor jedem GET, wenn dieser Header fehlt — bricht sonst jeden Fetch/WS-
-    // Handshake vom Frontend gegen den ngrok-Tunnel.
-    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   app.useGlobalFilters(new HttpExceptionFilter());
@@ -41,8 +38,8 @@ async function bootstrap() {
     transform: true,
   }));
 
-  // /health bleibt unprefixed erreichbar (ngrok-Smoketest per curl auf den
-  // Tunnel-Port, ohne den /api/v1-Umweg) — der Railway-Healthcheck unter
+  // /health bleibt unprefixed erreichbar (Alive-Check fuer curl und den
+  // Frontend-Offline-Fallback, ohne den /api/v1-Umweg) — der Status unter
   // /api/v1 (AppController.getStatus) ist davon unberuehrt.
   app.setGlobalPrefix('api/v1', {
     exclude: [{ path: 'health', method: RequestMethod.GET }],

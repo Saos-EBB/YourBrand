@@ -49,7 +49,7 @@ Live public "beef" battle system (15min–48h), coin economy with Stripe coin pa
 - **Real-time** — Socket.io WebSockets
 - **Payments** — Stripe (subscriptions + webhooks)
 - **Security** — AES-256-CBC, bcrypt, JWT + HttpOnly refresh tokens, SHA-256+salt email hashing
-- **Deployment** — Railway-ready, Docker
+- **Deployment** — Docker Compose (local, self-hosted)
 
 ---
 

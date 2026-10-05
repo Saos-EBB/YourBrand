@@ -2,10 +2,6 @@ import { useAuthStore } from './store/authStore'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1'
 
-// ngrok Free zeigt vor jedem GET eine HTML-Warnseite, ausser dieser Header ist
-// gesetzt — betrifft jeden Fetch/WS-Call ans Backend, nicht nur diesen hier.
-export const NGROK_HEADER = { 'ngrok-skip-browser-warning': 'true' }
-
 export function normalise<T>(res: T[] | { data: T[] }): T[] {
   return Array.isArray(res) ? res : (res as { data: T[] }).data ?? []
 }
@@ -23,7 +19,6 @@ async function tryRefresh(): Promise<boolean> {
       const res = await fetch(`${BASE_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
-        headers: NGROK_HEADER,
       })
       if (!res.ok) return false
       const data = await res.json() as { accessToken: string }
@@ -46,7 +41,6 @@ function buildHeaders(token: string | null, init?: HeadersInit, rawBody?: boolea
   const headers = new Headers(init)
   if (!rawBody) headers.set('Content-Type', 'application/json')
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  headers.set('ngrok-skip-browser-warning', NGROK_HEADER['ngrok-skip-browser-warning'])
   return headers
 }
 

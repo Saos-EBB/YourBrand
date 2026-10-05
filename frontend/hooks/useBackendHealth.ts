@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { NGROK_HEADER } from '@/lib/api'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1'
 // /health liegt unprefixed auf der Backend-Root (main.ts nimmt es vom
@@ -23,7 +22,7 @@ export function useBackendHealth(): BackendHealth {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
       try {
-        const res = await fetch(HEALTH_URL, { headers: NGROK_HEADER, signal: controller.signal })
+        const res = await fetch(HEALTH_URL, { signal: controller.signal })
         if (!cancelled) setStatus(res.ok ? 'healthy' : 'unhealthy')
       } catch {
         if (!cancelled) setStatus('unhealthy')

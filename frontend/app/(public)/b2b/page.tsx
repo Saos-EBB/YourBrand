@@ -196,7 +196,7 @@ const TECH_ROWS = {
   de: [
     { label: 'Architektur',        value: 'NestJS Backend · Next.js 16.2.4 · PostgreSQL 16 + PostGIS 3.4 · TypeORM · Migration 027' },
     { label: 'Sicherheit',         value: 'AES-256-CBC · bcrypt · JWT + HttpOnly Refresh Token · SHA-256+Salt E-Mail-Hashing' },
-    { label: 'Deployment',         value: 'Railway-ready · Docker · 1 Backend — separate DB pro Kunde möglich' },
+    { label: 'Deployment',         value: 'Docker Compose · 1 Backend — separate DB pro Kunde möglich' },
     { label: 'APIs',               value: 'REST + WebSocket (Socket.io) · EventEmitter2 · Stripe Webhooks' },
     { label: 'DSGVO-Infrastruktur',value: 'pseudonymize_user() DB-Funktion · 30-Tage Cronjob · consent_logs · Art.15 Export Endpoint' },
     { label: 'Hidden Engine',      value: 'Beef / Coin / Teeth / Badge System · Migration 027 · WebSocket HiddenBeefGateway' },
@@ -205,7 +205,7 @@ const TECH_ROWS = {
   en: [
     { label: 'Architecture',       value: 'NestJS Backend · Next.js 16.2.4 · PostgreSQL 16 + PostGIS 3.4 · TypeORM · Migration 027' },
     { label: 'Security',           value: 'AES-256-CBC field encryption · bcrypt · JWT + HttpOnly Refresh Token · SHA-256+Salt email hashing' },
-    { label: 'Deployment',         value: 'Railway-ready · Docker · single backend — separate DB per client possible' },
+    { label: 'Deployment',         value: 'Docker Compose · single backend — separate DB per client possible' },
     { label: 'APIs',               value: 'REST + WebSocket (Socket.io) · EventEmitter2 · Stripe Webhooks' },
     { label: 'GDPR infrastructure',value: 'pseudonymize_user() DB function · 30-day cronjob · consent_logs · Art.15 export endpoint' },
     { label: 'Hidden engine',      value: 'Beef / Coin / Teeth / Badge system · Migration 027 · WebSocket HiddenBeefGateway' },

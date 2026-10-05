@@ -32,7 +32,7 @@
  * anfangen. demo-seed.ts ist idempotent und ueberspringt schon vorhandene
  * Nicknames komplett — es schreibt file_url also nie neu, egal wie oft der
  * Container neu startet. Aendert sich S3_PUBLIC_URL_BASE (z.B. neue
- * ngrok-Domain, oder Umstellung auf den Media-Proxy statt direkter
+ * Backend-Domain, oder Umstellung auf den Media-Proxy statt direkter
  * MinIO-URL), blieben die 45 kuratierten Fotos/Audios sonst dauerhaft auf der
  * alten, moeglicherweise unerreichbaren URL stehen.
  */

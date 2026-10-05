@@ -67,11 +67,11 @@ export class MediaController {
     }
 
     // Oeffentlich (kein Guard) — S3_PUBLIC_URL_BASE zeigt hierher statt direkt auf
-    // MinIO, das im ngrok-Deploy nicht getunnelt und nur ueber HTTP erreichbar
-    // ist (Mixed-Content-Block auf der HTTPS-Vercel-Seite). Wildcard-Key per
+    // MinIO, das nie oeffentlich erreichbar ist (nur im Docker-Netz, nur HTTP).
+    // Das Backend ist damit die einzige Origin fuer Medien. Wildcard-Key per
     // req.path statt @Param — path-to-regexp-Wildcard-Syntax variiert je
     // Express-Version, string-slice ist stabil.
-    // SkipThrottle wie /health und die Railway-Root-Route: eine Seite mit
+    // SkipThrottle wie /health und die Root-Status-Route: eine Seite mit
     // mehreren Profilfotos verbraucht sonst pro geladenem Bild ein Kontingent
     // vom globalen 100-Requests/60s-Limit pro IP.
     @SkipThrottle()
