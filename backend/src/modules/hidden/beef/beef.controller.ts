@@ -20,7 +20,9 @@ import { RespondBeefDto } from './dto/respond-beef.dto';
 import { VoteBeefDto } from './dto/vote-beef.dto';
 import { CommentBeefDto } from './dto/comment-beef.dto';
 import { GameMoveDto } from './dto/game-move.dto';
+import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 
+@RequiresModule('hidden')
 @Controller('hidden/beef')
 @UseGuards(JwtGuard)
 export class BeefController {

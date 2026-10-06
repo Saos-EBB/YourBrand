@@ -29,6 +29,10 @@ Tier-Defaults (`backend/src/common/tenant/tenant.types.ts`):
 | matching | – | – | ✅ |
 | hidden | – | – | ✅ |
 
+Abgeschaltete Module werden im Backend gar nicht geladen (Routen → 404). Ausnahme `chat`: das
+Modul bleibt wegen Notifications geladen, Routen und Chat-Events sind aber gesperrt.
+Regel: `matching` erfordert `chat`.
+
 Connect entspricht vorerst Core — die Connect-Features (Orgs, Caretaker) sind im Backend noch
 nicht gebaut. Öffentlich abrufbar: `GET /api/v1/tenant` (alles außer `seed`).
 Plan: [`docs/multitenant.md`](../docs/multitenant.md).

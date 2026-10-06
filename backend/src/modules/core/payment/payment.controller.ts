@@ -4,6 +4,7 @@ import { PaymentService } from './payment.service';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { RequiresPremium } from '../../../common/decorators/requires-premium.decorator';
+import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 
 // IMPORTANT: the webhook endpoint requires access to the raw request body for
 // Stripe signature verification. Add the following to main.ts:
@@ -12,6 +13,7 @@ import { RequiresPremium } from '../../../common/decorators/requires-premium.dec
 //
 // Without this, constructEvent() will always throw a signature mismatch error.
 
+@RequiresModule('payments')
 @Controller('payment')
 export class PaymentController {
     constructor(private readonly paymentService: PaymentService) { }

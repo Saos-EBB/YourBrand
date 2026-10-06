@@ -33,6 +33,11 @@ describe('parseTenantConfig', () => {
         expect(() => parseTenantConfig({ ...valid(), modules: { video: true } }, 'kiez')).toThrow(/video/);
     });
 
+    it('matching ohne chat ist ungueltig', () => {
+        const raw = { ...valid(), modules: { matching: true, chat: false } };
+        expect(() => parseTenantConfig(raw, 'kiez')).toThrow(/matching erfordert modules.chat/);
+    });
+
     it('lehnt unbekannten Tier ab', () => {
         expect(() => parseTenantConfig({ ...valid(), tier: 'gold' }, 'kiez')).toThrow(/tier/);
     });

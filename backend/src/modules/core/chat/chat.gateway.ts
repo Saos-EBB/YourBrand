@@ -18,6 +18,7 @@ import { Message, MessageType } from './entities/message.entity';
 import { Profile } from '../profile/entities/profile.entity';
 import { ProfanityService } from '../moderation/profanity.service';
 import { getCorsOrigins } from '../../../common/config/cors-origins.helper';
+import { isModuleEnabled } from '../../../common/tenant/tenant-config.loader';
 
 @WebSocketGateway({
     cors: {
@@ -148,7 +149,9 @@ for (const conv of conversations) {
     ) {
         conversationId = conversationId.replace(/^"|"$/g, '').trim();
         const userId = this.extractUserId(client);
-        if (!userId) return;
+        // Gateway bleibt fuer Notifications/Bans immer aktiv, nur die
+        // Chat-Events haengen am Mandanten-Modul (siehe app.module.ts).
+        if (!userId || !isModuleEnabled('chat')) return;
 
         const conversation = await this.conversationRepo.findOne({
             where: [
@@ -167,7 +170,7 @@ for (const conv of conversations) {
         @MessageBody() data: { conversationId: string; content?: string; type?: MessageType },
     ) {
         const userId = this.extractUserId(client);
-        if (!userId) return;
+        if (!userId || !isModuleEnabled('chat')) return;
 
         const conversation = await this.conversationRepo.findOne({
             where: [
@@ -208,7 +211,7 @@ for (const conv of conversations) {
         @MessageBody() conversationId: string,
     ) {
         const userId = this.extractUserId(client);
-        if (!userId) return;
+        if (!userId || !isModuleEnabled('chat')) return;
 
         const conversation = await this.conversationRepo.findOne({
             where: [
@@ -229,7 +232,7 @@ for (const conv of conversations) {
     ) {
         conversationId = conversationId.replace(/^"|"$/g, '').trim();
         const userId = this.extractUserId(client);
-        if (!userId) return;
+        if (!userId || !isModuleEnabled('chat')) return;
 
         const conversation = await this.conversationRepo.findOne({
             where: [

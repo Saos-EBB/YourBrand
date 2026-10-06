@@ -1,3 +1,22 @@
+## 2026-10-06 — feat(tenant): Feature-Gating im Backend — Schritt 2 des Multitenant-Umbaus
+**Was:** `app.module.ts` importiert `MatchingModule`, `PaymentModule` und die vier Hidden-Module
+(Beef/Coin/Teeth/Badge) nur noch, wenn das Modul in der Tenant-Config an ist — abgeschaltet gibt es
+keine Routen, keine Gateways (`/hidden-beef`) und keine Cron-Jobs (`beef.scheduler.ts`).
+`ChatModule` bleibt immer geladen: `ChatGateway` liefert auch Notifications/Bans aus, `AdminModule`
+nutzt `ConversationsService`. Fuer Chat sperren stattdessen `FeatureGuard` die Routen und
+`ChatGateway` die vier Chat-Events (`join_conversation`, `send_message`, `typing`, `read_messages`
+— still ignoriert, wie dort bei fehlender Berechtigung ueblich).
+Neu: `@RequiresModule(<modul>)` + `FeatureGuard` (global per `APP_GUARD`, laeuft vor `JwtGuard`)
+-> 404 statt 401/403, damit ein gesperrtes Modul auch ohne Login nicht als existent erkennbar ist.
+Alle Feature-Controller tragen den Decorator als zweite Linie. Neue Config-Regel:
+`matching` erfordert `chat` (ein Match legt eine Conversation an).
+**Nicht gebaut:** Worker unveraendert — er verarbeitet nur Core-Queues (Media, Auto-Suspend,
+Media-Ticket, GDPR). Frontend blendet noch nichts aus (Schritt 4).
+Verifiziert: `tsc` sauber, 19 Jest-Tests gruen (neu: FeatureGuard, matching->chat). Echter Boot
+des kompletten Backends gegen lokales Postgres 16 + PostGIS (Baseline + Migrationen) und Redis,
+drei Mandanten: `default` -> alle Feature-Routen 401; `core` -> discover/hidden 404, chat/payment
+401; `core` mit chat+payments aus -> chat/discover/payment/hidden 404, profile weiter 401.
+
 ## 2026-10-06 — feat(tenant): Tenant-Config — Schritt 1 des Multitenant-Umbaus
 **Was:** `src/common/tenant/` neu. `tenants/<slug>/tenant.json` (Repo-Root) wird beim Boot geladen
 (`TENANT`, Default `default`; `TENANT_DIR`, Docker `/tenants`, lokal `../tenants`) und mit

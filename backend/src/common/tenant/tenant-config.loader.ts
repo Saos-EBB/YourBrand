@@ -63,6 +63,11 @@ export function parseTenantConfig(raw: unknown, expectedSlug: string): TenantCon
         const override = schema.modules?.[key];
         if (override !== undefined) modules[key] = override;
     }
+    // Ein Match legt eine Conversation an (SwipeService -> ConversationsService)
+    // — ohne Chat waere jedes Match eine Sackgasse.
+    if (modules.matching && !modules.chat) {
+        throw new Error(`Ungueltige Tenant-Config "${expectedSlug}":\n  - modules.matching erfordert modules.chat`);
+    }
 
     return {
         slug: schema.slug,

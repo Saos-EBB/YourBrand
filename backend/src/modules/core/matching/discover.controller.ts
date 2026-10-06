@@ -3,7 +3,9 @@ import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { MatchingService } from './matching.service';
 import { SwipeService } from './swipe.service';
 import { SwipeDto } from './dto/swipe.dto';
+import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 
+@RequiresModule('matching')
 @UseGuards(JwtGuard)
 @Controller('discover')
 export class DiscoverController {

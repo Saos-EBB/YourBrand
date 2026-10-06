@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { CoinService } from './coin.service';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
+import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 
+@RequiresModule('hidden')
 @Controller('hidden/coin')
 @UseGuards(JwtGuard)
 export class CoinController {

@@ -1,6 +1,6 @@
 # Multitenant-Umbau
 
-Stand: 2026-10-06. Schritt 1 umgesetzt, Rest geplant.
+Stand: 2026-10-06. Schritte 1–2 umgesetzt, Rest geplant.
 
 ## Ziel
 
@@ -89,8 +89,8 @@ Leichte Sprache + Vulnerable-Schutz beschränken — vor Schritt 7 entscheiden.
 ## Umsetzung in Schritten (je ein Commit)
 
 1. ✅ **Tenant-Config** — Schema, Loader, `tenants/_template/`, `GET /tenant` (2026-10-06, siehe [`tenants/README.md`](../tenants/README.md))
-2. **Feature-Gating Backend** — Tier → Module, bedingte Imports in `app.module.ts` /
-   `worker.module.ts`, `FeatureGuard`
+2. ✅ **Feature-Gating Backend** — Tier → Module, bedingte Imports in `app.module.ts`, `FeatureGuard`
+   (2026-10-06; Worker braucht kein Gating, er verarbeitet nur Core-Queues)
 3. **Isolation** — DB-Name, Bucket, Redis-Prefix aus Config statt hart verdrahtet
 4. **Frontend Runtime-Config** — Branding/Theme/Legal aus `/tenant`, die ~49 harten Brand-Strings
    ersetzen, Nav-Gating

@@ -14,7 +14,9 @@ import { ChatService } from './chat.service';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { SendContactRequestDto } from './dto/send-contact-request.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 
+@RequiresModule('chat')
 @Controller('chat')
 @UseGuards(JwtGuard)
 export class ChatController {
