@@ -13,7 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-INFRA_SERVICES=(XXX_db redis minio minio-init)
+INFRA_SERVICES=(XXX_db redis minio)
 
 die() { echo "Fehler: $*" >&2; exit 1; }
 
@@ -77,6 +77,11 @@ cmd_up() {
   [[ -f .env ]] || die ".env fehlt (cp .env.example .env)"
   echo "== Geteilte Infra"
   docker compose up -d --wait "${INFRA_SERVICES[@]}"
+  # minio-init ist ein Einmal-Container (legt den default-Bucket an,
+  # exited(0) ist der Erfolgsfall) - "up --wait" wertet ein beendetes
+  # Compose-Service als Fehlschlag und wuerde das Skript hier abbrechen,
+  # darum separat ohne --wait.
+  docker compose up -d minio-init
   for slug in $slugs; do
     echo "== Mandant $slug"
     ensure_env "$slug"

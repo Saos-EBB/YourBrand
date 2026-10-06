@@ -71,6 +71,25 @@ For environment variables and architecture details, see:
 
 ## Running Locally
 
+### One-command demo (YourBrand + every tenant)
+
+```bash
+scripts/demo.sh up    # generates .env/backend/.env/frontend/.env (first run only), then
+                       # starts the shared infra + YourBrand (default) + all four tenants
+scripts/demo.sh ls     # every running stack with its URL (default + tenants)
+scripts/demo.sh down   # stop everything, data stays in Postgres/MinIO
+```
+
+First run generates `.env`, `backend/.env` and `frontend/.env` with real random secrets
+(`JWT_SECRET`, `EMAIL_SALT`, `APP_ENCRYPTION_KEY`, DB/MinIO/pgAdmin credentials) — no manual
+editing needed to get a working demo. Stripe/Resend keys stay as inert placeholders (the seeds
+never call those APIs). Re-running `up` is idempotent — existing env files and running stacks are
+left alone. Internally this is `docker compose up -d --build` (shared infra + the default/YourBrand
+stack) followed by `scripts/tenant.sh up all` (the four tenants, see below) — reach for those
+directly only if you want one of the two without the other.
+
+### Just YourBrand (default), by hand
+
 ```bash
 cp .env.example .env               # DB/pgAdmin/JWT values used by docker-compose.yml
 cp backend/.env.example backend/.env       # fill in Stripe/Resend/encryption/CORS values
@@ -85,7 +104,7 @@ Starts four containers: Postgres+PostGIS (`XXX_db`, port 5432), pgAdmin (port 50
 
 The database starts empty. Run the `backend/migrations/*.sql` files in order, starting from `001_baseline.sql` (a consolidated schema snapshot), to get the fully up-to-date schema.
 
-### Multiple tenants
+### Multiple tenants, by hand
 
 The same codebase runs as several branded tenants side by side — each with its own database, bucket, Redis namespace, JWT secret and feature set, on the shared Postgres/Redis/MinIO from `docker-compose.yml`:
 

@@ -98,7 +98,9 @@ Miteinander connect **ohne** Payments.
    Root-Layout), feste Markennamen ersetzt, Nav- und Routen-Gating (2026-10-06)
 5. ✅ **Docker** — geteilte Infra in `docker-compose.yml` (Netz `yb_network`), pro Mandant ein
    Compose-Projekt aus `docker-compose.tenant.yml` + `tenants/<slug>/.env`, Init-Container fuer DB,
-   Schema und Bucket, `scripts/tenant.sh up|down|ls|logs` (2026-10-06)
+   Schema und Bucket, `scripts/tenant.sh up|down|ls|logs` (2026-10-06); `scripts/demo.sh up|down|ls`
+   startet zusaetzlich den default-Stack (YourBrand) mit und generiert beim ersten Lauf
+   `.env`/`backend/.env`/`frontend/.env` (2026-10-06)
 6. ✅ **Seeds pro Mandant** — `tenant.json` `"seed"` -> `tenants/<seed>/seed/demo-users.yaml` +
    `demo-relations.yaml`; Datensaetze fuer kiez, campus-match, miteinander, underground (2026-10-06)
 7. ✅ **Die 4 Mandanten anlegen** + Smoke-Test `scripts/tenant.sh smoke` (pro Mandant: `/tenant`,

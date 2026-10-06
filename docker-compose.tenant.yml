@@ -23,7 +23,10 @@ x-backend-env: &backend-env
   DB_PASSWORD: ${DB_PASSWORD}
   REDIS_HOST: XXX_redis
   REDIS_PORT: 6379
-  S3_ENDPOINT: http://XXX_minio:9000
+  # Service-Name "minio" (nicht container_name XXX_minio!) - der AWS-SDK (v3)
+  # lehnt Hostnamen mit Unterstrich als "invalid hostname" ab, Postgres/Redis
+  # pruefen das nicht.
+  S3_ENDPOINT: http://minio:9000
   S3_REGION: auto
   S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
   S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
