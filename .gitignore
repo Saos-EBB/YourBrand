@@ -3,3 +3,6 @@
 .understand-anything/
 .claude/
 .idea/
+
+# Redis-Snapshots (lokale Test-Redis-Instanzen)
+*.rdb
