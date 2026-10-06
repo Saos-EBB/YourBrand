@@ -1,6 +1,6 @@
 # Multitenant-Umbau
 
-Stand: 2026-10-06. Schritte 1–7 umgesetzt, Schritt 8 (Showcase) offen.
+Stand: 2026-10-06. Alle 8 Schritte umgesetzt.
 
 ## Ziel
 
@@ -103,8 +103,8 @@ Miteinander connect **ohne** Payments.
    `demo-relations.yaml`; Datensaetze fuer kiez, campus-match, miteinander, underground (2026-10-06)
 7. ✅ **Die 4 Mandanten anlegen** + Smoke-Test `scripts/tenant.sh smoke` (pro Mandant: `/tenant`,
    Owner-Login, jedes Modul an/aus, Frontend-Titel) (2026-10-06)
-8. **Showcase** — Screenshots/Videos per Playwright skriptbar (gleicher Flow, 4 Mandanten
-   nebeneinander)
+8. ✅ **Showcase** — `showcase/` (Playwright): gleicher Ablauf pro Mandant, Screenshots + Video,
+   Vergleichsbilder und 2×2-Vergleichsvideo (2026-10-06, siehe [`showcase/README.md`](../showcase/README.md))
 
 ## Risiken / offene Punkte
 

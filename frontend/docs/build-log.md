@@ -1,3 +1,14 @@
+## 2026-10-06 — fix(media): Rewrite fuer /api/v1/media/file — Profilbilder waren lokal kaputt
+**Was:** Beim Showcase gefunden: Profilseiten machen aus der Medien-URL `new URL(...).pathname`,
+Chat/Discover/Matches entfernen fest `http://localhost:3000` — beides ergibt einen relativen Pfad
+`/api/v1/media/file/...` auf dem Frontend-Origin, den es dort nicht gibt (404, leeres `<img>`).
+Unter ngrok fiel das nicht auf (Medien-URL auf anderer Domain), im lokalen Docker-Betrieb schon —
+im default-Stack (Backend 3000) betrifft es sogar alle diese Seiten. `next.config.ts` leitet
+`/api/v1/media/file/:path*` jetzt wie `/uploads` an `BACKEND_INTERNAL_URL` weiter (pro Mandant
+gesetzt). Die URL-Umschreibungen in den Seiten bleiben, sie funktionieren damit.
+Verifiziert: `GET :3101/api/v1/media/file/profiles/f9.jpg` -> 200 image/jpeg; Playwright auf
+`/profile/katzen_lena`: Bild geladen (naturalWidth 1024, vorher 0 / 404).
+
 ## 2026-10-06 — fix(tenant): Abo-Kachel im Dashboard nur mit Modul payments
 **Was:** Beim Screenshot-Check der vier Mandanten gefunden: "Mein Ueberblick" zeigte "Abo-Status:
 Kein Abo" auch bei Miteinander (ohne `payments`). Kachel haengt jetzt an `modules.payments`.

@@ -1,3 +1,20 @@
+## 2026-10-06 — feat(showcase): Screenshots + Videos aller Mandanten — Schritt 8
+**Was:** `showcase/` (eigenes kleines Playwright-Projekt): pro laufendem Mandant (`tenants/<slug>/.env`
++ default) derselbe Ablauf mit Video — Login, DSGVO-Zustimmung (falls verlangt), Dashboard, Chat-Liste,
+Chat, Discover (nur `matching`), Hidden Zone ueber Logo-Easter-Egg + Passwort (nur `hidden`),
+Einstellungen. Welche Schritte laufen, kommt aus `GET /tenant`. Danach Vergleichsraster pro Schritt
+und mit `ffmpeg` ein 2×2-Vergleichsvideo. Personas in `personas.json`. Ausgabe `showcase/out/`
+(gitignored).
+Unterwegs gefunden: Zustimmungsseite (`/consent`) beim ersten Login nach dem Seed — als eigener
+Schritt aufgenommen; Medien-Rewrite im Frontend (siehe frontend/docs/build-log.md);
+`GET /admin/dashboard/user-stats` gibt normalen Nutzern 403 (Controller klassenweit
+`@Roles('admin')`), deshalb "—" in "Offene Anfragen/Aktive Chats" — bestehender Fehler, nicht
+Teil dieses Umbaus, nicht angefasst.
+Verifiziert: echter Lauf gegen alle vier Mandanten (je Backend + `next dev`, lokales Postgres/
+Redis/S3-Mock): kiez 6, campus-match 7, miteinander 6, underground 8 Schritte, ohne Fehler; 8
+Vergleichsbilder, `vergleich.mp4` (42 s, 2×2). Ergebnisse gesichtet: Marke, Farben, Profilbilder,
+Leichte Sprache, Leetspeak + laufender Beef in der Hidden Zone.
+
 ## 2026-10-06 — feat(tenant): die vier Showcase-Mandanten + Smoke-Test — Schritt 7
 **Was:** `tenants/{kiez,campus-match,miteinander,underground}/tenant.json`: KiezConnect (core, hell,
 Orange), Campus Match (premium ohne hidden, dunkel, Pink), Miteinander (connect ohne payments,

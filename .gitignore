@@ -6,3 +6,7 @@
 
 # Redis-Snapshots (lokale Test-Redis-Instanzen)
 *.rdb
+
+# Showcase-Ausgabe (Screenshots/Videos)
+showcase/out/
+showcase/node_modules/

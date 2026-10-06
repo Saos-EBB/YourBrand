@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
       source: '/uploads/:path*',
       destination: `${backendInternalUrl}/uploads/:path*`,
     },
+    // Medien-Proxy des Backends (media.controller.ts). Mehrere Seiten machen
+    // aus der Medien-URL einen relativen Pfad (new URL(...).pathname bzw.
+    // .replace('http://localhost:3000', '')) — ohne diesen Rewrite landet der
+    // auf dem Frontend-Origin und gibt 404. BACKEND_INTERNAL_URL ist pro
+    // Mandant gesetzt, damit trifft es immer das richtige Backend.
+    {
+      source: '/api/v1/media/file/:path*',
+      destination: `${backendInternalUrl}/api/v1/media/file/:path*`,
+    },
   ],
   images: {
     remotePatterns: [
