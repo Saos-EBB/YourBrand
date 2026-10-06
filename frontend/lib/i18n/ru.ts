@@ -158,7 +158,7 @@ export const ru = {
     next: 'Далее',
     finish: 'Завершить',
     back: 'Назад',
-    welcomeTitle: 'Добро пожаловать в YourDemo!',
+    welcomeTitle: 'Добро пожаловать в {brand}!',
     welcomeBody: 'Настройте свой профиль, чтобы другие могли вас найти.',
     start: 'Поехали',
     photoSubtitle: '(необязательно, но рекомендуется)',

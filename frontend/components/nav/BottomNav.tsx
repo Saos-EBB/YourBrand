@@ -6,6 +6,8 @@ import { Home, Compass, Heart, Sparkles, MessageCircle, User, Shield, Swords } f
 import { useAuthStore } from '@/lib/store/authStore'
 import { useHiddenStore } from '@/lib/store/hiddenStore'
 import { useTranslation } from '@/lib/i18n'
+import { useTenant } from '@/components/TenantProvider'
+import { isRouteEnabled } from '@/lib/tenant/types'
 
 function getJwtRole(token: string | null): string | null {
   if (!token) return null
@@ -23,6 +25,7 @@ export default function BottomNav() {
   const pathname = usePathname()
   const accessToken = useAuthStore((s) => s.accessToken)
   const { t } = useTranslation()
+  const { modules } = useTenant()
 
   const navItems = [
     { href: '/dashboard', label: t.nav.home,     Icon: Home },
@@ -39,9 +42,10 @@ export default function BottomNav() {
   const baseDisplayItems = isAdmin
     ? navItems.map((item) => item.href === '/requests' ? { href: '/admin', label: t.nav.admin, Icon: Shield } : item)
     : navItems
-  const displayItems = isHidden
+  const displayItems = (isHidden
     ? [...baseDisplayItems, { href: '/beef', label: 'Beef', Icon: Swords }]
     : baseDisplayItems
+  ).filter((item) => isRouteEnabled(item.href, modules))
 
   return (
     <nav

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { notFound, usePathname } from 'next/navigation'
 import { useAccessibilityStore } from '@/lib/store/accessibilityStore'
 import TopNav from '@/components/nav/TopNav'
 import BottomNav from '@/components/nav/BottomNav'
@@ -9,11 +10,19 @@ import AuthProvider from '@/components/AuthProvider'
 import ToastNotification from '@/components/ui/ToastNotification'
 import { HiddenEntryOverlay } from '@/components/HiddenEntryOverlay'
 import { useTranslation } from '@/lib/i18n'
+import { useTenant } from '@/components/TenantProvider'
+import { moduleForPath } from '@/lib/tenant/types'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
   const fontSizeClass = useAccessibilityStore((s) => s.fontSizeClass)
   const highContrast  = useAccessibilityStore((s) => s.highContrast)
+  const tenant        = useTenant()
+  const pathname      = usePathname()
+
+  // Routen abgeschalteter Mandanten-Module gibt es nicht — wie im Backend 404.
+  const routeModule = moduleForPath(pathname)
+  if (routeModule && !tenant.modules[routeModule]) notFound()
 
   return (
     <AuthProvider>
@@ -23,7 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <TopNav />
           <main className="flex-1 pb-20 md:pb-0">{children}</main>
           <footer className="mb-16 md:mb-0 border-t border-outline-variant py-4 text-center text-xs text-on-surface-variant">
-            © {process.env.NEXT_PUBLIC_COPYRIGHT_YEAR} {process.env.NEXT_PUBLIC_BRAND_NAME}{' '}
+            © {process.env.NEXT_PUBLIC_COPYRIGHT_YEAR} {tenant.brand.name}{' '}
             <span aria-hidden="true">·</span>{' '}
             <Link href="/impressum" className="hover:text-on-surface transition-colors">{t.footer.impressum}</Link>{' '}
             <span aria-hidden="true">·</span>{' '}
@@ -34,7 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <BottomNav />
         <ToastNotification />
-        <HiddenEntryOverlay />
+        {tenant.modules.hidden && <HiddenEntryOverlay />}
       </div>
     </AuthProvider>
   )

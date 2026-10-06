@@ -7,6 +7,8 @@ import { useAuthStore, selectUserRole } from '@/lib/store/authStore'
 import { useHiddenStore } from '@/lib/store/hiddenStore'
 import { useTranslation } from '@/lib/i18n'
 import { HiddenLogoButton, HiddenZoneControls } from './HiddenShortcut'
+import { useTenant } from '@/components/TenantProvider'
+import { isRouteEnabled } from '@/lib/tenant/types'
 import { StatusPicker } from './StatusPicker'
 import { AdminBadge } from './AdminBadge'
 import { NotificationBell } from './NotificationBell'
@@ -14,6 +16,7 @@ import { NotificationBell } from './NotificationBell'
 export default function TopNav() {
   const pathname = usePathname()
   const { t }    = useTranslation()
+  const { modules } = useTenant()
 
   const role = useAuthStore(selectUserRole)
   const isAdmin     = role === 'admin' || role === 'owner'
@@ -29,9 +32,10 @@ export default function TopNav() {
   const baseNavLinks = isAdmin
     ? navLinks.map((l) => l.href === '/requests' ? { href: '/admin', label: t.nav.admin } : l)
     : navLinks
-  const activeNavLinks = isHidden
+  const activeNavLinks = (isHidden
     ? [...baseNavLinks, { href: '/beef', label: 'Beef' }]
     : baseNavLinks
+  ).filter((l) => isRouteEnabled(l.href, modules))
 
   return (
     <header className="sticky top-0 z-50 bg-surface-container-low/80 backdrop-blur-md border-b border-outline-variant md:hidden">

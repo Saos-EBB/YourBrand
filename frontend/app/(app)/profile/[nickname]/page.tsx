@@ -11,6 +11,7 @@ import { OnlineIndicator } from '@/components/ui/OnlineIndicator'
 import AudioPlayer from '@/components/ui/AudioPlayer'
 import ReportModal from '@/components/ui/ReportModal'
 import { useConnectionAction, type ConnectionStatus } from '@/hooks/useConnectionAction'
+import { useModuleEnabled } from '@/components/TenantProvider'
 import { useTranslation } from '@/lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -95,6 +96,7 @@ export default function PublicProfilePage() {
   const isAdmin = getJwtRole(accessToken) === 'admin'
   const profanityFilter = useAuthStore((s) => (s.user as any)?.profanity_filter as boolean ?? true)
   const [adminChatLoading, setAdminChatLoading] = useState(false)
+  const chatEnabled = useModuleEnabled('chat')
   const conn = useConnectionAction(
     profile?.userId ?? '',
     profile?.connectionStatus ?? 'NONE',
@@ -344,6 +346,8 @@ export default function PublicProfilePage() {
                 </div>
               )}
 
+              {/* Kontaktanfragen gehoeren zum Chat-Modul des Mandanten */}
+              {chatEnabled && (<>
               {/* Connection state */}
               {conn.connectionStatus === 'NONE' && !isAdmin && (
                 <button
@@ -423,6 +427,7 @@ export default function PublicProfilePage() {
                   </button>
                 </div>
               )}
+              </>)}
 
               {conn.connectionStatus === 'BLOCKED' && (
                 <div className="space-y-2">

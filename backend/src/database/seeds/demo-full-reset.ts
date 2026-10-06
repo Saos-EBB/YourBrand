@@ -32,23 +32,24 @@
  * anfangen. demo-seed.ts ist idempotent und ueberspringt schon vorhandene
  * Nicknames komplett — es schreibt file_url also nie neu, egal wie oft der
  * Container neu startet. Aendert sich S3_PUBLIC_URL_BASE (z.B. neue
- * ngrok-Domain, oder Umstellung auf den Media-Proxy statt direkter
+ * Backend-Domain, oder Umstellung auf den Media-Proxy statt direkter
  * MinIO-URL), blieben die 45 kuratierten Fotos/Audios sonst dauerhaft auf der
  * alten, moeglicherweise unerreichbaren URL stehen.
  */
 
 import 'dotenv/config';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { demoSeedPath } from './demo-seed-path';
 import { DataSource } from 'typeorm';
 import { deleteObject, keyFromPublicUrl } from '../../common/storage/object-storage.helper';
+import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 const ds = new DataSource({
     type: 'postgres',
     host:     process.env.DB_HOST     ?? 'localhost',
     port:     parseInt(process.env.DB_PORT ?? '5432', 10),
-    database: process.env.DB_NAME     ?? '',
+    database: tenantInfra().database,
     username: process.env.DB_USER     ?? '',
     password: process.env.DB_PASSWORD ?? '',
     synchronize: false,
@@ -60,9 +61,10 @@ interface SeedFile { users: { nickname: string }[] }
 
 async function main() {
     await ds.initialize();
-    console.log('demo-full-reset: verbunden mit DB', process.env.DB_NAME);
+    console.log('demo-full-reset: verbunden mit DB', tenantInfra().database);
 
-    const yamlPath = path.join(__dirname, 'demo-users.yaml');
+    // Mandanten-Datensatz (tenant.json "seed") oder die mitgelieferte Datei.
+    const yamlPath = demoSeedPath('demo-users.yaml')!;
     const seed = yaml.load(fs.readFileSync(yamlPath, 'utf8')) as SeedFile;
     const curatedNicknames = seed.users.map((u) => u.nickname);
 

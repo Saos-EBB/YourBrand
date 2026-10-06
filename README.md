@@ -49,7 +49,7 @@ Live public "beef" battle system (15min–48h), coin economy with Stripe coin pa
 - **Real-time** — Socket.io WebSockets
 - **Payments** — Stripe (subscriptions + webhooks)
 - **Security** — AES-256-CBC, bcrypt, JWT + HttpOnly refresh tokens, SHA-256+salt email hashing
-- **Deployment** — Railway-ready, Docker
+- **Deployment** — Docker Compose (local, self-hosted)
 
 ---
 
@@ -84,6 +84,19 @@ Starts four containers: Postgres+PostGIS (`XXX_db`, port 5432), pgAdmin (port 50
 `.env` (root) and `backend/.env` both define `DB_NAME`/`DB_USER`/`DB_PASSWORD`/`JWT_SECRET` — keep them in sync, the root copy is what `docker-compose.yml` substitutes into the Postgres/pgAdmin/backend service definitions.
 
 The database starts empty. Run the `backend/migrations/*.sql` files in order, starting from `001_baseline.sql` (a consolidated schema snapshot), to get the fully up-to-date schema.
+
+### Multiple tenants
+
+The same codebase runs as several branded tenants side by side — each with its own database, bucket, Redis namespace, JWT secret and feature set, on the shared Postgres/Redis/MinIO from `docker-compose.yml`:
+
+```bash
+scripts/tenant.sh up all     # shared infra + every tenant in tenants/ (except default)
+scripts/tenant.sh ls         # tenants with their URLs
+scripts/tenant.sh smoke all  # check every running tenant from the outside
+scripts/tenant.sh down kiez  # stop one tenant, data stays
+```
+
+Tenant configs live in [`tenants/`](./tenants/README.md); the design is in [`docs/multitenant.md`](./docs/multitenant.md).
 
 ---
 

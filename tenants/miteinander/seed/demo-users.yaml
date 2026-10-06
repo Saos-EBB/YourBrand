@@ -1,0 +1,163 @@
+# Demo-Datensatz fuer den Mandanten "miteinander" (tenant.json "seed": "miteinander").
+# Format wie backend/src/database/seeds/demo-users.yaml — von dort die Feld-Doku.
+# Logins: <nickname>@miteinander.demo, Passwort Demo1234!
+
+users:
+- id: o1
+  email: traeger_koeln@miteinander.demo
+  password: Demo1234!
+  role: owner
+  is_verified: true
+  nickname: traeger_koeln
+  birthdate: '1980-02-02'
+  gender: not_specified
+  looking_for: exchange
+  bio: Wir sind der Träger von Miteinander. Wir helfen bei Fragen. Schreib uns.
+  city: Köln
+  status: available
+  photo_file: o1.png
+  audio_file: ''
+  interests:
+  - Inklusion
+  - Beratung
+  - name: Ausgrenzung
+    is_green: false
+- id: a1
+  email: betreuung_sara@miteinander.demo
+  password: Demo1234!
+  role: admin
+  is_verified: true
+  nickname: betreuung_sara
+  birthdate: '1989-05-19'
+  gender: female
+  looking_for: exchange
+  bio: Ich heiße Sara. Ich passe auf, dass alle gut miteinander umgehen.
+  city: Köln
+  status: available
+  photo_file: f10.webp
+  audio_file: ''
+  interests:
+  - Inklusion
+  - Spazieren
+  - name: Gemeinheit
+    is_green: false
+- id: u1
+  email: paul_malt@miteinander.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: paul_malt
+  birthdate: '1994-08-08'
+  gender: male
+  looking_for: friendship
+  bio: Ich heiße Paul. Ich male gern. Ich suche Freunde zum Reden.
+  city: Köln
+  status: looking_for_chat
+  photo_file: m7.png
+  audio_file: ''
+  interests:
+  - Malen
+  - Musik hören
+  - Eis essen
+  - name: Laute Orte
+    is_green: false
+- id: u2
+  email: anna_backt@miteinander.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: anna_backt
+  birthdate: '1990-11-11'
+  gender: female
+  looking_for: friendship
+  bio: Ich bin Anna. Ich backe gern Kuchen. Am Sonntag gehe ich in den Park.
+  city: Köln
+  status: available
+  photo_file: f11.webp
+  audio_file: ''
+  interests:
+  - Backen
+  - Park
+  - Katzen
+  - name: Streit
+    is_green: false
+- id: u3
+  email: murat_fussball@miteinander.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: murat_fussball
+  birthdate: '1997-06-01'
+  gender: male
+  looking_for: friendship
+  bio: Ich bin Murat. Ich mag Fußball. Ich gehe gern ins Stadion.
+  city: Bonn
+  status: available
+  photo_file: m8.png
+  audio_file: m10.wav
+  interests:
+  - Fußball
+  - Stadion
+  - Bus fahren
+  - name: Verlieren
+    is_green: false
+- id: u4
+  email: greta_liest@miteinander.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: greta_liest
+  birthdate: '1972-03-15'
+  gender: female
+  looking_for: friendship
+  bio: Ich heiße Greta. Ich lese gern Bücher in Leichter Sprache. Ich trinke gern Tee.
+  city: Köln
+  status: looking_for_chat
+  photo_file: f12.jpg
+  audio_file: ''
+  interests:
+  - Lesen
+  - Tee
+  - Garten
+  - name: Hektik
+    is_green: false
+- id: u5
+  email: tim_tanzt@miteinander.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: tim_tanzt
+  birthdate: '2000-12-24'
+  gender: male
+  looking_for: friendship
+  bio: Ich bin Tim. Ich tanze in einer Gruppe. Jeden Mittwoch.
+  city: Köln
+  status: available
+  photo_file: m9.png
+  audio_file: ''
+  interests:
+  - Tanzen
+  - Musik
+  - Freunde treffen
+  - name: Langeweile
+    is_green: false
+- id: u6
+  email: lea_hund@miteinander.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: lea_hund
+  birthdate: '1996-04-20'
+  gender: female
+  looking_for: friendship
+  bio: Ich bin Lea. Ich habe einen Hund. Er heißt Bruno.
+  city: Köln
+  status: available
+  photo_file: f13.png
+  audio_file: ''
+  interests:
+  - Hunde
+  - Spazieren
+  - Fotos machen
+  - name: Regen
+    is_green: false

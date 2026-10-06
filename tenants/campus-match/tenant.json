@@ -1,0 +1,32 @@
+{
+  "slug": "campus-match",
+  "brand": {
+    "name": "Campus Match"
+  },
+  "theme": {
+    "default": "dark",
+    "tokens": {
+      "--color-primary-fixed-dim": "#F0568C",
+      "--color-on-primary-container": "#2B0012",
+      "--color-nav-badge-glow": "#F0568C",
+      "--color-tertiary-fixed-dim": "#B794F6"
+    }
+  },
+  "locale": {
+    "default": "de",
+    "available": [
+      "de",
+      "en"
+    ]
+  },
+  "tier": "premium",
+  "modules": {
+    "hidden": false
+  },
+  "legal": {
+    "name": "Campus Match GmbH (Demo)",
+    "address": "Schlossplatz 2, 48149 Münster",
+    "email": "team@campus.demo"
+  },
+  "seed": "campus-match"
+}

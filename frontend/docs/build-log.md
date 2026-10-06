@@ -1,3 +1,54 @@
+## 2026-10-06 — fix(media): Rewrite fuer /api/v1/media/file — Profilbilder waren lokal kaputt
+**Was:** Beim Showcase gefunden: Profilseiten machen aus der Medien-URL `new URL(...).pathname`,
+Chat/Discover/Matches entfernen fest `http://localhost:3000` — beides ergibt einen relativen Pfad
+`/api/v1/media/file/...` auf dem Frontend-Origin, den es dort nicht gibt (404, leeres `<img>`).
+Unter ngrok fiel das nicht auf (Medien-URL auf anderer Domain), im lokalen Docker-Betrieb schon —
+im default-Stack (Backend 3000) betrifft es sogar alle diese Seiten. `next.config.ts` leitet
+`/api/v1/media/file/:path*` jetzt wie `/uploads` an `BACKEND_INTERNAL_URL` weiter (pro Mandant
+gesetzt). Die URL-Umschreibungen in den Seiten bleiben, sie funktionieren damit.
+Verifiziert: `GET :3101/api/v1/media/file/profiles/f9.jpg` -> 200 image/jpeg; Playwright auf
+`/profile/katzen_lena`: Bild geladen (naturalWidth 1024, vorher 0 / 404).
+
+## 2026-10-06 — fix(tenant): Abo-Kachel im Dashboard nur mit Modul payments
+**Was:** Beim Screenshot-Check der vier Mandanten gefunden: "Mein Ueberblick" zeigte "Abo-Status:
+Kein Abo" auch bei Miteinander (ohne `payments`). Kachel haengt jetzt an `modules.payments`.
+Verifiziert: `tsc` sauber; Playwright als normaler Nutzer: Miteinander -> Kachel ausgeblendet,
+KiezConnect (payments an) -> sichtbar.
+
+## 2026-10-06 — feat(tenant): Frontend liest die Mandanten-Config — Schritt 4 des Multitenant-Umbaus
+**Was:** Root-Layout laedt `GET /api/v1/tenant` serverseitig (`lib/tenant/server.ts`, React `cache`,
+`no-store`) — Titel, `<html lang>`, Theme-Default (auch im `theme-init`-Script) und Farb-Tokens
+(`<style id="tenant-theme">`, `:root:not(.underground-*)`, Werte nochmal gegen `--color-*`/Hex
+geprueft) stimmen schon im ersten HTML. `TenantProvider` (Context) + `useTenant()` /
+`useModuleEnabled()` / `<BrandName />` fuer Client-Komponenten. Feste Markennamen ersetzt:
+Logo (`HiddenLogoButton`), Auth-/Onboarding-Layout, alle Footer (vorher `NEXT_PUBLIC_BRAND_NAME`),
+Onboarding-Begruessung (`{brand}` in allen 9 Sprachen), Rechtsseiten-Hinweis, AGB.
+`LEGAL_INFO` entfernt — Impressum/Datenschutz/AGB nutzen `legal` aus der Config.
+Module: `(app)/layout.tsx` ruft fuer Routen abgeschalteter Module `notFound()` (`ROUTE_MODULES`:
+discover/matches -> matching, chat/requests -> chat, beef -> hidden). Nav (Sidebar, TopNav,
+BottomNav), Dashboard-Links/-Kacheln, Kontaktanfrage-Buttons im Profil, Abo-Bereich in den
+Settings und die Chat-Abrufe im Hintergrund (`useUnreadMessageCount`, `NotificationBell`) richten
+sich nach den Modulen. Hidden Zone ohne Modul `hidden`: kein Logo-Easter-Egg, kein Overlay, keine
+wiederhergestellten Underground-Themes, ein alter entsperrter Zustand wird gesperrt.
+Sprachen: Settings bieten nur `locale.available` an, ohne eigene Wahl gilt `locale.default`.
+**Nicht gebaut:** B2B-Seite bleibt beim Produktnamen (Verkaufsseite des Produkts, nicht des
+Mandanten). Owner-Statistiken im Dashboard zeigen Abo-/Umsatz-Kacheln auch ohne `payments` (Werte 0).
+`brand.logo`/`favicon` werden noch nicht ausgeliefert (Text-Logo).
+Verifiziert: `tsc` sauber, ESLint-Befunde der beruehrten Dateien identisch zu vorher. Echter Lauf
+(`next dev` + Backend gegen lokales Postgres/Redis, Playwright, als Owner eingeloggt):
+Mandant core/hell -> Titel + Logo "KiezConnect", `html.light`, `--color-primary-fixed-dim` =
+Mandantenfarbe, Sidebar ohne Discover/Matching, /discover + /beef -> 404-Seite, Impressum mit
+Mandanten-Angaben, Sprachwahl nur de/en. Mandant default -> unveraendert (dunkel, alle Module,
+alle 9 Sprachen). Dabei gefunden und gefixt: leerer Token-String als Textknoten im `<head>` ->
+Hydration-Fehler; danach 0 Hydration-Fehler bei beiden Mandanten.
+
+## 2026-10-05 — chore(deploy): ngrok/Vercel-Reste entfernt — nur noch Docker
+**Was:** `NGROK_HEADER` aus `lib/api.ts` und allen Verwendern (`profanity.ts`, `useBackendHealth.ts`,
+Onboarding, Settings) entfernt, ebenso die `extraHeaders` in `lib/socket.ts`. `.env.example` ohne
+ngrok/Vercel-Varianten. Datenschutz-Seite (Hosting) beschreibt jetzt den Docker-Betrieb ohne
+externe Hoster, B2B-Seite nennt "Docker Compose" statt "Railway-ready".
+Verifiziert: `tsc --noEmit` sauber.
+
 ## 2026-09-17 — fix(media): loading="lazy" gegen ngrok-Free-Concurrency-Refusals
 **Was:** Nach dem Backend-Proxy-Fix (siehe `backend/docs/build-log.md`) meldete der User weiterhin
 fehlende Fotos, Browser-Konsole zeigte `net::ERR_HTTP2_SERVER_REFUSED_STREAM` fuer viele

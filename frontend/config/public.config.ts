@@ -1,10 +1,4 @@
-// MANUELL: einzige Stelle fuer die Impressum-Pflichtangaben — hier die
-// eigenen Daten eintragen (verwendet von /impressum und /datenschutz).
-export const LEGAL_INFO = {
-  name: '<NAME>',
-  address: '<ANSCHRIFT>',
-  email: '<EMAIL>',
-} as const
+// Impressum-Angaben kommen pro Mandant aus tenants/<slug>/tenant.json ("legal").
 
 export const PUBLIC_CONFIG = {
   banScreen: {

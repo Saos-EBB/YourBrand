@@ -1,3 +1,179 @@
+## 2026-10-06 — feat(showcase): Screenshots + Videos aller Mandanten — Schritt 8
+**Was:** `showcase/` (eigenes kleines Playwright-Projekt): pro laufendem Mandant (`tenants/<slug>/.env`
++ default) derselbe Ablauf mit Video — Login, DSGVO-Zustimmung (falls verlangt), Dashboard, Chat-Liste,
+Chat, Discover (nur `matching`), Hidden Zone ueber Logo-Easter-Egg + Passwort (nur `hidden`),
+Einstellungen. Welche Schritte laufen, kommt aus `GET /tenant`. Danach Vergleichsraster pro Schritt
+und mit `ffmpeg` ein 2×2-Vergleichsvideo. Personas in `personas.json`. Ausgabe `showcase/out/`
+(gitignored).
+Unterwegs gefunden: Zustimmungsseite (`/consent`) beim ersten Login nach dem Seed — als eigener
+Schritt aufgenommen; Medien-Rewrite im Frontend (siehe frontend/docs/build-log.md);
+`GET /admin/dashboard/user-stats` gibt normalen Nutzern 403 (Controller klassenweit
+`@Roles('admin')`), deshalb "—" in "Offene Anfragen/Aktive Chats" — bestehender Fehler, nicht
+Teil dieses Umbaus, nicht angefasst.
+Verifiziert: echter Lauf gegen alle vier Mandanten (je Backend + `next dev`, lokales Postgres/
+Redis/S3-Mock): kiez 6, campus-match 7, miteinander 6, underground 8 Schritte, ohne Fehler; 8
+Vergleichsbilder, `vergleich.mp4` (42 s, 2×2). Ergebnisse gesichtet: Marke, Farben, Profilbilder,
+Leichte Sprache, Leetspeak + laufender Beef in der Hidden Zone.
+
+## 2026-10-06 — feat(tenant): die vier Showcase-Mandanten + Smoke-Test — Schritt 7
+**Was:** `tenants/{kiez,campus-match,miteinander,underground}/tenant.json`: KiezConnect (core, hell,
+Orange), Campus Match (premium ohne hidden, dunkel, Pink), Miteinander (connect ohne payments,
+`de_easy` als Standardsprache, Blau), Underground (premium inkl. Hidden Zone, dunkel, Cyan). Je
+eigene Impressum-Angaben (als Demo markiert) und `seed` auf den eigenen Datensatz. Nur Akzent-
+Tokens, weil Tokens fuer hellen und dunklen Modus gelten. Variante 3 laut User-Entscheidung schlank
+(ohne Orgs/Caretaker).
+`scripts/tenant.sh smoke <slug>|all`: `GET /tenant` (Slug), Owner-Login mit dem Owner aus dem
+Datensatz (prueft Seeds + Mandanten-Secrets), je Modul eine Probe-Route ohne Token (FeatureGuard vor
+JwtGuard: 404 = aus, 401 = an), Frontend-`<title>` = Markenname. Exit 1 bei Fehlern.
+**Nicht gebaut:** Orgs/Caretaker (Variante 3 voll). Pro Mandant eigene Profilfotos.
+Verifiziert: 39 Jest-Tests gruen (alle 5 `tenant.json` gueltig). Smoke-Test gegen alle vier laufenden
+Mandanten (Backend gegen die in Schritt 6 geseedeten DBs, `next dev`): 28/28 Checks ok — u.a.
+miteinander: chat an, matching/payments/hidden 404; underground: alle vier an. Vorher derselbe Test
+mit gestopptem Backend: jeder Check als FEHLER gemeldet, Exit 1. Screenshots aller vier als normaler
+Nutzer (Dashboard + Chat) zeigen Marke, Theme, Akzentfarbe, Navigation und Sprache je Mandant.
+
+## 2026-10-06 — feat(tenant): Demo-Daten pro Mandant — Schritt 6 des Multitenant-Umbaus
+**Was:** `src/database/seeds/demo-seed-path.ts`: `tenant.json` `"seed": "<name>"` ->
+`<TENANT_DIR>/<name>/seed/demo-users.yaml` / `demo-relations.yaml`, ohne `seed` die mitgelieferten
+Dateien (default-Mandant unveraendert). `demo-seed.ts`, `demo-full-reset.ts` und
+`demo-relations-seed.ts` lesen darueber. Fehlt `demo-users.yaml` im Datensatz -> Fehler (sonst
+loescht `demo-full-reset` gegen die falsche Liste); fehlt `demo-relations.yaml` -> keine Relations,
+nie die default-Datei (andere Nicknames). Relations-Abschnitte duerfen fehlen.
+Vier Datensaetze unter `tenants/<slug>/seed/`: kiez (10 User, Nachbarschaft Berlin), campus-match
+(10, Studierende Muenster), miteinander (8, Leichte Sprache Koeln), underground (10, Gaming, 3 Beefs
+mit Votes/Kommentaren). Fotos/Audio aus den vorhandenen `demoPfp/`/`demoAudio/`.
+**Nicht gebaut:** eigene Profilfotos pro Mandant (vorhandene Bilder wiederverwendet). Keine
+Swipes/Matches im Seed (Discover-Deck entsteht aus Profilen + Standort). `tenant.json` fuer die vier
+Mandanten folgt in Schritt 7.
+Verifiziert: `tsc` sauber, 35 Jest-Tests gruen (neu: Pfadauflösung + Test, dass jede in
+`demo-relations.yaml` referenzierte Person im Datensatz existiert). Echter Lauf aller vier gegen
+lokales Postgres/PostGIS + S3-Mock (init, full-reset, demo-seed, relations, cities, backfill):
+kiez 10 User/5 Anfragen/3 Chats/11 Nachrichten, campus_match 10/5/3/11, miteinander 8/3/2/7,
+underground 10/4/2/7 + 3 Beefs/8 Votes; je eigener Owner, Medien im eigenen Bucket, Standorte
+gesetzt. Zweiter Lauf: nichts angelegt, nichts geloescht. Lint-Befunde der Seed-Skripte unveraendert.
+
+## 2026-10-06 — feat(tenant): eigene Secrets und eigene .env pro Mandant
+**Was:** Bisher war `backend/.env` in jeden Mandanten-Container gemountet — alles, was Compose
+nicht setzte, kam vom default-Mandanten, u.a. `EMAIL_SALT` und `APP_ENCRYPTION_KEY` (ein Key fuer
+alle = wer einen Mandanten-Key hat, entschluesselt alle E-Mails) und `STRIPE_RETURN_URL` (Redirect
+nach Zahlung auf das default-Frontend). Jetzt: `tenants/_template/.env.example` als Vorlage,
+`scripts/tenant.sh` erzeugt daraus `tenants/<slug>/.env` mit eigenen `JWT_SECRET` (32 Byte),
+`EMAIL_SALT` (16 Byte), `APP_ENCRYPTION_KEY` (32 Byte, AES-256) und Platzhaltern fuer eigene
+Stripe-/Resend-Keys. `docker-compose.tenant.yml` mountet diese Datei als `/app/.env` (ersetzt dort
+`backend/.env`), `JWT_SECRET` nicht mehr aus der Compose-Env. `STRIPE_RETURN_URL` und
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` pro Mandant. Neu `tenant-secrets.ts`: `tenant-init` bricht
+ab, wenn ein Secret fehlt oder ungueltig ist (z.B. unausgefuellte Vorlage) — vorher waere das erst
+beim ersten Login/Register im Request geplatzt.
+**Nicht gebaut:** eigene Postgres-Rolle / MinIO-User pro Mandant (siehe docs/multitenant.md —
+Backend verbindet heute als Superuser, RLS-Verhalten wuerde sich aendern). Kein Nachruesten
+bestehender `tenants/<slug>/.env` (es gab noch keine).
+Verifiziert: `tsc` sauber, 27 Jest-Tests gruen. `tenant.sh` (Docker-Stub) erzeugt die `.env` mit
+64/32/64 Hex-Zeichen; `docker compose config` zeigt den Mount auf `/app/.env`, Return-URL auf den
+Mandanten-Frontend-Port, kein `JWT_SECRET` mehr in der Compose-Env. `tenant-init` nur mit dieser
+Datei (`env -i`, `DOTENV_CONFIG_PATH`): DB + Bucket angelegt; mit unausgefuellter Vorlage -> Exit 1
+mit allen drei Secret-Fehlern.
+
+## 2026-10-06 — feat(tenant): Docker-Setup pro Mandant — Schritt 5 des Multitenant-Umbaus
+**Was:** `docker-compose.tenant.yml` (Repo-Root): pro Mandant ein eigenes Compose-Projekt
+`yb-<slug>` mit `init`, `backend`, `worker`, `frontend` im externen Netz `yb_network` (Haupt-
+Compose-Netz hat jetzt diesen festen Namen) auf `XXX_db`/`XXX_redis`/`XXX_minio`. Kein
+`DB_NAME`/`S3_BUCKET` im Mandanten-Env; eigenes `JWT_SECRET`, CORS/APP_URL/S3_PUBLIC_URL_BASE auf
+die Mandanten-Ports. `TENANT_SLUG` statt `TENANT`, weil die Root-`.env` `TENANT=default` setzt —
+ohne Mandanten-env-file scheitert Compose jetzt, statt einen zweiten Stack auf der default-DB zu
+starten. `scripts/tenant.sh up|down|ls|logs <slug>|all` legt beim ersten `up` `tenants/<slug>/.env`
+an (naechstes freies Portpaar ab 3010/3011, `openssl rand` fuer JWT_SECRET) und startet vorher die
+geteilte Infra (`--wait`). `default` bleibt der Haupt-Stack und wird vom Skript abgewiesen.
+`src/database/tenant-init.ts` (Service `init`): validiert `tenant.json`, legt DB + Bucket an,
+spielt `migrations/NNN_*.sql` ein und merkt sich jede Datei in `tenant_schema_migrations`
+(Abbruch -> naechster Lauf setzt fort; neue Migrationen kommen automatisch). Dateien ohne `$$`
+laufen Statement fuer Statement — `003` nutzt `CREATE INDEX CONCURRENTLY`, das in einem
+Multi-Statement-Query (implizite Transaktion) scheitert. Eine fremde DB mit Schema, aber ohne
+Tracking-Tabelle, wird nicht angefasst.
+`tenant-infra.helper.ts`: `DB_NAME`/`S3_BUCKET` gelten nur noch fuer den Mandanten `default` —
+`backend/.env` (mit `DB_NAME`) ist in jeden Container gemountet, dotenv haette sonst jeden
+Mandanten in die default-DB gelenkt.
+**Nicht gebaut:** kein Public-Read auf Mandanten-Buckets (Medien laufen ueber den Backend-Proxy).
+Kein `reset`-Befehl (DB/Bucket loeschen). `EMAIL_SALT`/`APP_ENCRYPTION_KEY`/Stripe/Resend teilen
+sich alle Mandanten (aus `backend/.env`).
+Verifiziert: `tsc` sauber, 23 Jest-Tests gruen. `tenant-init` gegen lokales Postgres 16 + PostGIS
+und einen S3-Mock (moto; MinIO-Download von der Netzwerk-Policy blockiert): frische DB -> 001–005
+eingespielt, Bucket angelegt, gesetztes `DB_NAME` ignoriert; zweiter Lauf -> nichts zu tun;
+simulierter Abbruch -> fehlende Dateien nachgezogen, Index wieder da. Dabei gefunden: die
+CONCURRENTLY- und Resume-Fehler oben. `docker compose config` loest beide Compose-Dateien korrekt
+auf (Namen, Ports, URLs, externes Netz). `tenant.sh` mit Docker-Stub: Portvergabe, idempotente
+`.env`, Fehlerfaelle (unbekannt, `default`, `logs all`) brechen mit Exit 1 ab, ohne Infra zu
+starten. **Nicht verifiziert:** echtes `docker compose up` — in dieser Umgebung laeuft kein
+Docker-Daemon.
+
+## 2026-10-06 — feat(tenant): Isolation pro Mandant — Schritt 3 des Multitenant-Umbaus
+**Was:** `src/common/tenant/tenant-infra.helper.ts` leitet aus dem Slug ab: DB `yb_<slug>`
+(`-` -> `_`), Bucket `<slug>-media`, Redis-Prefix `<slug>:`, BullMQ-Prefix `<slug>:bull`.
+Verdrahtet in `database.config.ts` (API + Worker), `data-source.ts`, allen 10 Seed-/Hilfsskripten,
+`object-storage.helper.ts`, `RedisModule` (ioredis `keyPrefix` — deckt Settings-Cache, Throttler,
+Beef-State, Last-Active ab) und `QueueModule` (BullMQ `prefix`; ioredis `keyPrefix` ist auf
+BullMQ-Connections verboten). `main.ts`/`worker.ts` loggen beim Start Mandant + DB/Bucket/Prefix.
+Explizit gesetztes `DB_NAME`/`S3_BUCKET` gewinnt weiterhin — der bestehende default-Stack laeuft mit
+seinem Volume unveraendert weiter. Mandanten-Container duerfen beides deshalb nicht setzen (Schritt 5).
+**Nicht gebaut:** DB-/Bucket-Anlage pro Mandant (kommt mit dem Docker-Setup, Schritt 5). Redis-Keys
+des default-Stacks liegen jetzt unter `default:` — nur Cache/Zaehler/Queues, kein Volume, beim
+naechsten Start einfach neu.
+Verifiziert: `tsc` sauber, 22 Jest-Tests gruen, Lint-Befunde der beruehrten Dateien identisch zu
+vorher. Echter Boot zweier Mandanten gegen dasselbe Postgres/Redis: `pg_stat_activity` zeigt nur
+`yb_kiez` fuer kiez; Redis-Keys getrennt unter `kiez:`/`nochat:` (Throttler-Hits + BullMQ-Queues);
+ohne `S3_BUCKET` wird der Bucket `kiez-media`.
+
+## 2026-10-06 — feat(tenant): Feature-Gating im Backend — Schritt 2 des Multitenant-Umbaus
+**Was:** `app.module.ts` importiert `MatchingModule`, `PaymentModule` und die vier Hidden-Module
+(Beef/Coin/Teeth/Badge) nur noch, wenn das Modul in der Tenant-Config an ist — abgeschaltet gibt es
+keine Routen, keine Gateways (`/hidden-beef`) und keine Cron-Jobs (`beef.scheduler.ts`).
+`ChatModule` bleibt immer geladen: `ChatGateway` liefert auch Notifications/Bans aus, `AdminModule`
+nutzt `ConversationsService`. Fuer Chat sperren stattdessen `FeatureGuard` die Routen und
+`ChatGateway` die vier Chat-Events (`join_conversation`, `send_message`, `typing`, `read_messages`
+— still ignoriert, wie dort bei fehlender Berechtigung ueblich).
+Neu: `@RequiresModule(<modul>)` + `FeatureGuard` (global per `APP_GUARD`, laeuft vor `JwtGuard`)
+-> 404 statt 401/403, damit ein gesperrtes Modul auch ohne Login nicht als existent erkennbar ist.
+Alle Feature-Controller tragen den Decorator als zweite Linie. Neue Config-Regel:
+`matching` erfordert `chat` (ein Match legt eine Conversation an).
+**Nicht gebaut:** Worker unveraendert — er verarbeitet nur Core-Queues (Media, Auto-Suspend,
+Media-Ticket, GDPR). Frontend blendet noch nichts aus (Schritt 4).
+Verifiziert: `tsc` sauber, 19 Jest-Tests gruen (neu: FeatureGuard, matching->chat). Echter Boot
+des kompletten Backends gegen lokales Postgres 16 + PostGIS (Baseline + Migrationen) und Redis,
+drei Mandanten: `default` -> alle Feature-Routen 401; `core` -> discover/hidden 404, chat/payment
+401; `core` mit chat+payments aus -> chat/discover/payment/hidden 404, profile weiter 401.
+
+## 2026-10-06 — feat(tenant): Tenant-Config — Schritt 1 des Multitenant-Umbaus
+**Was:** `src/common/tenant/` neu. `tenants/<slug>/tenant.json` (Repo-Root) wird beim Boot geladen
+(`TENANT`, Default `default`; `TENANT_DIR`, Docker `/tenants`, lokal `../tenants`) und mit
+class-validator geprueft (`whitelist` + `forbidNonWhitelisted`, Tippfehler im Key brechen den Boot).
+Zusaetzlich: Slug = Ordnername, `locale.default` in `available`, Theme-Tokens nur `--color-*` mit
+Hex-Wert (landen spaeter als CSS-Variablen im Browser), Asset-Namen ohne Pfad. Alle Fehler werden
+auf einmal gemeldet. Tier (`core`/`connect`/`premium`) setzt Modul-Defaults (`chat`, `matching`,
+`payments`, `hidden`), `modules` ueberschreibt einzeln. `TenantModule` ist global und stellt
+`TENANT_CONFIG` bereit; `GET /api/v1/tenant` (oeffentlich, SkipThrottle) gibt alles ausser `seed`.
+Loader als plain functions (wie `crypto.helper.ts`), damit Seeds/Worker ihn spaeter ohne DI nutzen.
+`tenants/default` = bisheriges Verhalten (premium, alle Module an), `tenants/_template` als Vorlage.
+`docker-compose.yml`: `TENANT`/`TENANT_DIR` + read-only Mount `./tenants:/tenants` fuer nestjs/worker.
+**Nicht gebaut:** noch kein Gating — `modules` wird gelesen, aber noch nichts abgeschaltet (Schritt 2).
+`WorkerModule` laedt die Config noch nicht (braucht sie erst mit Schritt 2/3). Connect = Core,
+weil Orgs/Caretaker nicht existieren.
+Verifiziert: `tsc --noEmit` sauber, 14 Jest-Tests gruen (inkl. Validitaet aller eingecheckten
+`tenant.json`). Smoke-Test mit echtem Nest-Boot: `GET /api/v1/tenant` -> 200 mit aufgeloesten
+Modulen; kaputte Config und fehlender Mandant -> Boot bricht mit lesbarer Fehlerliste ab.
+
+## 2026-10-05 — chore(deploy): Railway, ngrok, Vercel und Render entfernt — nur noch Docker
+**Was:** Einziger Betriebsweg ist jetzt `docker compose` (lokal). Geloescht: `railway.json`,
+`Dockerfile.railway`, `docker-entrypoint.railway.sh`, `scripts/deploy/ensure-db.js` (nur vom
+Railway-Entrypoint benutzt), `_archive/render.yaml`, `deploy/systemd/` (ngrok-Tunnel + Wake-Timer),
+`docs/deployment/railway.md` + `demo-hosting.md`. `ngrok-skip-browser-warning` aus den CORS-
+`allowedHeaders` von `main.ts`, `chat.gateway.ts`, `beef.gateway.ts` entfernt. `SEED_ON_BOOT` und
+die Vercel-Origins aus `.env.example` raus. Kommentare, die Railway/ngrok als Begruendung nannten,
+neutral umformuliert; `architecture.md` nachgezogen.
+**Nicht geaendert:** Media-Proxy (`/media/file/*`), `/health`, `COOKIE_SAMESITE` und die
+Deck-Groesse 6 bleiben — alle auch ohne Tunnel sinnvoll bzw. Verhaltensaenderung waere eigener Scope.
+Aeltere Build-Log-Eintraege bleiben als Historie unveraendert.
+Verifiziert: `tsc --noEmit -p tsconfig.build.json` sauber (die 2 Fehler in
+`rps.handler.spec.ts` bestehen schon auf dem Stand davor).
+
 ## 2026-09-17 — fix(discover): Deck-Groesse 20 -> 6 gegen ngrok-Refusals
 **Was:** Live-Messung gegen den echten Tunnel (30 gleichzeitige Requests auf dieselbe
 Media-Datei): nur 9/30 kamen durch, 21 scheiterten (`000`, verbindungslos). `loading="lazy"`

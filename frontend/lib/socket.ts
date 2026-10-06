@@ -12,7 +12,6 @@ export function connect(): Socket {
   }
   socket = io(process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3000', {
     auth: { token },
-    extraHeaders: { 'ngrok-skip-browser-warning': 'true' },
   })
   return socket
 }
@@ -44,7 +43,6 @@ export function connectHiddenBeef(): import('socket.io-client').Socket {
   if (hiddenBeefSocket) { hiddenBeefSocket.disconnect(); hiddenBeefSocket = null }
   hiddenBeefSocket = io(`${process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3000'}/hidden-beef`, {
     auth: { token },
-    extraHeaders: { 'ngrok-skip-browser-warning': 'true' },
   })
   return hiddenBeefSocket
 }

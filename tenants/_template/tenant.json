@@ -1,0 +1,13 @@
+{
+  "slug": "mein-mandant",
+  "brand": { "name": "Mein Mandant", "logo": "logo.svg", "favicon": "favicon.ico" },
+  "theme": {
+    "default": "light",
+    "tokens": { "--color-primary-fixed-dim": "#E4572E" }
+  },
+  "locale": { "default": "de", "available": ["de", "en"] },
+  "tier": "core",
+  "modules": { "matching": false },
+  "legal": { "name": "Firma GmbH", "address": "Musterstr. 1, 12345 Musterstadt", "email": "kontakt@example.com" },
+  "seed": "mein-mandant"
+}

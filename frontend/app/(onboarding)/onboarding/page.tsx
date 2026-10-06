@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Camera, Check, ChevronDown, ChevronLeft, Loader2, Sparkles } from 'lucide-react'
-import { fetchApi, NGROK_HEADER } from '@/lib/api'
+import { fetchApi } from '@/lib/api'
+import { useTenant } from '@/components/TenantProvider'
 import { useAuthStore } from '@/lib/store/authStore'
 import { useTranslation } from '@/hooks/useTranslation'
 import { CityAutocomplete } from '@/components/ui/CityAutocomplete'
@@ -84,6 +85,7 @@ function ProgressBar({ step, ariaLabel }: { step: number; ariaLabel: string }) {
 
 function StepWelcome({ onNext }: { onNext: () => void }) {
   const { t } = useTranslation()
+  const brandName = useTenant().brand.name
   return (
     <div className="text-center space-y-8">
       <div className="flex justify-center">
@@ -92,7 +94,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         </div>
       </div>
       <div className="space-y-3">
-        <h1 className="text-3xl font-bold text-on-surface">{t.onboarding.welcomeTitle}</h1>
+        <h1 className="text-3xl font-bold text-on-surface">{t.onboarding.welcomeTitle.replace('{brand}', brandName)}</h1>
         <p className="text-on-surface-variant leading-relaxed">{t.onboarding.welcomeBody}</p>
       </div>
       <button
@@ -534,7 +536,7 @@ function StepDone({
           {
             method: 'POST',
             credentials: 'include',
-            headers: { Authorization: `Bearer ${freshToken}`, ...NGROK_HEADER },
+            headers: { Authorization: `Bearer ${freshToken}` },
             body: fd,
           }
         )

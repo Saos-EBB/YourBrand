@@ -1,0 +1,155 @@
+# Demo-Datensatz fuer den Mandanten "underground" (tenant.json "seed": "underground").
+# Format wie backend/src/database/seeds/demo-relations.yaml — von dort die Feld-Doku.
+# Logins: <nickname>@underground.demo, Passwort Demo1234!
+
+contact_requests:
+- sender: pixelqueen
+  receiver: glitchgirl
+  status: accepted
+  message_preview: Dein Glitch im Level 3 hat meinen Run gerettet.
+- sender: respawn_rita
+  receiver: tiltmaster
+  status: accepted
+  message_preview: Koop-Runde heute Abend? Ich bleib ruhig, versprochen.
+- sender: lootgoblin
+  receiver: padlord
+  status: accepted
+  message_preview: Tausche seltenen Skin gegen deine Meinung zu Controllern.
+- sender: lagspike
+  receiver: nobscope_nils
+  status: pending
+  message_preview: Revanche? Diesmal mit LAN-Kabel.
+conversations:
+- user_a: pixelqueen
+  user_b: glitchgirl
+  contact_request_ref: pixelqueen→glitchgirl
+  status: active
+  messages:
+  - sender: pixelqueen
+    content: Ohne deinen Wall-Clip wäre ich nie unter 20 Minuten gekommen.
+    minutes_ago: 400
+  - sender: glitchgirl
+    content: Ich hab ihn nur gefunden. Du hast ihn 300-mal geübt.
+    minutes_ago: 395
+  - sender: pixelqueen
+    content: 312-mal. Aber wer zählt.
+    minutes_ago: 390
+  - sender: glitchgirl
+    content: Du. Offensichtlich 😂
+    minutes_ago: 385
+- user_a: respawn_rita
+  user_b: tiltmaster
+  contact_request_ref: respawn_rita→tiltmaster
+  status: active
+  messages:
+  - sender: respawn_rita
+    content: 'Regel für heute: kein Rage-Quit vor Mitternacht.'
+    minutes_ago: 100
+  - sender: tiltmaster
+    content: Und nach Mitternacht?
+    minutes_ago: 95
+  - sender: respawn_rita
+    content: Dann bring ich Tee.
+    minutes_ago: 90
+beefs:
+- initiator: nobscope_nils
+  target: padlord
+  tldr: Maus & Tastatur vs. Controller
+  status: active
+  admin_approved: true
+  game_type: reaction
+  pot_coins: 60
+  chat_passage: 'nobscope_nils: mit Controller zielen ist wie mit Handschuhen Klavier spielen
+
+    padlord: und du sitzt seit 2009 am Schreibtisch und nennst das Komfort
+
+    nobscope_nils: Präzision > Sofa
+
+    padlord: Beef. Jetzt. Reaktionstest entscheidet.
+
+    '
+- initiator: pixelqueen
+  target: lagspike
+  tldr: Ist Lag eine Ausrede?
+  status: active
+  admin_approved: true
+  game_type: rps
+  pot_coins: 40
+  chat_passage: 'lagspike: ich hätte gewonnen, mein Ping war 300
+
+    pixelqueen: dein Ping ist immer 300
+
+    lagspike: genau, deshalb zählt es nicht
+
+    pixelqueen: lass die Community entscheiden
+
+    '
+- initiator: tiltmaster
+  target: lootgoblin
+  tldr: Ist Skin-Sammeln Gameplay?
+  status: closed
+  admin_approved: true
+  game_type: tictactoe
+  pot_coins: 50
+  winner: lootgoblin
+  chat_passage: 'tiltmaster: Skins sammeln ist kein Spielen
+
+    lootgoblin: sagt der, der 40 Stunden für ein Achievement gegrindet hat
+
+    tiltmaster: das war Strategie!
+
+    lootgoblin: tic tac toe. jetzt.
+
+    '
+beef_interactions:
+- beef_initiator: nobscope_nils
+  beef_target: padlord
+  votes:
+  - voter: pixelqueen
+    side: initiator
+    coins_wagered: 3
+  - voter: glitchgirl
+    side: target
+    coins_wagered: 2
+  - voter: respawn_rita
+    side: target
+    coins_wagered: 1
+  - voter: lagspike
+    side: initiator
+    coins_wagered: 2
+  - voter: lootgoblin
+    side: target
+    coins_wagered: 4
+  comments:
+  - user: respawn_rita
+    content: Sofa-Gaming ist Lebensqualität. Team Controller.
+    minutes_ago: 50
+  - user: lagspike
+    content: Maus. Aber mit meinem Ping egal.
+    minutes_ago: 40
+  - user: ug_ref
+    content: Fairer Kampf bitte. Reaktionstest startet um 20 Uhr.
+    minutes_ago: 30
+- beef_initiator: pixelqueen
+  beef_target: lagspike
+  votes:
+  - voter: glitchgirl
+    side: initiator
+    coins_wagered: 2
+  - voter: tiltmaster
+    side: target
+    coins_wagered: 1
+  - voter: nobscope_nils
+    side: initiator
+    coins_wagered: 3
+  comments:
+  - user: tiltmaster
+    content: Lag ist real. Ich weiß, wovon ich rede.
+    minutes_ago: 25
+  - user: glitchgirl
+    content: Lag ist kein Bug, sondern ein Lebensstil.
+    minutes_ago: 20
+blocks:
+- blocker: respawn_rita
+  blocked: lagspike
+  reason: Spam im Koop-Chat

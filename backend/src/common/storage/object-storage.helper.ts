@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 let client: S3Client | undefined;
 
@@ -20,9 +21,9 @@ function getClient(): S3Client {
     return client;
 }
 
+// Pro Mandant ein Bucket (tenant-infra.helper.ts).
 function getBucket(): string {
-    if (!process.env.S3_BUCKET) throw new Error('S3_BUCKET env var is not set');
-    return process.env.S3_BUCKET;
+    return tenantInfra().bucket;
 }
 
 function getPublicUrlBase(): string {

@@ -13,7 +13,7 @@ import { ChangeEmailDto } from './dto/change-email.dto';
 
 // Lokal liegen Frontend und Backend auf derselben Site (localhost:3001 /
 // localhost:3000) — SameSite=Lax reicht, das Refresh-Cookie geht mit.
-// Im Split-Deploy (Frontend z.B. *.vercel.app, Backend *.up.railway.app) ist
+// Im Split-Deploy (Frontend und Backend auf verschiedenen Domains) ist
 // jeder Request cross-site: der Browser haengt ein Lax-Cookie dann nicht an,
 // POST /auth/refresh kommt ohne Token an und jede Session ist nach Ablauf des
 // Access-Tokens tot. Fuer diesen Fall COOKIE_SAMESITE=none setzen.

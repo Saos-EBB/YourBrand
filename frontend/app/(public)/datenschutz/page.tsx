@@ -1,11 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { LEGAL_INFO } from '@/config/public.config'
+import { useTenant } from '@/components/TenantProvider'
 import { LegalPageDemoNotice, LegalPageDisclaimer } from '@/components/LegalPageNotice'
 
 export default function DatenschutzPage() {
   const router = useRouter()
+  // Impressum-Angaben pro Mandant (tenants/<slug>/tenant.json "legal").
+  const { legal } = useTenant()
 
   return (
     <main className="min-h-screen bg-background pb-8">
@@ -24,17 +26,17 @@ export default function DatenschutzPage() {
         <section className="space-y-1">
           <h2 className="text-sm font-semibold text-on-surface">Verantwortlicher</h2>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            {LEGAL_INFO.name}, {LEGAL_INFO.address}<br />
-            {LEGAL_INFO.email}
+            {legal.name}, {legal.address}<br />
+            {legal.email}
           </p>
         </section>
 
         <section className="space-y-1">
           <h2 className="text-sm font-semibold text-on-surface">Hosting</h2>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            Das Frontend läuft dauerhaft bei Vercel. Das Backend (Server, Datenbank, Datei-Speicher)
-            läuft auf einem privaten Rechner des Betreibers und ist nur zeitweise über einen
-            ngrok-Tunnel erreichbar — beide Verbindungen sind per HTTPS verschlüsselt.
+            Die gesamte Anwendung (Frontend, Backend, Datenbank, Datei-Speicher) läuft
+            containerisiert per Docker auf einem Rechner des Betreibers. Es werden keine
+            externen Hosting-Anbieter eingesetzt.
           </p>
         </section>
 
@@ -120,7 +122,7 @@ export default function DatenschutzPage() {
             30 Tagen werden E-Mail, Passwort und Profildaten automatisch anonymisiert. Nachrichten,
             Uploads und Spielhistorie können dabei ohne Personenbezug bestehen bleiben. In der
             Praxis greift für alle nicht-kuratierten Konten ohnehin der oben beschriebene
-            automatische Reset bei jedem Backend-Neustart. Anfragen bitte an {LEGAL_INFO.email}.
+            automatische Reset bei jedem Backend-Neustart. Anfragen bitte an {legal.email}.
           </p>
         </section>
 

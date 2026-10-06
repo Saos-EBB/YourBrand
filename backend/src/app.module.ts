@@ -1,4 +1,4 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, Type } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RlsContextMiddleware } from './common/middleware/rls-context.middleware';
@@ -35,9 +35,27 @@ import { TeethModule } from './modules/hidden/teeth/teeth.module';
 import { BadgeModule } from './modules/hidden/badge/badge.module';
 import { SharedModule } from './modules/shared/shared.module';
 import { MatchingModule } from './modules/core/matching/matching.module';
+import { TenantModule } from './common/tenant/tenant.module';
+import { FeatureGuard } from './common/tenant/feature.guard';
+import { isModuleEnabled } from './common/tenant/tenant-config.loader';
+import { TENANT_MODULES } from './common/tenant/tenant.types';
+import type { TenantModule as TenantFeature } from './common/tenant/tenant.types';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
+
+// Mandanten-Module (tenants/<slug>/tenant.json): abgeschaltete werden gar
+// nicht erst importiert — keine Routen, keine Gateways, keine Cron-Jobs.
+// chat ist leer, weil ChatModule immer geladen bleiben muss (ChatGateway
+// liefert auch Notifications/Bans, Admin nutzt ConversationsService); die
+// Chat-Routen sperrt stattdessen FeatureGuard, die Chat-Events ChatGateway.
+const FEATURE_MODULES: Record<TenantFeature, Type[]> = {
+  chat: [],
+  matching: [MatchingModule],
+  payments: [PaymentModule],
+  hidden: [BeefModule, CoinModule, TeethModule, BadgeModule],
+};
+const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) ? FEATURE_MODULES[m] : []));
 
 
 @Module({
@@ -89,6 +107,7 @@ import databaseConfig from './config/database.config';
       }),
       inject: [ConfigService],
     }),
+    TenantModule,
     SharedModule,
     RedisModule,
     LastActiveModule,
@@ -101,26 +120,20 @@ import databaseConfig from './config/database.config';
     ChatModule,
     NotificationsModule,
     ModerationModule,
-    PaymentModule,
     AdminModule,
     MediaModule,
     GdprModule,
     SupportModule,
     SetupModule,
     CitiesModule,
-    BeefModule,
-    CoinModule,
-    TeethModule,
-    BadgeModule,
-    MatchingModule,
+    ...enabledFeatureModules,
   ],
-  // AppController war bis hierhin nicht registriert — die Root-Route gab es
-  // also gar nicht. Jetzt verdrahtet, weil GET /api/v1 der healthcheckPath
-  // aus railway.json ist.
+  // AppController: GET /api/v1 (Status) und GET /health (Alive-Check).
   controllers: [AppController],
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: FeatureGuard },
   ],
 })
 export class AppModule implements NestModule {

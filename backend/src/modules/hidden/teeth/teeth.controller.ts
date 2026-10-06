@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
 import { TeethService } from './teeth.service';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
+import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 
+@RequiresModule('hidden')
 @Controller('hidden/teeth')
 @UseGuards(JwtGuard)
 export class TeethController {

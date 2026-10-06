@@ -1,4 +1,4 @@
-# Der Build-Context wird zu Railway hochgeladen — ohne diese Datei landen
+# Ohne diese Datei landen
 # node_modules/ (~1GB), das root-owned dist/ und die komplette .git-History
 # im Upload und im Image. node_modules muss ausserdem raus, weil es lokal
 # fuer glibc/x86 gebaut sein kann und im Alpine-Image dann kaputte native

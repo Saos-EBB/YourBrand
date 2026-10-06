@@ -18,12 +18,13 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { createRng, randomInt, weightedChoice, seedFromString, buildBulkInsert } from './seed-shared';
+import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 const ds = new DataSource({
     type: 'postgres',
     host:     process.env.DB_HOST     ?? 'localhost',
     port:     parseInt(process.env.DB_PORT ?? '5432', 10),
-    database: process.env.DB_NAME     ?? '',
+    database: tenantInfra().database,
     username: process.env.DB_USER     ?? '',
     password: process.env.DB_PASSWORD ?? '',
     synchronize: false,
@@ -46,7 +47,7 @@ async function main() {
     }
 
     await ds.initialize();
-    console.log('seed-media: verbunden mit DB', process.env.DB_NAME);
+    console.log('seed-media: verbunden mit DB', tenantInfra().database);
 
     if (SEED_RESET) {
         const [deletedRows] = await ds.query(
