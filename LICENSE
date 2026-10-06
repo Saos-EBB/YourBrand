@@ -1,0 +1,16 @@
+Copyright (c) 2025-2026 Kevin Schaberl. All rights reserved.
+
+This repository is public so that recruiters, reviewers and anyone
+interested can read the source code of YourBrand and run the demo locally
+to evaluate my work.
+
+No other rights are granted. You may not copy, modify, redistribute,
+host, sell or otherwise use the code, design or texts, in whole or in
+part, without my written permission.
+
+Third-party material is NOT covered by this notice:
+- Open-source dependencies stay under their own licenses (see each
+  package in node_modules).
+- Demo media and data (music, sounds, profile pictures, memes, logos,
+  city data) belong to their respective owners and are included only
+  for a private, non-commercial demo / job application. See ASSETS.md.

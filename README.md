@@ -131,6 +131,14 @@ Active development. Core feature set is functional; currently in final integrati
 
 ---
 
+## Demo Media & License
+
+**This repo is "All rights reserved"** — the code is public to be read (e.g. by recruiters), not to be reused. See [`LICENSE`](LICENSE).
+
+> ⚠️ **Demo data, music, sounds and profile pictures are not mine.** They're only included so the demo feels real — used privately and as part of my job applications, to show *what the platform could be*. They are not covered by the license and must not be reused; all rights stay with their owners. Full list of the files: **[`ASSETS.md`](ASSETS.md)** (film audio and songs in `frontend/public/sounds/`, meme sounds in `frontend/public/ban-audio/` and `frontend/media/`, demo profile audio in `backend/demoAudio/`, demo profile pictures in `backend/demoPfp/`, logos in `frontend/public/images/`).
+
+---
+
 ## Attribution
 
 - **GeoNames Geographical Database** von [GeoNames](https://www.geonames.org/) ist lizenziert unter [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
