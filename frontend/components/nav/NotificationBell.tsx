@@ -13,6 +13,7 @@ import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { resolveNotificationContent } from '@/lib/notification-resolver'
 import { useAuthStore } from '@/lib/store/authStore'
+import { useModuleEnabled } from '@/components/TenantProvider'
 
 const TYPE_ICONS: Record<NotificationType, ElementType> = {
   message:       MessageCircle,
@@ -77,6 +78,7 @@ export function NotificationBell() {
   const hasFetched        = useRef(false)
 
   const accessToken   = useAuthStore((s) => s.accessToken)
+  const chatEnabled   = useModuleEnabled('chat')
   const notifications = useNotificationStore((s) => s.notifications)
   const unreadCount   = useNotificationStore((s) => s.unreadCount)
   const displayUnread = pathname.startsWith('/chat/')
@@ -93,14 +95,14 @@ export function NotificationBell() {
         useNotificationStore.getState().setNotifications(data)
       } catch {}
 
-      try {
+      if (chatEnabled) try {
         const res = await fetchApi<IncomingEnvelope>('/chat/requests/incoming')
         const pending = normaliseRequests(res).filter((r) => r.status === 'pending')
         pending.forEach((r) => seenRequestIdsRef.current.add(r.id))
       } catch {}
     }
     load()
-  }, [accessToken])
+  }, [accessToken, chatEnabled])
 
   useEffect(() => {
     if (!bellOpen) return

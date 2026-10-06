@@ -1,3 +1,30 @@
+## 2026-10-06 — feat(tenant): Frontend liest die Mandanten-Config — Schritt 4 des Multitenant-Umbaus
+**Was:** Root-Layout laedt `GET /api/v1/tenant` serverseitig (`lib/tenant/server.ts`, React `cache`,
+`no-store`) — Titel, `<html lang>`, Theme-Default (auch im `theme-init`-Script) und Farb-Tokens
+(`<style id="tenant-theme">`, `:root:not(.underground-*)`, Werte nochmal gegen `--color-*`/Hex
+geprueft) stimmen schon im ersten HTML. `TenantProvider` (Context) + `useTenant()` /
+`useModuleEnabled()` / `<BrandName />` fuer Client-Komponenten. Feste Markennamen ersetzt:
+Logo (`HiddenLogoButton`), Auth-/Onboarding-Layout, alle Footer (vorher `NEXT_PUBLIC_BRAND_NAME`),
+Onboarding-Begruessung (`{brand}` in allen 9 Sprachen), Rechtsseiten-Hinweis, AGB.
+`LEGAL_INFO` entfernt — Impressum/Datenschutz/AGB nutzen `legal` aus der Config.
+Module: `(app)/layout.tsx` ruft fuer Routen abgeschalteter Module `notFound()` (`ROUTE_MODULES`:
+discover/matches -> matching, chat/requests -> chat, beef -> hidden). Nav (Sidebar, TopNav,
+BottomNav), Dashboard-Links/-Kacheln, Kontaktanfrage-Buttons im Profil, Abo-Bereich in den
+Settings und die Chat-Abrufe im Hintergrund (`useUnreadMessageCount`, `NotificationBell`) richten
+sich nach den Modulen. Hidden Zone ohne Modul `hidden`: kein Logo-Easter-Egg, kein Overlay, keine
+wiederhergestellten Underground-Themes, ein alter entsperrter Zustand wird gesperrt.
+Sprachen: Settings bieten nur `locale.available` an, ohne eigene Wahl gilt `locale.default`.
+**Nicht gebaut:** B2B-Seite bleibt beim Produktnamen (Verkaufsseite des Produkts, nicht des
+Mandanten). Owner-Statistiken im Dashboard zeigen Abo-/Umsatz-Kacheln auch ohne `payments` (Werte 0).
+`brand.logo`/`favicon` werden noch nicht ausgeliefert (Text-Logo).
+Verifiziert: `tsc` sauber, ESLint-Befunde der beruehrten Dateien identisch zu vorher. Echter Lauf
+(`next dev` + Backend gegen lokales Postgres/Redis, Playwright, als Owner eingeloggt):
+Mandant core/hell -> Titel + Logo "KiezConnect", `html.light`, `--color-primary-fixed-dim` =
+Mandantenfarbe, Sidebar ohne Discover/Matching, /discover + /beef -> 404-Seite, Impressum mit
+Mandanten-Angaben, Sprachwahl nur de/en. Mandant default -> unveraendert (dunkel, alle Module,
+alle 9 Sprachen). Dabei gefunden und gefixt: leerer Token-String als Textknoten im `<head>` ->
+Hydration-Fehler; danach 0 Hydration-Fehler bei beiden Mandanten.
+
 ## 2026-10-05 — chore(deploy): ngrok/Vercel-Reste entfernt — nur noch Docker
 **Was:** `NGROK_HEADER` aus `lib/api.ts` und allen Verwendern (`profanity.ts`, `useBackendHealth.ts`,
 Onboarding, Settings) entfernt, ebenso die `extraHeaders` in `lib/socket.ts`. `.env.example` ohne

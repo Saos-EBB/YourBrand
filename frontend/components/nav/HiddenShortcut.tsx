@@ -7,6 +7,7 @@ import { useHiddenStore } from '@/lib/store/hiddenStore'
 import { runLogoBreak } from '@/lib/physics/letterPhysics'
 
 import { fetchApi } from '@/lib/api'
+import { useTenant } from '@/components/TenantProvider'
 
 // ─── Logo button with 13-click Easter egg + physics ──────────────────────────
 
@@ -15,11 +16,14 @@ export function HiddenLogoButton() {
   const incrementClick  = useHiddenStore((s) => s.incrementClick)
   const resetClickCount = useHiddenStore((s) => s.resetClickCount)
   const openOverlay     = useHiddenStore((s) => s.openOverlay)
+  const tenant          = useTenant()
 
   const logoButtonRef     = useRef<HTMLButtonElement>(null)
   const logoResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleLogoClick() {
+    // Easter Egg (Einstieg in die Hidden Zone) nur mit Modul "hidden".
+    if (!tenant.modules.hidden) return
     if (logoResetTimerRef.current) clearTimeout(logoResetTimerRef.current)
     incrementClick()
     if (clickCount + 1 >= 6) {
@@ -41,9 +45,9 @@ export function HiddenLogoButton() {
       ref={logoButtonRef}
       onClick={handleLogoClick}
       className="text-xl font-bold text-on-surface tracking-tight"
-      aria-label="Paarship home"
+      aria-label={`${tenant.brand.name} home`}
     >
-      YourDemo
+      {tenant.brand.name}
     </button>
   )
 }

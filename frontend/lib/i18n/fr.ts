@@ -158,7 +158,7 @@ export const fr = {
     next: 'Suivant',
     finish: 'Terminer',
     back: 'Retour',
-    welcomeTitle: 'Bienvenue sur YourDemo !',
+    welcomeTitle: 'Bienvenue sur {brand} !',
     welcomeBody: 'Configurez votre profil pour que les autres puissent vous trouver.',
     start: "C'est parti",
     photoSubtitle: '(optionnel, mais recommandé)',

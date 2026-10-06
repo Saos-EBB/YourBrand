@@ -158,7 +158,7 @@ export const en = {
     next: 'Next',
     finish: 'Finish',
     back: 'Back',
-    welcomeTitle: 'Welcome to YourDemo!',
+    welcomeTitle: 'Welcome to {brand}!',
     welcomeBody: 'Set up your profile so others can find you.',
     start: "Let's go",
     photoSubtitle: '(optional, but recommended)',

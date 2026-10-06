@@ -14,6 +14,8 @@ import { HiddenLogoButton, HiddenZoneControls } from './HiddenShortcut'
 import { StatusPicker } from './StatusPicker'
 import { AdminBadge } from './AdminBadge'
 import { ColorPalettePanel } from '@/components/DevColorPalette'
+import { useTenant } from '@/components/TenantProvider'
+import { isRouteEnabled } from '@/lib/tenant/types'
 
 const ROUTE_TYPES: Record<string, string[]> = {
   '/chat':          ['message'],
@@ -29,6 +31,7 @@ export function DesktopSidebar() {
   const isHidden          = useHiddenStore((s) => s.isHidden)
   const hasEverBeenHidden = useHiddenStore((s) => s.hasEverBeenHidden)
   const notifications = useNotificationStore((s) => s.notifications)
+  const { modules }   = useTenant()
 
   const [colorsOpen, setColorsOpen] = useState(false)
 
@@ -49,7 +52,7 @@ export function DesktopSidebar() {
       : [{ href: '/requests', label: t.nav.requests,       Icon: Users }]
     ),
     ...(isHidden ? [{ href: '/beef', label: 'Beef', Icon: Swords }] : []),
-  ]
+  ].filter((l) => isRouteEnabled(l.href, modules))
 
   const bottomLinks = [
     { href: '/settings', label: t.nav.settings, Icon: Settings },
@@ -127,7 +130,7 @@ export function DesktopSidebar() {
       <div className="shrink-0 border-t border-outline-variant">
 
         {/* Colors accordion — visible once hidden zone was entered at least once */}
-        {(isHidden || hasEverBeenHidden) && (
+        {modules.hidden && (isHidden || hasEverBeenHidden) && (
           <div data-dev-palette className="border-b border-outline-variant">
             <button
               data-dev-palette

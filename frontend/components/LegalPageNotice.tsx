@@ -1,3 +1,5 @@
+import { BrandName } from '@/components/TenantProvider'
+
 export function LegalPageDemoNotice() {
   return (
     <p
@@ -5,7 +7,7 @@ export function LegalPageDemoNotice() {
       className="rounded-xl bg-surface-container-high px-4 py-3 text-sm text-on-surface-variant leading-relaxed"
     >
       Diese Seite gilt für eine <strong className="text-on-surface">Demo-Version</strong> von
-      YourDemo — ein privates, nicht-kommerzielles Portfolio-Projekt, kein produktiver Betrieb.
+      <BrandName /> — ein privates, nicht-kommerzielles Portfolio-Projekt, kein produktiver Betrieb.
     </p>
   )
 }

@@ -158,7 +158,7 @@ export const es = {
     next: 'Siguiente',
     finish: 'Terminar',
     back: 'Atrás',
-    welcomeTitle: '¡Bienvenido a YourDemo!',
+    welcomeTitle: '¡Bienvenido a {brand}!',
     welcomeBody: 'Configura tu perfil para que otros puedan encontrarte.',
     start: 'Vamos allá',
     photoSubtitle: '(opcional, pero recomendado)',

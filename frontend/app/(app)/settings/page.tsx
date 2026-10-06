@@ -10,6 +10,7 @@ import { useAccessibilityStore } from '@/lib/store/accessibilityStore'
 import { useAuthStore } from '@/lib/store/authStore'
 import { useThemeStore } from '@/lib/store/themeStore'
 import { useLanguageStore, type UiLang } from '@/lib/store/languageStore'
+import { useTenant } from '@/components/TenantProvider'
 import { useTranslation } from '@/lib/i18n'
 import StripeCheckoutModal from '@/components/ui/StripeCheckoutModal'
 import ReportModal from '@/components/ui/ReportModal'
@@ -19,6 +20,18 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type FontSize = 'normal' | 'large' | 'xl'
+const LANGUAGE_OPTIONS: { value: UiLang; label: string }[] = [
+  { value: 'de', label: 'Deutsch' },
+  { value: 'en', label: 'English' },
+  { value: 'fr', label: 'Français' },
+  { value: 'es', label: 'Español' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'ru', label: 'Русский' },
+  { value: 'ja', label: '日本語' },
+  { value: 'de_easy', label: 'Leichte Sprache' },
+  { value: 'leet', label: '1337 5p34k' },
+]
+
 type AccordionSection = 'design' | 'notifications' | 'visibility' | 'account' | 'security' | 'payment' | 'support' | 'password' | 'email'
 
 interface BlockedUser {
@@ -195,6 +208,7 @@ function AccordionItem({
 export default function SettingsPage() {
   const { t } = useTranslation()
   const { uiLang, setUiLang } = useLanguageStore()
+  const tenant = useTenant()
   const prevLangRef = useRef<UiLang>(uiLang)
 
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -716,7 +730,7 @@ export default function SettingsPage() {
             saving={accessSaving}
           />
 
-          <ToggleRow
+          {tenant.locale.available.includes('de_easy') && <ToggleRow
             id="lang-simple"
             label={t.settings.easyLanguage}
             description={t.settings.easyLanguageDesc}
@@ -731,7 +745,7 @@ export default function SettingsPage() {
                 saveAccessibility({ lang_simple: v })
               }}
             saving={accessSaving}
-          />
+          />}
 
           <div className="space-y-1.5">
             <label htmlFor="ui-lang" className="text-sm font-medium text-on-surface">
@@ -745,15 +759,10 @@ export default function SettingsPage() {
                 onChange={(e) => setUiLang(e.target.value as UiLang)}
                 className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-surface-container-high border border-outline-variant text-on-surface text-sm focus:outline-none focus:border-primary-fixed-dim transition-colors cursor-pointer min-h-[44px]"
               >
-                <option value="de">Deutsch</option>
-                <option value="en">English</option>
-                <option value="fr">Français</option>
-                <option value="es">Español</option>
-                <option value="it">Italiano</option>
-                <option value="ru">Русский</option>
-                <option value="ja">日本語</option>
-                <option value="de_easy">Leichte Sprache</option>
-                <option value="leet">1337 5p34k</option>
+                {/* Nur die Sprachen, die der Mandant anbietet */}
+                {LANGUAGE_OPTIONS.filter((o) => tenant.locale.available.includes(o.value)).map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
               <ChevronDown
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant pointer-events-none"
@@ -1186,7 +1195,7 @@ export default function SettingsPage() {
         </AccordionItem>
 
         {/* ── F) Abonnement & Zahlung ───────────────────────────────────────── */}
-        {userRole !== 'admin' && userRole !== 'owner' && (
+        {tenant.modules.payments && userRole !== 'admin' && userRole !== 'owner' && (
         <AccordionItem
           title={t.settings.sectionSubscription}
           icon={<CreditCard className="h-4 w-4 text-on-surface-variant" aria-hidden="true" />}

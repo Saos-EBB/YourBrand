@@ -2,11 +2,13 @@
 
 import { useRouter } from 'next/navigation'
 import { RaygunButton } from '@/components/RaygunButton'
-import { LEGAL_INFO } from '@/config/public.config'
+import { useTenant } from '@/components/TenantProvider'
 import { LegalPageDemoNotice, LegalPageDisclaimer } from '@/components/LegalPageNotice'
 
 export default function ImpressumPage() {
   const router = useRouter()
+  // Impressum-Angaben pro Mandant (tenants/<slug>/tenant.json "legal").
+  const { legal } = useTenant()
 
   return (
     <>
@@ -28,9 +30,9 @@ export default function ImpressumPage() {
             Angaben gemäß § 5 ECG (AT) / § 5 TMG (DE)
           </h2>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            {LEGAL_INFO.name}<br />
-            {LEGAL_INFO.address}<br />
-            E-Mail: {LEGAL_INFO.email}
+            {legal.name}<br />
+            {legal.address}<br />
+            E-Mail: {legal.email}
           </p>
         </section>
 

@@ -1,11 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { LEGAL_INFO } from '@/config/public.config'
+import { useTenant } from '@/components/TenantProvider'
 import { LegalPageDemoNotice, LegalPageDisclaimer } from '@/components/LegalPageNotice'
 
 export default function AgbPage() {
   const router = useRouter()
+  // Impressum-Angaben pro Mandant (tenants/<slug>/tenant.json "legal").
+  const { legal, brand } = useTenant()
 
   return (
     <main className="min-h-screen bg-background pb-8">
@@ -24,8 +26,8 @@ export default function AgbPage() {
         <section className="space-y-1">
           <h2 className="text-sm font-semibold text-on-surface">Geltungsbereich</h2>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            Diese Nutzungsbedingungen gelten für die Nutzung der Demo-Version von YourDemo,
-            betrieben von {LEGAL_INFO.name} als privates, nicht-kommerzielles Portfolio-Projekt.
+            Diese Nutzungsbedingungen gelten für die Nutzung der Demo-Version von {brand.name},
+            betrieben von {legal.name} als privates, nicht-kommerzielles Portfolio-Projekt.
             Es besteht kein Vertragsverhältnis im Sinne eines kommerziellen Dienstes.
           </p>
         </section>

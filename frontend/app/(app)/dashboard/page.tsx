@@ -11,6 +11,7 @@ import { useAuthStore, selectUserRole } from '@/lib/store/authStore'
 import { useNotificationStore } from '@/lib/store/notificationStore'
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount'
 import { useTranslation } from '@/lib/i18n'
+import { useTenant } from '@/components/TenantProvider'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,7 @@ function StatRowSkeleton({ cols }: { cols: number }) {
 
 export default function DashboardPage() {
   const { t, locale } = useTranslation()
+  const { modules } = useTenant()
   const role = useAuthStore(selectUserRole)
   const user = useAuthStore((s) => s.user)
   const isAdmin = role === 'admin' || role === 'owner'
@@ -245,25 +247,29 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link
-            href="/discover"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary-fixed-dim text-on-primary-container font-semibold text-sm min-h-[44px] hover:opacity-90 active:scale-95 transition-all"
-          >
-            <Compass className="h-4 w-4" aria-hidden="true" />
-            {t.dashboard.discover}
-          </Link>
-          <Link
-            href="/chat"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-outline-variant text-on-surface font-semibold text-sm min-h-[44px] hover:bg-surface-container active:scale-95 transition-all"
-          >
-            <MessageCircle className="h-4 w-4" aria-hidden="true" />
-            {t.dashboard.messages}
-            {unreadMessageCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-primary-fixed-dim text-on-primary-container text-[10px] font-bold" aria-hidden="true">
-                {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
-              </span>
-            )}
-          </Link>
+          {modules.matching && (
+            <Link
+              href="/discover"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary-fixed-dim text-on-primary-container font-semibold text-sm min-h-[44px] hover:opacity-90 active:scale-95 transition-all"
+            >
+              <Compass className="h-4 w-4" aria-hidden="true" />
+              {t.dashboard.discover}
+            </Link>
+          )}
+          {modules.chat && (
+            <Link
+              href="/chat"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-outline-variant text-on-surface font-semibold text-sm min-h-[44px] hover:bg-surface-container active:scale-95 transition-all"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              {t.dashboard.messages}
+              {unreadMessageCount > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-primary-fixed-dim text-on-primary-container text-[10px] font-bold" aria-hidden="true">
+                  {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                </span>
+              )}
+            </Link>
+          )}
           {isAdmin && (
             <Link
               href="/admin"
@@ -283,17 +289,17 @@ export default function DashboardPage() {
           <StatRowSkeleton cols={3} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <StatCard
+            {modules.chat && <StatCard
               label={t.dashboard.openRequests}
               value={userStats?.pendingRequests}
               href="/chat?tab=requests"
               alert
-            />
-            <StatCard
+            />}
+            {modules.chat && <StatCard
               label={t.dashboard.activeChats}
               value={userStats?.activeConversations}
               href="/chat"
-            />
+            />}
             <div className="rounded-xl border border-outline-variant bg-surface-container-high p-3 flex flex-col gap-1">
               <p className="text-xs text-on-surface-variant">{t.dashboard.subscriptionStatus}</p>
               {userStats?.subscription ? (
@@ -407,77 +413,83 @@ export default function DashboardPage() {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-          <Link
-            href="/discover"
-            className="group rounded-2xl bg-surface-container border border-outline-variant p-5 flex flex-col gap-3 hover:bg-surface-container-high active:scale-[0.98] transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high group-hover:bg-surface-container-highest transition-colors">
-                <Compass className="h-5 w-5 text-primary-fixed-dim" aria-hidden="true" />
+          {modules.matching && (
+            <Link
+              href="/discover"
+              className="group rounded-2xl bg-surface-container border border-outline-variant p-5 flex flex-col gap-3 hover:bg-surface-container-high active:scale-[0.98] transition-all"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high group-hover:bg-surface-container-highest transition-colors">
+                  <Compass className="h-5 w-5 text-primary-fixed-dim" aria-hidden="true" />
+                </div>
+                <ChevronRight className="h-4 w-4 text-on-surface-variant opacity-40 group-hover:opacity-100 mt-0.5 transition-opacity" aria-hidden="true" />
               </div>
-              <ChevronRight className="h-4 w-4 text-on-surface-variant opacity-40 group-hover:opacity-100 mt-0.5 transition-opacity" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="font-semibold text-on-surface text-sm">{t.dashboard.findPeople}</p>
-              <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{t.dashboard.findPeopleDesc}</p>
-            </div>
-          </Link>
+              <div>
+                <p className="font-semibold text-on-surface text-sm">{t.dashboard.findPeople}</p>
+                <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{t.dashboard.findPeopleDesc}</p>
+              </div>
+            </Link>
+          )}
 
-          <Link
-            href="/chat"
-            className="group rounded-2xl bg-surface-container border border-outline-variant p-5 flex flex-col gap-3 hover:bg-surface-container-high active:scale-[0.98] transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high group-hover:bg-surface-container-highest transition-colors">
-                <MessageCircle className="h-5 w-5 text-primary-fixed-dim" aria-hidden="true" />
-                {unreadMessageCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 rounded-full bg-primary-fixed-dim text-on-primary-container text-[10px] font-bold flex items-center justify-center" aria-hidden="true">
-                    {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
-                  </span>
-                )}
+          {modules.chat && (
+            <Link
+              href="/chat"
+              className="group rounded-2xl bg-surface-container border border-outline-variant p-5 flex flex-col gap-3 hover:bg-surface-container-high active:scale-[0.98] transition-all"
+            >
+              <div className="flex items-start justify-between">
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high group-hover:bg-surface-container-highest transition-colors">
+                  <MessageCircle className="h-5 w-5 text-primary-fixed-dim" aria-hidden="true" />
+                  {unreadMessageCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 rounded-full bg-primary-fixed-dim text-on-primary-container text-[10px] font-bold flex items-center justify-center" aria-hidden="true">
+                      {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                    </span>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-on-surface-variant opacity-40 group-hover:opacity-100 mt-0.5 transition-opacity" aria-hidden="true" />
               </div>
-              <ChevronRight className="h-4 w-4 text-on-surface-variant opacity-40 group-hover:opacity-100 mt-0.5 transition-opacity" aria-hidden="true" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-on-surface text-sm">{t.dashboard.messages}</p>
-                {unreadMessageCount > 0 && (
-                  <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary-fixed-dim text-on-primary-container text-[9px] font-bold" aria-hidden="true">
-                    {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
-                  </span>
-                )}
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-on-surface text-sm">{t.dashboard.messages}</p>
+                  {unreadMessageCount > 0 && (
+                    <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary-fixed-dim text-on-primary-container text-[9px] font-bold" aria-hidden="true">
+                      {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{t.dashboard.conversations}</p>
               </div>
-              <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{t.dashboard.conversations}</p>
-            </div>
-          </Link>
+            </Link>
+          )}
 
-          <Link
-            href="/requests"
-            className="group rounded-2xl bg-surface-container border border-outline-variant p-5 flex flex-col gap-3 hover:bg-surface-container-high active:scale-[0.98] transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high group-hover:bg-surface-container-highest transition-colors">
-                <UserPlus className="h-5 w-5 text-primary-fixed-dim" aria-hidden="true" />
-                {(userStats?.pendingRequests ?? 0) > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 rounded-full bg-error text-on-error text-[10px] font-bold flex items-center justify-center" aria-hidden="true">
-                    {(userStats!.pendingRequests) > 9 ? '9+' : userStats!.pendingRequests}
-                  </span>
-                )}
+          {modules.chat && (
+            <Link
+              href="/requests"
+              className="group rounded-2xl bg-surface-container border border-outline-variant p-5 flex flex-col gap-3 hover:bg-surface-container-high active:scale-[0.98] transition-all"
+            >
+              <div className="flex items-start justify-between">
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high group-hover:bg-surface-container-highest transition-colors">
+                  <UserPlus className="h-5 w-5 text-primary-fixed-dim" aria-hidden="true" />
+                  {(userStats?.pendingRequests ?? 0) > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 rounded-full bg-error text-on-error text-[10px] font-bold flex items-center justify-center" aria-hidden="true">
+                      {(userStats!.pendingRequests) > 9 ? '9+' : userStats!.pendingRequests}
+                    </span>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-on-surface-variant opacity-40 group-hover:opacity-100 mt-0.5 transition-opacity" aria-hidden="true" />
               </div>
-              <ChevronRight className="h-4 w-4 text-on-surface-variant opacity-40 group-hover:opacity-100 mt-0.5 transition-opacity" aria-hidden="true" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-on-surface text-sm">{t.dashboard.requests}</p>
-                {(userStats?.pendingRequests ?? 0) > 0 && (
-                  <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-error text-on-error text-[9px] font-bold" aria-hidden="true">
-                    {(userStats!.pendingRequests) > 9 ? '9+' : userStats!.pendingRequests}
-                  </span>
-                )}
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-on-surface text-sm">{t.dashboard.requests}</p>
+                  {(userStats?.pendingRequests ?? 0) > 0 && (
+                    <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-error text-on-error text-[9px] font-bold" aria-hidden="true">
+                      {(userStats!.pendingRequests) > 9 ? '9+' : userStats!.pendingRequests}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{t.dashboard.requestsDesc}</p>
               </div>
-              <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{t.dashboard.requestsDesc}</p>
-            </div>
-          </Link>
+            </Link>
+          )}
 
         </div>
       </section>
