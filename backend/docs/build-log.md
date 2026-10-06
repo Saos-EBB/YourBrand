@@ -1,3 +1,20 @@
+## 2026-10-06 — feat(tenant): Isolation pro Mandant — Schritt 3 des Multitenant-Umbaus
+**Was:** `src/common/tenant/tenant-infra.helper.ts` leitet aus dem Slug ab: DB `yb_<slug>`
+(`-` -> `_`), Bucket `<slug>-media`, Redis-Prefix `<slug>:`, BullMQ-Prefix `<slug>:bull`.
+Verdrahtet in `database.config.ts` (API + Worker), `data-source.ts`, allen 10 Seed-/Hilfsskripten,
+`object-storage.helper.ts`, `RedisModule` (ioredis `keyPrefix` — deckt Settings-Cache, Throttler,
+Beef-State, Last-Active ab) und `QueueModule` (BullMQ `prefix`; ioredis `keyPrefix` ist auf
+BullMQ-Connections verboten). `main.ts`/`worker.ts` loggen beim Start Mandant + DB/Bucket/Prefix.
+Explizit gesetztes `DB_NAME`/`S3_BUCKET` gewinnt weiterhin — der bestehende default-Stack laeuft mit
+seinem Volume unveraendert weiter. Mandanten-Container duerfen beides deshalb nicht setzen (Schritt 5).
+**Nicht gebaut:** DB-/Bucket-Anlage pro Mandant (kommt mit dem Docker-Setup, Schritt 5). Redis-Keys
+des default-Stacks liegen jetzt unter `default:` — nur Cache/Zaehler/Queues, kein Volume, beim
+naechsten Start einfach neu.
+Verifiziert: `tsc` sauber, 22 Jest-Tests gruen, Lint-Befunde der beruehrten Dateien identisch zu
+vorher. Echter Boot zweier Mandanten gegen dasselbe Postgres/Redis: `pg_stat_activity` zeigt nur
+`yb_kiez` fuer kiez; Redis-Keys getrennt unter `kiez:`/`nochat:` (Throttler-Hits + BullMQ-Queues);
+ohne `S3_BUCKET` wird der Bucket `kiez-media`.
+
 ## 2026-10-06 — feat(tenant): Feature-Gating im Backend — Schritt 2 des Multitenant-Umbaus
 **Was:** `app.module.ts` importiert `MatchingModule`, `PaymentModule` und die vier Hidden-Module
 (Beef/Coin/Teeth/Badge) nur noch, wenn das Modul in der Tenant-Config an ist — abgeschaltet gibt es

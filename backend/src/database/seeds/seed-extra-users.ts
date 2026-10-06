@@ -19,12 +19,13 @@ import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 import { encryptField, hashEmail } from '../../common/crypto/crypto.helper';
 import { createRng, randomInt, seedFromString, buildBulkInsert, chunk } from './seed-shared';
+import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 const ds = new DataSource({
     type: 'postgres',
     host:     process.env.DB_HOST     ?? 'localhost',
     port:     parseInt(process.env.DB_PORT ?? '5432', 10),
-    database: process.env.DB_NAME     ?? '',
+    database: tenantInfra().database,
     username: process.env.DB_USER     ?? '',
     password: process.env.DB_PASSWORD ?? '',
     synchronize: false,
@@ -56,7 +57,7 @@ async function main() {
     }
 
     await ds.initialize();
-    console.log('seed-extra-users: verbunden mit DB', process.env.DB_NAME);
+    console.log('seed-extra-users: verbunden mit DB', tenantInfra().database);
 
     if (SEED_RESET) {
         await ds.query(

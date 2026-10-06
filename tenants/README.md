@@ -33,6 +33,21 @@ Abgeschaltete Module werden im Backend gar nicht geladen (Routen → 404). Ausna
 Modul bleibt wegen Notifications geladen, Routen und Chat-Events sind aber gesperrt.
 Regel: `matching` erfordert `chat`.
 
+## Isolation
+
+Jeder Mandant bekommt auf der geteilten Infra eigene Namen (`backend/src/common/tenant/tenant-infra.helper.ts`):
+
+| | Name |
+|---|---|
+| Postgres-Datenbank | `yb_<slug>` (`-` → `_`) |
+| MinIO-Bucket | `<slug>-media` |
+| Redis-Keys | Prefix `<slug>:` |
+| BullMQ-Queues | Prefix `<slug>:bull` |
+
+Explizit gesetztes `DB_NAME` / `S3_BUCKET` gewinnt — nur für den bestehenden `default`-Stack gedacht.
+Ein Mandanten-Container darf beides **nicht** setzen, sonst teilt er DB/Bucket mit `default`.
+Beim Start loggt das Backend: `Mandant "<slug>" — DB …, Bucket …, Redis-Prefix …`.
+
 Connect entspricht vorerst Core — die Connect-Features (Orgs, Caretaker) sind im Backend noch
 nicht gebaut. Öffentlich abrufbar: `GET /api/v1/tenant` (alles außer `seed`).
 Plan: [`docs/multitenant.md`](../docs/multitenant.md).

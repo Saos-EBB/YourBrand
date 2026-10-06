@@ -20,12 +20,13 @@ import 'dotenv/config';
 import * as crypto from 'crypto';
 import { DataSource } from 'typeorm';
 import { createRng, randomInt, randomChoice, weightedChoice, seedFromString, buildBulkInsert, chunk } from './seed-shared';
+import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 const ds = new DataSource({
     type: 'postgres',
     host:     process.env.DB_HOST     ?? 'localhost',
     port:     parseInt(process.env.DB_PORT ?? '5432', 10),
-    database: process.env.DB_NAME     ?? '',
+    database: tenantInfra().database,
     username: process.env.DB_USER     ?? '',
     password: process.env.DB_PASSWORD ?? '',
     synchronize: false,
@@ -53,7 +54,7 @@ const INSERT_BATCH_SIZE = 1000;
 
 async function main() {
     await ds.initialize();
-    console.log('seed-subscriptions-payments: verbunden mit DB', process.env.DB_NAME);
+    console.log('seed-subscriptions-payments: verbunden mit DB', tenantInfra().database);
 
     if (SEED_RESET) {
         const [deletedPayments] = await ds.query(

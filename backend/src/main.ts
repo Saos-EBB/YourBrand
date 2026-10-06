@@ -1,12 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { RequestMethod, ValidationPipe } from '@nestjs/common';
+import { Logger, RequestMethod, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { getCorsOrigins } from './common/config/cors-origins.helper';
+import { describeTenantInfra } from './common/tenant/tenant-infra.helper';
 
 async function bootstrap() {
   if (!process.env.CORS_ORIGIN) throw new Error('CORS_ORIGIN env var is not set');
@@ -50,5 +51,6 @@ async function bootstrap() {
   await app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   await app.listen(process.env.PORT ?? 3000);
+  new Logger('Tenant').log(describeTenantInfra());
 }
 bootstrap();

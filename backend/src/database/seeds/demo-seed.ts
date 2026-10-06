@@ -24,6 +24,7 @@ import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 import { encryptField, hashEmail } from '../../common/crypto/crypto.helper';
 import { uploadObject } from '../../common/storage/object-storage.helper';
+import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 // ---------------------------------------------------------------------------
 // Typen
@@ -62,7 +63,7 @@ const ds = new DataSource({
     type: 'postgres',
     host:     process.env.DB_HOST     ?? 'localhost',
     port:     parseInt(process.env.DB_PORT ?? '5432', 10),
-    database: process.env.DB_NAME     ?? '',
+    database: tenantInfra().database,
     username: process.env.DB_USER     ?? '',
     password: process.env.DB_PASSWORD ?? '',
     synchronize: false,
@@ -157,7 +158,7 @@ async function main() {
     const seed = yaml.load(fs.readFileSync(yamlPath, 'utf8')) as SeedFile;
 
     await ds.initialize();
-    console.log('Verbunden mit DB:', process.env.DB_NAME);
+    console.log('Verbunden mit DB:', tenantInfra().database);
 
     if (demoMediaPath) {
         console.log('Demo-Media-Pfad:', demoMediaPath);

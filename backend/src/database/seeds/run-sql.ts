@@ -5,11 +5,12 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
+import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 const file = process.argv[2];
 if (!file) { console.error('Usage: ts-node run-sql.ts <path-to.sql>'); process.exit(1); }
 
-const ds = new DataSource({ type: 'postgres', host: process.env.DB_HOST ?? 'localhost', port: parseInt(process.env.DB_PORT ?? '5432'), database: process.env.DB_NAME ?? '', username: process.env.DB_USER ?? '', password: process.env.DB_PASSWORD ?? '', synchronize: false, logging: false });
+const ds = new DataSource({ type: 'postgres', host: process.env.DB_HOST ?? 'localhost', port: parseInt(process.env.DB_PORT ?? '5432'), database: tenantInfra().database, username: process.env.DB_USER ?? '', password: process.env.DB_PASSWORD ?? '', synchronize: false, logging: false });
 
 ds.initialize().then(async () => {
     const sql = fs.readFileSync(path.resolve(file), 'utf8');
