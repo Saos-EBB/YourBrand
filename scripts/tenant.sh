@@ -45,18 +45,22 @@ next_port_base() {
   echo $(( (max / 10 + 1) * 10 ))
 }
 
+# Aus tenants/_template/.env.example: Ports + eigene Secrets pro Mandant.
+# Bestehende Dateien bleiben unangetastet (EMAIL_SALT/APP_ENCRYPTION_KEY
+# duerfen sich nie aendern, sobald Daten existieren).
 ensure_env() {
   local slug=$1 file="tenants/$1/.env" base
   [[ -f "$file" ]] && return
   base=$(next_port_base)
-  cat > "$file" <<ENV
-# Von scripts/tenant.sh erzeugt — lokal, nicht eingecheckt.
-TENANT_SLUG=$slug
-BACKEND_PORT=$base
-FRONTEND_PORT=$((base + 1))
-JWT_SECRET=$(openssl rand -hex 32)
-ENV
-  echo "tenants/$slug/.env angelegt (Ports $base/$((base + 1)))"
+  sed -e "s/__SLUG__/$slug/" \
+      -e "s/__BACKEND_PORT__/$base/" \
+      -e "s/__FRONTEND_PORT__/$((base + 1))/" \
+      -e "s/__JWT_SECRET__/$(openssl rand -hex 32)/" \
+      -e "s/__EMAIL_SALT__/$(openssl rand -hex 16)/" \
+      -e "s/__APP_ENCRYPTION_KEY__/$(openssl rand -hex 32)/" \
+      tenants/_template/.env.example > "$file"
+  echo "tenants/$slug/.env angelegt (Ports $base/$((base + 1)), eigene Secrets)"
+  echo "  Stripe/Resend-Keys fuer $slug in $file eintragen."
 }
 
 compose() {

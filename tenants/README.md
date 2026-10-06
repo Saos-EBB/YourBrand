@@ -61,9 +61,16 @@ scripts/tenant.sh logs <slug>
 scripts/tenant.sh down <slug>|all  # stoppen, Daten bleiben
 ```
 
-Beim ersten `up` legt das Skript `tenants/<slug>/.env` an (gitignored): `TENANT_SLUG`,
-`BACKEND_PORT`/`FRONTEND_PORT` (naechstes freies Paar ab 3010/3011) und ein eigenes `JWT_SECRET`.
-Der Container `init` (`backend/src/database/tenant-init.ts`) prueft `tenant.json`, legt DB und
+Beim ersten `up` legt das Skript `tenants/<slug>/.env` aus `_template/.env.example` an
+(gitignored): Ports (naechstes freies Paar ab 3010/3011), eigene generierte Secrets
+(`JWT_SECRET`, `EMAIL_SALT`, `APP_ENCRYPTION_KEY`) und Platzhalter fuer eigene Stripe-/Resend-Keys.
+Diese Datei wird im Backend-/Worker-/Init-Container als `/app/.env` gemountet und **ersetzt dort
+`backend/.env`** — kein Wert des `default`-Mandanten ist in einem anderen Mandanten sichtbar.
+`EMAIL_SALT` und `APP_ENCRYPTION_KEY` nie aendern, sobald Nutzer existieren (E-Mails werden damit
+gehasht bzw. verschluesselt).
+
+Der Container `init` (`backend/src/database/tenant-init.ts`) prueft `tenant.json` und die Secrets
+(sonst Abbruch, Backend startet nicht), legt DB und
 Bucket an und spielt `backend/migrations/*.sql` ein — gemerkt in `tenant_schema_migrations`, also
 idempotent und bei neuen Migrationen automatisch nachgezogen. Erst danach starten backend/worker.
 

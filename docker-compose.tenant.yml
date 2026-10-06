@@ -1,7 +1,9 @@
 # Ein Mandanten-Stack: init + backend + worker + frontend, auf der geteilten
 # Infra aus docker-compose.yml (XXX_db, XXX_redis, XXX_minio im Netz yb_network).
 # Isolation pro Mandant: eigene DB, eigener Bucket, eigener Redis-Prefix
-# (backend/src/common/tenant/tenant-infra.helper.ts), eigenes JWT_SECRET.
+# (backend/src/common/tenant/tenant-infra.helper.ts) und eigene Secrets:
+# tenants/<slug>/.env wird als /app/.env gemountet und ersetzt dort
+# backend/.env — kein Wert des default-Mandanten ist im Container sichtbar.
 #
 # Nicht direkt aufrufen — scripts/tenant.sh setzt Projektname und env-files
 # (.env fuer die geteilten Zugangsdaten, tenants/<slug>/.env fuer Ports/Secret):
@@ -26,10 +28,12 @@ x-backend-env: &backend-env
   S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
   S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
   S3_PUBLIC_URL_BASE: http://localhost:${BACKEND_PORT}/api/v1/media/file
-  JWT_SECRET: ${JWT_SECRET}
+  # Secrets (JWT_SECRET, EMAIL_SALT, APP_ENCRYPTION_KEY, Stripe, Resend)
+  # kommen aus /app/.env = tenants/<slug>/.env, nicht von hier.
   CORS_ORIGIN: http://localhost:${FRONTEND_PORT}
   APP_URL: http://localhost:${FRONTEND_PORT}
   BACKEND_URL: http://localhost:${BACKEND_PORT}
+  STRIPE_RETURN_URL: http://localhost:${FRONTEND_PORT}/settings
 
 x-backend: &backend
   image: yb_backend:local
@@ -38,12 +42,13 @@ x-backend: &backend
   volumes:
     - ./backend:/app
     - /app/node_modules
+    - ./tenants/${TENANT_SLUG}/.env:/app/.env:ro
     - ./tenants:/tenants:ro
 
 services:
 
-  # Einmal-Container: prueft tenant.json, legt DB + Schema und Bucket an
-  # (src/database/tenant-init.ts). Idempotent.
+  # Einmal-Container: prueft tenant.json und die Mandanten-Secrets, legt
+  # DB + Schema und Bucket an (src/database/tenant-init.ts). Idempotent.
   init:
     <<: *backend
     container_name: yb-${TENANT_SLUG}-init
@@ -91,6 +96,7 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT}/api/v1
       NEXT_PUBLIC_WS_URL: http://localhost:${BACKEND_PORT}
       BACKEND_INTERNAL_URL: http://yb-${TENANT_SLUG}-backend:3000
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
     ports:
       - "${FRONTEND_PORT}:3001"
     depends_on:

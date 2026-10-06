@@ -110,6 +110,12 @@ Leichte Sprache + Vulnerable-Schutz beschränken — vor Schritt 7 entscheiden.
 - RAM: 4× (Backend + Worker + Frontend) im Dev-Modus ≈ 6–8 GB. Optional Compose-Profiles, damit nur
   1–2 Mandanten gleichzeitig laufen.
 - `cities` (Referenzdaten, ~7.600 Zeilen) wird pro DB geseedet — ok, kostet nur Bootzeit.
-- Stripe/Resend: ein Testaccount für alle, Webhook-Routing pro Mandant über Port/Pfad.
+- ~~Stripe/Resend: ein Testaccount für alle~~ — umgesetzt: jeder Mandant hat eine eigene `.env` mit
+  eigenen Secrets (`JWT_SECRET`, `EMAIL_SALT`, `APP_ENCRYPTION_KEY`) und eigenen Stripe-/Resend-Keys;
+  `backend/.env` ist in Mandanten-Containern nicht sichtbar.
+- Offen: Postgres- und MinIO-Zugang sind noch die geteilten Admin-Credentials. Eigene DB-Rolle pro
+  Mandant wäre der nächste Isolationsschritt — Achtung: das Backend verbindet heute als Superuser und
+  umgeht damit RLS; mit einer normalen Rolle greifen die RLS-Policies erstmals, das braucht einen
+  eigenen Test.
 - B2B-Seite und README versprechen „Lizenzschlüssel“ — nach Schritt 2 stimmt die Aussage über
   Tier-Config; ein echter signierter Lizenzschlüssel wäre ein eigener Schritt.

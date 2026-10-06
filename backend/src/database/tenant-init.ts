@@ -1,6 +1,7 @@
 /**
  * Einmal-Init eines Mandanten (Service "init" in docker-compose.tenant.yml,
- * laeuft vor backend/worker): prueft tenant.json, legt die Mandanten-DB auf
+ * laeuft vor backend/worker): prueft tenant.json und die Mandanten-Secrets
+ * (tenants/<slug>/.env), legt die Mandanten-DB auf
  * dem geteilten Postgres an und spielt das Schema ein, legt den Bucket auf
  * dem geteilten MinIO an. Idempotent — jeder Neustart darf es erneut laufen.
  *
@@ -20,6 +21,7 @@ import { Client } from 'pg';
 import { CreateBucketCommand, HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
 import { loadTenantConfig } from '../common/tenant/tenant-config.loader';
 import { tenantInfra } from '../common/tenant/tenant-infra.helper';
+import { tenantSecretErrors } from '../common/tenant/tenant-secrets';
 
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../migrations');
 
@@ -139,6 +141,10 @@ async function ensureBucket(bucket: string): Promise<void> {
 
 async function main(): Promise<void> {
     const config = loadTenantConfig();
+    const secretErrors = tenantSecretErrors();
+    if (secretErrors.length > 0) {
+        throw new Error(`Secrets in tenants/${config.slug}/.env ungueltig:\n  - ${secretErrors.join('\n  - ')}`);
+    }
     const infra = tenantInfra();
     console.log(`[tenant-init] Mandant "${config.slug}" (${config.tier}) — DB ${infra.database}, Bucket ${infra.bucket}`);
     await ensureDatabase(infra.database);

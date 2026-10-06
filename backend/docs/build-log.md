@@ -1,3 +1,24 @@
+## 2026-10-06 — feat(tenant): eigene Secrets und eigene .env pro Mandant
+**Was:** Bisher war `backend/.env` in jeden Mandanten-Container gemountet — alles, was Compose
+nicht setzte, kam vom default-Mandanten, u.a. `EMAIL_SALT` und `APP_ENCRYPTION_KEY` (ein Key fuer
+alle = wer einen Mandanten-Key hat, entschluesselt alle E-Mails) und `STRIPE_RETURN_URL` (Redirect
+nach Zahlung auf das default-Frontend). Jetzt: `tenants/_template/.env.example` als Vorlage,
+`scripts/tenant.sh` erzeugt daraus `tenants/<slug>/.env` mit eigenen `JWT_SECRET` (32 Byte),
+`EMAIL_SALT` (16 Byte), `APP_ENCRYPTION_KEY` (32 Byte, AES-256) und Platzhaltern fuer eigene
+Stripe-/Resend-Keys. `docker-compose.tenant.yml` mountet diese Datei als `/app/.env` (ersetzt dort
+`backend/.env`), `JWT_SECRET` nicht mehr aus der Compose-Env. `STRIPE_RETURN_URL` und
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` pro Mandant. Neu `tenant-secrets.ts`: `tenant-init` bricht
+ab, wenn ein Secret fehlt oder ungueltig ist (z.B. unausgefuellte Vorlage) — vorher waere das erst
+beim ersten Login/Register im Request geplatzt.
+**Nicht gebaut:** eigene Postgres-Rolle / MinIO-User pro Mandant (siehe docs/multitenant.md —
+Backend verbindet heute als Superuser, RLS-Verhalten wuerde sich aendern). Kein Nachruesten
+bestehender `tenants/<slug>/.env` (es gab noch keine).
+Verifiziert: `tsc` sauber, 27 Jest-Tests gruen. `tenant.sh` (Docker-Stub) erzeugt die `.env` mit
+64/32/64 Hex-Zeichen; `docker compose config` zeigt den Mount auf `/app/.env`, Return-URL auf den
+Mandanten-Frontend-Port, kein `JWT_SECRET` mehr in der Compose-Env. `tenant-init` nur mit dieser
+Datei (`env -i`, `DOTENV_CONFIG_PATH`): DB + Bucket angelegt; mit unausgefuellter Vorlage -> Exit 1
+mit allen drei Secret-Fehlern.
+
 ## 2026-10-06 — feat(tenant): Docker-Setup pro Mandant — Schritt 5 des Multitenant-Umbaus
 **Was:** `docker-compose.tenant.yml` (Repo-Root): pro Mandant ein eigenes Compose-Projekt
 `yb-<slug>` mit `init`, `backend`, `worker`, `frontend` im externen Netz `yb_network` (Haupt-
