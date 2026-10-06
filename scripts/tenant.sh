@@ -134,9 +134,15 @@ smoke_one() {
   check "GET /tenant" "$(json_str slug <<<"$tenant")" "$slug"
 
   # Owner aus dem Demo-Datensatz (Seed) — prueft Seeds + Mandanten-Secrets.
+  # Ohne eigenes "seed" (alle Showcase-Mandanten teilen sich bewusst einen
+  # Datensatz, siehe tenants/README.md) gilt der mitgelieferte Default-Seed.
   seed=$(grep -o '"seed": *"[^"]*"' "tenants/$slug/tenant.json" | cut -d'"' -f4)
-  users="tenants/$seed/seed/demo-users.yaml"
-  if [[ -n "$seed" && -f "$users" ]]; then
+  if [[ -n "$seed" ]]; then
+    users="tenants/$seed/seed/demo-users.yaml"
+  else
+    users="backend/src/database/seeds/demo-users.yaml"
+  fi
+  if [[ -f "$users" ]]; then
     owner=$(grep -B3 '^  role: owner' "$users" | grep -o 'email: .*' | cut -d' ' -f2)
     token=$(curl -s --max-time 10 -X POST "$api/auth/login" -H 'Content-Type: application/json' \
       -d "{\"identifier\":\"$owner\",\"password\":\"Demo1234!\"}" | json_str accessToken)

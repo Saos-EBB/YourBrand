@@ -1,8 +1,8 @@
 {
-  "_hinweis": "Wer sich pro Mandant einloggt und welchen Chat der Ablauf oeffnet. Logins aus tenants/<seed>/seed/demo-users.yaml, Passwort Demo1234!.",
-  "default":      { "user": "m1@demo.example.com",           "chatWith": "tifa" },
-  "kiez":         { "user": "nachbarin_jule@kiez.demo",      "chatWith": "katzen_lena" },
-  "campus-match": { "user": "lina_jura@campus.demo",         "chatWith": "jonas_info" },
-  "miteinander":  { "user": "paul_malt@miteinander.demo",    "chatWith": "anna_backt" },
-  "underground":  { "user": "pixelqueen@underground.demo",   "chatWith": "glitchgirl" }
+  "_hinweis": "Wer sich pro Mandant einloggt und welchen Chat der Ablauf oeffnet. Alle Mandanten teilen sich seit 2026-10-07 denselben Seed (backend/src/database/seeds/demo-users.yaml), Passwort Demo1234! — darum ueberall dieselbe Persona.",
+  "default":      { "user": "m1@demo.example.com", "chatWith": "tifa" },
+  "kiez":         { "user": "m1@demo.example.com", "chatWith": "tifa" },
+  "campus-match": { "user": "m1@demo.example.com", "chatWith": "tifa" },
+  "miteinander":  { "user": "m1@demo.example.com", "chatWith": "tifa" },
+  "underground":  { "user": "m1@demo.example.com", "chatWith": "tifa" }
 }

@@ -64,22 +64,15 @@ Beim Start loggt das Backend: `Mandant "<slug>" — DB …, Bucket …, Redis-Pr
 
 ## Demo-Daten
 
-Ohne `seed` bekommt ein Mandant die mitgelieferten 45 Demo-User (`backend/src/database/seeds/`).
-Mit `"seed": "<name>"` kommen sie aus `tenants/<name>/seed/`:
+Ohne `seed` bekommt ein Mandant die mitgelieferten 45 Demo-User
+(`backend/src/database/seeds/`). Mit `"seed": "<name>"` kommen sie stattdessen aus
+`tenants/<name>/seed/` (eigene `demo-users.yaml` + optional `demo-relations.yaml`, Format wie die
+mitgelieferten Dateien) — fuer einen Mandanten mit eigenem, abweichendem Demo-Datensatz.
 
-- `demo-users.yaml` — Pflicht (danach entscheidet `demo-full-reset`, wer beim Neustart bleibt)
-- `demo-relations.yaml` — optional (Kontaktanfragen, Chats, Beefs, Blocks); fehlt sie, gibt es
-  keine Relations. Abschnitte duerfen fehlen (z.B. keine Beefs ohne Hidden Zone).
-
-Format wie die mitgelieferten Dateien. Vorhandene Datensaetze, Login je `<nickname>@<domain>`,
-Passwort `Demo1234!`:
-
-| Datensatz | Domain | Owner | Inhalt |
-|---|---|---|---|
-| `kiez` | `kiez.demo` | `kiezbuero` | 10 Nachbar:innen Berlin, Verleih/Hilfe, 3 Chats |
-| `campus-match` | `campus.demo` | `campus_team` | 10 Studierende Münster, Dating-Chats |
-| `miteinander` | `miteinander.demo` | `traeger_koeln` | 8 Profile in Leichter Sprache, Köln |
-| `underground` | `underground.demo` | `ug_overlord` | 10 Gamer:innen, 3 Beefs mit Votes/Kommentaren |
+**Alle vier Showcase-Mandanten setzen bewusst kein `seed`** und teilen sich so denselben
+Datensatz wie `default`: einfacher fuer Demos, ein Login funktioniert ueberall. Owner-Login
+ueberall gleich: `owner@demo.example.com` / `Demo1234!` (45 kuratierte User insgesamt, siehe
+`backend/src/database/seeds/demo-users.yaml`).
 
 ## Docker
 

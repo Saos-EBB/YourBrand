@@ -102,7 +102,12 @@ Miteinander connect **ohne** Payments.
    startet zusaetzlich den default-Stack (YourBrand) mit und generiert beim ersten Lauf
    `.env`/`backend/.env`/`frontend/.env` (2026-10-06)
 6. ✅ **Seeds pro Mandant** — `tenant.json` `"seed"` -> `tenants/<seed>/seed/demo-users.yaml` +
-   `demo-relations.yaml`; Datensaetze fuer kiez, campus-match, miteinander, underground (2026-10-06)
+   `demo-relations.yaml`; Datensaetze fuer kiez, campus-match, miteinander, underground (2026-10-06).
+   **Update 2026-10-07:** wieder zurueckgebaut — alle vier Showcase-Mandanten nutzen jetzt den
+   mitgelieferten Default-Datensatz (kein `"seed"` mehr), damit fuer Demos ueberall dieselben
+   Logins gelten. Die eigenen Datensaetze (`tenants/<slug>/seed/`) sind entfernt; `"seed"` bleibt
+   als Feature fuer einen Mandanten mit eigenem, abweichendem Datensatz bestehen (siehe
+   `tenants/README.md`).
 7. ✅ **Die 4 Mandanten anlegen** + Smoke-Test `scripts/tenant.sh smoke` (pro Mandant: `/tenant`,
    Owner-Login, jedes Modul an/aus, Frontend-Titel) (2026-10-06)
 8. ✅ **Showcase** — `showcase/` (Playwright): gleicher Ablauf pro Mandant, Screenshots + Video,
