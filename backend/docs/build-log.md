@@ -1,3 +1,35 @@
+## 2026-10-06 — feat(tenant): Docker-Setup pro Mandant — Schritt 5 des Multitenant-Umbaus
+**Was:** `docker-compose.tenant.yml` (Repo-Root): pro Mandant ein eigenes Compose-Projekt
+`yb-<slug>` mit `init`, `backend`, `worker`, `frontend` im externen Netz `yb_network` (Haupt-
+Compose-Netz hat jetzt diesen festen Namen) auf `XXX_db`/`XXX_redis`/`XXX_minio`. Kein
+`DB_NAME`/`S3_BUCKET` im Mandanten-Env; eigenes `JWT_SECRET`, CORS/APP_URL/S3_PUBLIC_URL_BASE auf
+die Mandanten-Ports. `TENANT_SLUG` statt `TENANT`, weil die Root-`.env` `TENANT=default` setzt —
+ohne Mandanten-env-file scheitert Compose jetzt, statt einen zweiten Stack auf der default-DB zu
+starten. `scripts/tenant.sh up|down|ls|logs <slug>|all` legt beim ersten `up` `tenants/<slug>/.env`
+an (naechstes freies Portpaar ab 3010/3011, `openssl rand` fuer JWT_SECRET) und startet vorher die
+geteilte Infra (`--wait`). `default` bleibt der Haupt-Stack und wird vom Skript abgewiesen.
+`src/database/tenant-init.ts` (Service `init`): validiert `tenant.json`, legt DB + Bucket an,
+spielt `migrations/NNN_*.sql` ein und merkt sich jede Datei in `tenant_schema_migrations`
+(Abbruch -> naechster Lauf setzt fort; neue Migrationen kommen automatisch). Dateien ohne `$$`
+laufen Statement fuer Statement — `003` nutzt `CREATE INDEX CONCURRENTLY`, das in einem
+Multi-Statement-Query (implizite Transaktion) scheitert. Eine fremde DB mit Schema, aber ohne
+Tracking-Tabelle, wird nicht angefasst.
+`tenant-infra.helper.ts`: `DB_NAME`/`S3_BUCKET` gelten nur noch fuer den Mandanten `default` —
+`backend/.env` (mit `DB_NAME`) ist in jeden Container gemountet, dotenv haette sonst jeden
+Mandanten in die default-DB gelenkt.
+**Nicht gebaut:** kein Public-Read auf Mandanten-Buckets (Medien laufen ueber den Backend-Proxy).
+Kein `reset`-Befehl (DB/Bucket loeschen). `EMAIL_SALT`/`APP_ENCRYPTION_KEY`/Stripe/Resend teilen
+sich alle Mandanten (aus `backend/.env`).
+Verifiziert: `tsc` sauber, 23 Jest-Tests gruen. `tenant-init` gegen lokales Postgres 16 + PostGIS
+und einen S3-Mock (moto; MinIO-Download von der Netzwerk-Policy blockiert): frische DB -> 001–005
+eingespielt, Bucket angelegt, gesetztes `DB_NAME` ignoriert; zweiter Lauf -> nichts zu tun;
+simulierter Abbruch -> fehlende Dateien nachgezogen, Index wieder da. Dabei gefunden: die
+CONCURRENTLY- und Resume-Fehler oben. `docker compose config` loest beide Compose-Dateien korrekt
+auf (Namen, Ports, URLs, externes Netz). `tenant.sh` mit Docker-Stub: Portvergabe, idempotente
+`.env`, Fehlerfaelle (unbekannt, `default`, `logs all`) brechen mit Exit 1 ab, ohne Infra zu
+starten. **Nicht verifiziert:** echtes `docker compose up` — in dieser Umgebung laeuft kein
+Docker-Daemon.
+
 ## 2026-10-06 — feat(tenant): Isolation pro Mandant — Schritt 3 des Multitenant-Umbaus
 **Was:** `src/common/tenant/tenant-infra.helper.ts` leitet aus dem Slug ab: DB `yb_<slug>`
 (`-` -> `_`), Bucket `<slug>-media`, Redis-Prefix `<slug>:`, BullMQ-Prefix `<slug>:bull`.

@@ -44,9 +44,28 @@ Jeder Mandant bekommt auf der geteilten Infra eigene Namen (`backend/src/common/
 | Redis-Keys | Prefix `<slug>:` |
 | BullMQ-Queues | Prefix `<slug>:bull` |
 
-Explizit gesetztes `DB_NAME` / `S3_BUCKET` gewinnt — nur für den bestehenden `default`-Stack gedacht.
-Ein Mandanten-Container darf beides **nicht** setzen, sonst teilt er DB/Bucket mit `default`.
+Explizit gesetztes `DB_NAME` / `S3_BUCKET` gilt **nur** für den Mandanten `default` (bestehender
+Haupt-Stack mit seinem Volume). Für alle anderen wird es ignoriert — `backend/.env` ist in jeden
+Container gemountet und setzt `DB_NAME`.
 Beim Start loggt das Backend: `Mandant "<slug>" — DB …, Bucket …, Redis-Prefix …`.
+
+## Docker
+
+Der Mandant `default` ist der Haupt-Stack (`docker compose up`, Ports 3000/3001). Alle anderen
+laufen als eigene Compose-Projekte (`docker-compose.tenant.yml`) auf der geteilten Infra:
+
+```bash
+scripts/tenant.sh up <slug>|all    # Infra sicherstellen, Mandant(en) bauen + starten
+scripts/tenant.sh ls               # Mandanten + URLs
+scripts/tenant.sh logs <slug>
+scripts/tenant.sh down <slug>|all  # stoppen, Daten bleiben
+```
+
+Beim ersten `up` legt das Skript `tenants/<slug>/.env` an (gitignored): `TENANT_SLUG`,
+`BACKEND_PORT`/`FRONTEND_PORT` (naechstes freies Paar ab 3010/3011) und ein eigenes `JWT_SECRET`.
+Der Container `init` (`backend/src/database/tenant-init.ts`) prueft `tenant.json`, legt DB und
+Bucket an und spielt `backend/migrations/*.sql` ein — gemerkt in `tenant_schema_migrations`, also
+idempotent und bei neuen Migrationen automatisch nachgezogen. Erst danach starten backend/worker.
 
 Connect entspricht vorerst Core — die Connect-Features (Orgs, Caretaker) sind im Backend noch
 nicht gebaut. Öffentlich abrufbar: `GET /api/v1/tenant` (alles außer `seed`).

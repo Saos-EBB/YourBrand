@@ -5,10 +5,10 @@ import { tenantSlug } from './tenant-config.loader';
 // Server, ein Redis, ein MinIO). Die Namen folgen aus dem Slug, damit ein
 // neuer Mandant ohne weitere Konfiguration isoliert ist.
 //
-// DB_NAME / S3_BUCKET gewinnen, wenn explizit gesetzt — fuer den bestehenden
-// default-Stack, dessen Volume schon eine DB unter dem .env-Namen hat. Ein
-// Mandanten-Container darf sie deshalb NICHT setzen, sonst teilt er sich DB
-// bzw. Bucket mit dem default-Mandanten.
+// DB_NAME / S3_BUCKET gelten NUR fuer den default-Mandanten (bestehender
+// Haupt-Stack, dessen Volume schon eine DB unter dem .env-Namen hat). Fuer
+// alle anderen werden sie ignoriert: backend/.env ist in jeden Container
+// gemountet und setzt DB_NAME — sonst landete jeder Mandant in der default-DB.
 export interface TenantInfra {
     database: string;
     bucket: string;
@@ -19,10 +19,11 @@ export interface TenantInfra {
 }
 
 export function tenantInfra(slug: string = tenantSlug()): TenantInfra {
+    const legacy = slug === 'default';
     return {
         // Postgres-Identifier: kein "-" ohne Quoting, daher "_".
-        database: process.env.DB_NAME || `yb_${slug.replace(/-/g, '_')}`,
-        bucket: process.env.S3_BUCKET || `${slug}-media`,
+        database: (legacy && process.env.DB_NAME) || `yb_${slug.replace(/-/g, '_')}`,
+        bucket: (legacy && process.env.S3_BUCKET) || `${slug}-media`,
         redisPrefix: `${slug}:`,
         queuePrefix: `${slug}:bull`,
     };

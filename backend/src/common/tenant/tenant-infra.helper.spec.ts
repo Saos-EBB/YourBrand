@@ -23,6 +23,12 @@ describe('tenantInfra', () => {
         for (const key of Object.keys(a) as (keyof typeof a)[]) expect(a[key]).not.toBe(b[key]);
     });
 
+    it('DB_NAME / S3_BUCKET gelten nicht fuer andere Mandanten (backend/.env ist ueberall gemountet)', () => {
+        process.env.DB_NAME = 'legacy_db';
+        process.env.S3_BUCKET = 'yourbrand-media';
+        expect(tenantInfra('kiez')).toMatchObject({ database: 'yb_kiez', bucket: 'kiez-media' });
+    });
+
     it('explizites DB_NAME / S3_BUCKET gewinnt (default-Stack)', () => {
         process.env.DB_NAME = 'legacy_db';
         process.env.S3_BUCKET = 'yourbrand-media';

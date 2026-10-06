@@ -85,6 +85,18 @@ Starts four containers: Postgres+PostGIS (`XXX_db`, port 5432), pgAdmin (port 50
 
 The database starts empty. Run the `backend/migrations/*.sql` files in order, starting from `001_baseline.sql` (a consolidated schema snapshot), to get the fully up-to-date schema.
 
+### Multiple tenants
+
+The same codebase runs as several branded tenants side by side — each with its own database, bucket, Redis namespace, JWT secret and feature set, on the shared Postgres/Redis/MinIO from `docker-compose.yml`:
+
+```bash
+scripts/tenant.sh up all     # shared infra + every tenant in tenants/ (except default)
+scripts/tenant.sh ls         # tenants with their URLs
+scripts/tenant.sh down kiez  # stop one tenant, data stays
+```
+
+Tenant configs live in [`tenants/`](./tenants/README.md); the design is in [`docs/multitenant.md`](./docs/multitenant.md).
+
 ---
 
 ## Load Testing & Dashboard

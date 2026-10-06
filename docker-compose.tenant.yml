@@ -1,0 +1,106 @@
+# Ein Mandanten-Stack: init + backend + worker + frontend, auf der geteilten
+# Infra aus docker-compose.yml (XXX_db, XXX_redis, XXX_minio im Netz yb_network).
+# Isolation pro Mandant: eigene DB, eigener Bucket, eigener Redis-Prefix
+# (backend/src/common/tenant/tenant-infra.helper.ts), eigenes JWT_SECRET.
+#
+# Nicht direkt aufrufen — scripts/tenant.sh setzt Projektname und env-files
+# (.env fuer die geteilten Zugangsdaten, tenants/<slug>/.env fuer Ports/Secret):
+#   scripts/tenant.sh up <slug>
+# TENANT_SLUG (nicht TENANT): die Root-.env setzt TENANT=default fuer den
+# Haupt-Stack — ohne Mandanten-env-file soll das hier scheitern, statt still
+# einen zweiten Stack auf der default-DB zu starten.
+name: yb-${TENANT_SLUG:?TENANT_SLUG fehlt - scripts/tenant.sh benutzen}
+
+x-backend-env: &backend-env
+  TENANT: ${TENANT_SLUG}
+  TENANT_DIR: /tenants
+  # Bewusst KEIN DB_NAME / S3_BUCKET — die Namen kommen aus dem Slug.
+  DB_HOST: XXX_db
+  DB_PORT: 5432
+  DB_USER: ${DB_USER}
+  DB_PASSWORD: ${DB_PASSWORD}
+  REDIS_HOST: XXX_redis
+  REDIS_PORT: 6379
+  S3_ENDPOINT: http://XXX_minio:9000
+  S3_REGION: auto
+  S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+  S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+  S3_PUBLIC_URL_BASE: http://localhost:${BACKEND_PORT}/api/v1/media/file
+  JWT_SECRET: ${JWT_SECRET}
+  CORS_ORIGIN: http://localhost:${FRONTEND_PORT}
+  APP_URL: http://localhost:${FRONTEND_PORT}
+  BACKEND_URL: http://localhost:${BACKEND_PORT}
+
+x-backend: &backend
+  image: yb_backend:local
+  build:
+    context: ./backend
+  volumes:
+    - ./backend:/app
+    - /app/node_modules
+    - ./tenants:/tenants:ro
+
+services:
+
+  # Einmal-Container: prueft tenant.json, legt DB + Schema und Bucket an
+  # (src/database/tenant-init.ts). Idempotent.
+  init:
+    <<: *backend
+    container_name: yb-${TENANT_SLUG}-init
+    command: npx ts-node -r tsconfig-paths/register src/database/tenant-init.ts
+    restart: "no"
+    environment:
+      <<: *backend-env
+
+  backend:
+    <<: *backend
+    container_name: yb-${TENANT_SLUG}-backend
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      DEMO_MEDIA_PATH: /app
+      SEED_USERS: ${SEED_USERS:-20}
+      SEED_TX_PER_USER: ${SEED_TX_PER_USER:-10}
+      SEED_MEDIA_PER_USER: ${SEED_MEDIA_PER_USER:-1}
+      SEED_RESET: ${SEED_RESET:-true}
+    ports:
+      - "${BACKEND_PORT}:3000"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    container_name: yb-${TENANT_SLUG}-worker
+    restart: unless-stopped
+    command: npm run start:worker:dev
+    environment:
+      <<: *backend-env
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  frontend:
+    image: yb_frontend:local
+    build:
+      context: ./frontend
+    container_name: yb-${TENANT_SLUG}-frontend
+    restart: unless-stopped
+    environment:
+      # Prozess-Env schlaegt frontend/.env (gemountet) — pro Mandant eigene URLs.
+      NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT}/api/v1
+      NEXT_PUBLIC_WS_URL: http://localhost:${BACKEND_PORT}
+      BACKEND_INTERNAL_URL: http://yb-${TENANT_SLUG}-backend:3000
+    ports:
+      - "${FRONTEND_PORT}:3001"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+
+networks:
+  default:
+    name: yb_network
+    external: true

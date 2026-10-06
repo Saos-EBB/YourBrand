@@ -207,4 +207,7 @@ volumes:
 
 networks:
   XXX_network:
+    # Fester Name: die Mandanten-Stacks (docker-compose.tenant.yml) haengen
+    # sich als externes Netz an und erreichen so XXX_db / XXX_redis / XXX_minio.
+    name: yb_network
     driver: bridge

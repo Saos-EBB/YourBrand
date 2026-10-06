@@ -1,6 +1,6 @@
 # Multitenant-Umbau
 
-Stand: 2026-10-06. Schritte 1–4 umgesetzt, Rest geplant.
+Stand: 2026-10-06. Schritte 1–5 umgesetzt, Rest geplant.
 
 ## Ziel
 
@@ -94,9 +94,9 @@ Leichte Sprache + Vulnerable-Schutz beschränken — vor Schritt 7 entscheiden.
 3. ✅ **Isolation** — DB-Name, Bucket, Redis-/Queue-Prefix aus dem Slug abgeleitet (2026-10-06, `tenant-infra.helper.ts`)
 4. ✅ **Frontend Runtime-Config** — Branding/Theme/Legal/Sprache aus `/tenant` (serverseitig im
    Root-Layout), feste Markennamen ersetzt, Nav- und Routen-Gating (2026-10-06)
-5. **Docker** — `docker-compose.yml` mit geteilter Infra + pro Mandant ein Set
-   (`compose.tenant.yml` + `.env.<tenant>`), Skript `scripts/tenant.sh up <slug>|all`, DB-Init pro
-   Mandant
+5. ✅ **Docker** — geteilte Infra in `docker-compose.yml` (Netz `yb_network`), pro Mandant ein
+   Compose-Projekt aus `docker-compose.tenant.yml` + `tenants/<slug>/.env`, Init-Container fuer DB,
+   Schema und Bucket, `scripts/tenant.sh up|down|ls|logs` (2026-10-06)
 6. **Seeds pro Mandant** — eigene `demo-users.yaml` / Inhalte, damit die Screens nicht identisch
    aussehen
 7. **Die 4 Mandanten anlegen** + Smoke-Test (pro Mandant: Login ok, gesperrtes Modul → 404)
