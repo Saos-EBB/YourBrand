@@ -1,6 +1,6 @@
 # Multitenant-Umbau
 
-Stand: 2026-10-06. Schritte 1–6 umgesetzt, Rest geplant.
+Stand: 2026-10-06. Schritte 1–7 umgesetzt, Schritt 8 (Showcase) offen.
 
 ## Ziel
 
@@ -83,8 +83,10 @@ Geteilte Infra (Postgres-Server, Redis, MinIO), getrennte Daten:
 | 3 | **Miteinander** | Träger/Betreuung | Connect | hoher Kontrast, `de_easy` | Leichte Sprache, Vulnerable-Schutz, Barrierefreiheit |
 | 4 | **Underground** | Gaming/Community | Premium + Hidden | `underground-neon` | Beef-Battles, Coins, Hidden Zone, Realtime |
 
-**Offen (Variante 3):** Orgs/Caretaker fehlen im Backend. Entweder bauen oder die Variante auf
-Leichte Sprache + Vulnerable-Schutz beschränken — vor Schritt 7 entscheiden.
+**Entschieden (Variante 3, 2026-10-06):** schlanke Variante — Miteinander zeigt Leichte Sprache,
+hohen Kontrast und Vulnerable-Schutz, ohne Orgs/Caretaker (die fehlen im Backend; spaeter eigener
+Schritt). Abweichungen von der Tabelle oben: Campus Match ist premium **ohne** Hidden Zone,
+Miteinander connect **ohne** Payments.
 
 ## Umsetzung in Schritten (je ein Commit)
 
@@ -99,7 +101,8 @@ Leichte Sprache + Vulnerable-Schutz beschränken — vor Schritt 7 entscheiden.
    Schema und Bucket, `scripts/tenant.sh up|down|ls|logs` (2026-10-06)
 6. ✅ **Seeds pro Mandant** — `tenant.json` `"seed"` -> `tenants/<seed>/seed/demo-users.yaml` +
    `demo-relations.yaml`; Datensaetze fuer kiez, campus-match, miteinander, underground (2026-10-06)
-7. **Die 4 Mandanten anlegen** + Smoke-Test (pro Mandant: Login ok, gesperrtes Modul → 404)
+7. ✅ **Die 4 Mandanten anlegen** + Smoke-Test `scripts/tenant.sh smoke` (pro Mandant: `/tenant`,
+   Owner-Login, jedes Modul an/aus, Frontend-Titel) (2026-10-06)
 8. **Showcase** — Screenshots/Videos per Playwright skriptbar (gleicher Flow, 4 Mandanten
    nebeneinander)
 

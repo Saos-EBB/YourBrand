@@ -1,3 +1,20 @@
+## 2026-10-06 — feat(tenant): die vier Showcase-Mandanten + Smoke-Test — Schritt 7
+**Was:** `tenants/{kiez,campus-match,miteinander,underground}/tenant.json`: KiezConnect (core, hell,
+Orange), Campus Match (premium ohne hidden, dunkel, Pink), Miteinander (connect ohne payments,
+`de_easy` als Standardsprache, Blau), Underground (premium inkl. Hidden Zone, dunkel, Cyan). Je
+eigene Impressum-Angaben (als Demo markiert) und `seed` auf den eigenen Datensatz. Nur Akzent-
+Tokens, weil Tokens fuer hellen und dunklen Modus gelten. Variante 3 laut User-Entscheidung schlank
+(ohne Orgs/Caretaker).
+`scripts/tenant.sh smoke <slug>|all`: `GET /tenant` (Slug), Owner-Login mit dem Owner aus dem
+Datensatz (prueft Seeds + Mandanten-Secrets), je Modul eine Probe-Route ohne Token (FeatureGuard vor
+JwtGuard: 404 = aus, 401 = an), Frontend-`<title>` = Markenname. Exit 1 bei Fehlern.
+**Nicht gebaut:** Orgs/Caretaker (Variante 3 voll). Pro Mandant eigene Profilfotos.
+Verifiziert: 39 Jest-Tests gruen (alle 5 `tenant.json` gueltig). Smoke-Test gegen alle vier laufenden
+Mandanten (Backend gegen die in Schritt 6 geseedeten DBs, `next dev`): 28/28 Checks ok — u.a.
+miteinander: chat an, matching/payments/hidden 404; underground: alle vier an. Vorher derselbe Test
+mit gestopptem Backend: jeder Check als FEHLER gemeldet, Exit 1. Screenshots aller vier als normaler
+Nutzer (Dashboard + Chat) zeigen Marke, Theme, Akzentfarbe, Navigation und Sprache je Mandant.
+
 ## 2026-10-06 — feat(tenant): Demo-Daten pro Mandant — Schritt 6 des Multitenant-Umbaus
 **Was:** `src/database/seeds/demo-seed-path.ts`: `tenant.json` `"seed": "<name>"` ->
 `<TENANT_DIR>/<name>/seed/demo-users.yaml` / `demo-relations.yaml`, ohne `seed` die mitgelieferten

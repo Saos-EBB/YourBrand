@@ -1,0 +1,30 @@
+{
+  "slug": "kiez",
+  "brand": {
+    "name": "KiezConnect"
+  },
+  "theme": {
+    "default": "light",
+    "tokens": {
+      "--color-primary-fixed-dim": "#E4572E",
+      "--color-on-primary-container": "#2A0A00",
+      "--color-nav-badge-glow": "#E4572E",
+      "--color-tertiary-fixed-dim": "#F2A541"
+    }
+  },
+  "locale": {
+    "default": "de",
+    "available": [
+      "de",
+      "en",
+      "de_easy"
+    ]
+  },
+  "tier": "core",
+  "legal": {
+    "name": "Kiez e.V. (Demo)",
+    "address": "Wrangelstraße 7, 10997 Berlin",
+    "email": "hallo@kiez.demo"
+  },
+  "seed": "kiez"
+}

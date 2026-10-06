@@ -1,3 +1,9 @@
+## 2026-10-06 — fix(tenant): Abo-Kachel im Dashboard nur mit Modul payments
+**Was:** Beim Screenshot-Check der vier Mandanten gefunden: "Mein Ueberblick" zeigte "Abo-Status:
+Kein Abo" auch bei Miteinander (ohne `payments`). Kachel haengt jetzt an `modules.payments`.
+Verifiziert: `tsc` sauber; Playwright als normaler Nutzer: Miteinander -> Kachel ausgeblendet,
+KiezConnect (payments an) -> sichtbar.
+
 ## 2026-10-06 — feat(tenant): Frontend liest die Mandanten-Config — Schritt 4 des Multitenant-Umbaus
 **Was:** Root-Layout laedt `GET /api/v1/tenant` serverseitig (`lib/tenant/server.ts`, React `cache`,
 `no-store`) — Titel, `<html lang>`, Theme-Default (auch im `theme-init`-Script) und Farb-Tokens

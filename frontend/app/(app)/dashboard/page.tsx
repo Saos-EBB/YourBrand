@@ -300,20 +300,23 @@ export default function DashboardPage() {
               value={userStats?.activeConversations}
               href="/chat"
             />}
-            <div className="rounded-xl border border-outline-variant bg-surface-container-high p-3 flex flex-col gap-1">
-              <p className="text-xs text-on-surface-variant">{t.dashboard.subscriptionStatus}</p>
-              {userStats?.subscription ? (
-                <>
-                  {/* i18n: backend value — plan name (e.g. "monthly") comes from backend */}
-                  <p className="text-lg font-bold text-on-surface capitalize mt-0.5">{userStats.subscription.plan}</p>
-                  <p className="text-xs text-on-surface-variant">
-                    {t.dashboard.validUntil.replace('{date}', fmtExpiry(userStats.subscription.expires_at))}
-                  </p>
-                </>
-              ) : (
-                <p className="text-xl font-bold text-on-surface mt-0.5">{t.dashboard.noSubscription}</p>
-              )}
-            </div>
+            {/* Abo gibt es nur mit Mandanten-Modul "payments" */}
+            {modules.payments && (
+              <div className="rounded-xl border border-outline-variant bg-surface-container-high p-3 flex flex-col gap-1">
+                <p className="text-xs text-on-surface-variant">{t.dashboard.subscriptionStatus}</p>
+                {userStats?.subscription ? (
+                  <>
+                    {/* i18n: backend value — plan name (e.g. "monthly") comes from backend */}
+                    <p className="text-lg font-bold text-on-surface capitalize mt-0.5">{userStats.subscription.plan}</p>
+                    <p className="text-xs text-on-surface-variant">
+                      {t.dashboard.validUntil.replace('{date}', fmtExpiry(userStats.subscription.expires_at))}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xl font-bold text-on-surface mt-0.5">{t.dashboard.noSubscription}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </section>}

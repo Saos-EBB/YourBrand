@@ -5,6 +5,7 @@
 #   scripts/tenant.sh down <slug>|all   Mandant(en) stoppen (Daten bleiben in Postgres/MinIO)
 #   scripts/tenant.sh ls                Mandanten mit URLs auflisten
 #   scripts/tenant.sh logs <slug>       Logs eines Mandanten folgen
+#   scripts/tenant.sh smoke <slug>|all  laufende Mandanten von aussen pruefen
 #
 # Der Mandant "default" ist der Haupt-Stack (docker compose up, Ports 3000/3001)
 # und wird hier nicht verwaltet. Pro Mandant legt das Skript beim ersten "up"
@@ -108,6 +109,60 @@ cmd_ls() {
   done
 }
 
+# Je Modul eine Route, die es nur mit diesem Modul gibt. FeatureGuard laeuft
+# vor JwtGuard: ohne Token heisst 404 "Modul aus", 401 "Modul an".
+PROBES=(chat:/chat/conversations matching:/discover/deck payments:/payment/subscriptions hidden:/hidden/coin/balance)
+
+json_str() { grep -o "\"$1\":\"[^\"]*\"" | head -1 | cut -d'"' -f4; }
+
+smoke_one() {
+  local slug=$1 e="tenants/$1/.env" fail=0 api fe tenant seed users owner token code brand title
+  check() {
+    if [[ "$2" == "$3" ]]; then echo "  ok    $1"; else echo "  FEHLER $1 — erwartet '$3', bekommen '$2'"; fail=1; fi
+  }
+  echo "== $slug"
+  [[ -f "$e" ]] || { echo "  FEHLER nicht gestartet (tenants/$slug/.env fehlt)"; return 1; }
+  api="http://localhost:$(env_value "$e" BACKEND_PORT)/api/v1"
+  fe="http://localhost:$(env_value "$e" FRONTEND_PORT)"
+
+  tenant=$(curl -s --max-time 10 "$api/tenant" || true)
+  check "GET /tenant" "$(json_str slug <<<"$tenant")" "$slug"
+
+  # Owner aus dem Demo-Datensatz (Seed) — prueft Seeds + Mandanten-Secrets.
+  seed=$(grep -o '"seed": *"[^"]*"' "tenants/$slug/tenant.json" | cut -d'"' -f4)
+  users="tenants/$seed/seed/demo-users.yaml"
+  if [[ -n "$seed" && -f "$users" ]]; then
+    owner=$(grep -B3 '^  role: owner' "$users" | grep -o 'email: .*' | cut -d' ' -f2)
+    token=$(curl -s --max-time 10 -X POST "$api/auth/login" -H 'Content-Type: application/json' \
+      -d "{\"identifier\":\"$owner\",\"password\":\"Demo1234!\"}" | json_str accessToken)
+    check "Owner-Login $owner" "$([[ -n "$token" ]] && echo ok || echo kein-token)" ok
+  fi
+
+  for probe in "${PROBES[@]}"; do
+    local module=${probe%%:*} route=${probe#*:} enabled
+    enabled=$(grep -o "\"$module\":\(true\|false\)" <<<"$tenant" | cut -d: -f2)
+    code=$(curl -s -o /dev/null --max-time 10 -w '%{http_code}' "$api$route")
+    if [[ "$enabled" == true ]]; then
+      check "Modul $module an  ($route)" "$([[ "$code" == 401 ]] && echo erreichbar || echo "$code")" erreichbar
+    else
+      check "Modul $module aus ($route)" "$code" 404
+    fi
+  done
+
+  brand=$(json_str name <<<"$tenant")
+  title=$(curl -s --max-time 120 "$fe/login" | grep -o '<title>[^<]*</title>' | sed -E 's#</?title>##g')
+  check "Frontend-Titel" "$title" "$brand"
+  return $fail
+}
+
+cmd_smoke() {
+  local slugs failed=0
+  slugs=$(resolve "$@") || exit 1
+  for slug in $slugs; do smoke_one "$slug" || failed=1; done
+  [[ $failed == 0 ]] && echo "Alle Checks ok." || echo "Es gab Fehler."
+  return $failed
+}
+
 cmd_logs() {
   local slug
   slug=$(resolve "$@") || exit 1
@@ -120,5 +175,6 @@ case "${1:-}" in
   down) shift; cmd_down "$@" ;;
   ls)   cmd_ls ;;
   logs) shift; cmd_logs "$@" ;;
-  *)    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  smoke) shift; cmd_smoke "$@" ;;
+  *)    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

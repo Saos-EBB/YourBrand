@@ -92,6 +92,7 @@ The same codebase runs as several branded tenants side by side — each with its
 ```bash
 scripts/tenant.sh up all     # shared infra + every tenant in tenants/ (except default)
 scripts/tenant.sh ls         # tenants with their URLs
+scripts/tenant.sh smoke all  # check every running tenant from the outside
 scripts/tenant.sh down kiez  # stop one tenant, data stays
 ```
 

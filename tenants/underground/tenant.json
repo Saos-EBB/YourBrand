@@ -1,0 +1,30 @@
+{
+  "slug": "underground",
+  "brand": {
+    "name": "Underground"
+  },
+  "theme": {
+    "default": "dark",
+    "tokens": {
+      "--color-primary-fixed-dim": "#22D3EE",
+      "--color-on-primary-container": "#00262C",
+      "--color-nav-badge-glow": "#22D3EE",
+      "--color-tertiary-fixed-dim": "#A3E635"
+    }
+  },
+  "locale": {
+    "default": "de",
+    "available": [
+      "de",
+      "en",
+      "leet"
+    ]
+  },
+  "tier": "premium",
+  "legal": {
+    "name": "Underground Gaming UG (Demo)",
+    "address": "Rheinlanddamm 200, 44139 Dortmund",
+    "email": "crew@underground.demo"
+  },
+  "seed": "underground"
+}

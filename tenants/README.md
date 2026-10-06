@@ -7,6 +7,19 @@ startet nicht und nennt alle Fehler auf einmal.
 
 Neuer Mandant: `_template/` kopieren, Ordner = `slug`, Werte anpassen.
 
+## Die Showcase-Mandanten
+
+| Mandant | Tier | Module | Look | Sprachen |
+|---|---|---|---|---|
+| `default` (YourBrand) | premium | alle | dunkel, Standardfarben | alle 9 |
+| `kiez` (KiezConnect) | core | chat, payments | hell, Orange | de, en, de_easy |
+| `campus-match` (Campus Match) | premium | chat, matching, payments (ohne hidden) | dunkel, Pink | de, en |
+| `miteinander` (Miteinander) | connect | chat (ohne payments) | hell, kräftiges Blau | de_easy (Standard), de |
+| `underground` (Underground) | premium | alle inkl. Hidden Zone | dunkel, Cyan | de, en, leet |
+
+Farb-Tokens gelten im hellen und dunklen Modus — deshalb setzen die Mandanten nur Akzentfarben
+(Primärfarbe, Text darauf, Glow, Tertiär), keine Hintergründe.
+
 | Feld | Pflicht | Bedeutung |
 |---|---|---|
 | `slug` | ja | `a-z0-9-`, muss dem Ordnernamen entsprechen |
@@ -77,6 +90,7 @@ laufen als eigene Compose-Projekte (`docker-compose.tenant.yml`) auf der geteilt
 scripts/tenant.sh up <slug>|all    # Infra sicherstellen, Mandant(en) bauen + starten
 scripts/tenant.sh ls               # Mandanten + URLs
 scripts/tenant.sh logs <slug>
+scripts/tenant.sh smoke <slug>|all # laufende Mandanten pruefen: /tenant, Owner-Login, Module, Frontend-Titel
 scripts/tenant.sh down <slug>|all  # stoppen, Daten bleiben
 ```
 

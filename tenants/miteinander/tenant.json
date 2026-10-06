@@ -1,0 +1,32 @@
+{
+  "slug": "miteinander",
+  "brand": {
+    "name": "Miteinander"
+  },
+  "theme": {
+    "default": "light",
+    "tokens": {
+      "--color-primary-fixed-dim": "#1F5FC4",
+      "--color-on-primary-container": "#FFFFFF",
+      "--color-nav-badge-glow": "#1F5FC4",
+      "--color-tertiary-fixed-dim": "#0F7B5F"
+    }
+  },
+  "locale": {
+    "default": "de_easy",
+    "available": [
+      "de_easy",
+      "de"
+    ]
+  },
+  "tier": "connect",
+  "modules": {
+    "payments": false
+  },
+  "legal": {
+    "name": "Miteinander gGmbH (Demo)",
+    "address": "Domkloster 4, 50667 Köln",
+    "email": "kontakt@miteinander.demo"
+  },
+  "seed": "miteinander"
+}
