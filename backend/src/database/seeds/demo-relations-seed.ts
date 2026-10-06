@@ -15,8 +15,8 @@
 
 import 'dotenv/config';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { demoSeedPath } from './demo-seed-path';
 import { DataSource } from 'typeorm';
 import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
@@ -498,8 +498,21 @@ async function seedBlocks(blocks: Block[]): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const yamlPath = path.join(__dirname, 'demo-relations.yaml');
-  const seed = yaml.load(fs.readFileSync(yamlPath, 'utf8')) as SeedFile;
+  // Mandanten-Datensatz (tenant.json "seed") oder die mitgelieferte Datei.
+  const yamlPath = demoSeedPath('demo-relations.yaml');
+  if (!yamlPath) {
+    console.log('Kein demo-relations.yaml fuer diesen Mandanten — uebersprungen');
+    return;
+  }
+  const raw = yaml.load(fs.readFileSync(yamlPath, 'utf8')) as Partial<SeedFile>;
+  // Mandanten-Datensaetze lassen Abschnitte weg (z.B. keine Beefs ohne Hidden Zone).
+  const seed: SeedFile = {
+    contact_requests: raw.contact_requests ?? [],
+    conversations: raw.conversations ?? [],
+    beefs: raw.beefs ?? [],
+    blocks: raw.blocks ?? [],
+    beef_interactions: raw.beef_interactions ?? [],
+  };
 
   await ds.initialize();
   console.log('Verbunden mit DB:', tenantInfra().database);

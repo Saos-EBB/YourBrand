@@ -18,7 +18,7 @@ Neuer Mandant: `_template/` kopieren, Ordner = `slug`, Werte anpassen.
 | `tier` | ja | `core`, `connect` oder `premium` — setzt die Modul-Defaults |
 | `modules` | nein | überschreibt einzelne Module: `chat`, `matching`, `payments`, `hidden` |
 | `legal` | ja | Impressum-Angaben (`name`, `address`, `email`) |
-| `seed` | nein | welcher Demo-Datensatz geseedet wird, wird nicht öffentlich ausgegeben |
+| `seed` | nein | Demo-Datensatz aus `tenants/<seed>/seed/` (siehe unten), wird nicht öffentlich ausgegeben |
 
 Tier-Defaults (`backend/src/common/tenant/tenant.types.ts`):
 
@@ -48,6 +48,25 @@ Explizit gesetztes `DB_NAME` / `S3_BUCKET` gilt **nur** für den Mandanten `defa
 Haupt-Stack mit seinem Volume). Für alle anderen wird es ignoriert — `backend/.env` ist in jeden
 Container gemountet und setzt `DB_NAME`.
 Beim Start loggt das Backend: `Mandant "<slug>" — DB …, Bucket …, Redis-Prefix …`.
+
+## Demo-Daten
+
+Ohne `seed` bekommt ein Mandant die mitgelieferten 45 Demo-User (`backend/src/database/seeds/`).
+Mit `"seed": "<name>"` kommen sie aus `tenants/<name>/seed/`:
+
+- `demo-users.yaml` — Pflicht (danach entscheidet `demo-full-reset`, wer beim Neustart bleibt)
+- `demo-relations.yaml` — optional (Kontaktanfragen, Chats, Beefs, Blocks); fehlt sie, gibt es
+  keine Relations. Abschnitte duerfen fehlen (z.B. keine Beefs ohne Hidden Zone).
+
+Format wie die mitgelieferten Dateien. Vorhandene Datensaetze, Login je `<nickname>@<domain>`,
+Passwort `Demo1234!`:
+
+| Datensatz | Domain | Owner | Inhalt |
+|---|---|---|---|
+| `kiez` | `kiez.demo` | `kiezbuero` | 10 Nachbar:innen Berlin, Verleih/Hilfe, 3 Chats |
+| `campus-match` | `campus.demo` | `campus_team` | 10 Studierende Münster, Dating-Chats |
+| `miteinander` | `miteinander.demo` | `traeger_koeln` | 8 Profile in Leichter Sprache, Köln |
+| `underground` | `underground.demo` | `ug_overlord` | 10 Gamer:innen, 3 Beefs mit Votes/Kommentaren |
 
 ## Docker
 

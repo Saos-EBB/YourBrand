@@ -1,6 +1,6 @@
 # Multitenant-Umbau
 
-Stand: 2026-10-06. Schritte 1–5 umgesetzt, Rest geplant.
+Stand: 2026-10-06. Schritte 1–6 umgesetzt, Rest geplant.
 
 ## Ziel
 
@@ -97,8 +97,8 @@ Leichte Sprache + Vulnerable-Schutz beschränken — vor Schritt 7 entscheiden.
 5. ✅ **Docker** — geteilte Infra in `docker-compose.yml` (Netz `yb_network`), pro Mandant ein
    Compose-Projekt aus `docker-compose.tenant.yml` + `tenants/<slug>/.env`, Init-Container fuer DB,
    Schema und Bucket, `scripts/tenant.sh up|down|ls|logs` (2026-10-06)
-6. **Seeds pro Mandant** — eigene `demo-users.yaml` / Inhalte, damit die Screens nicht identisch
-   aussehen
+6. ✅ **Seeds pro Mandant** — `tenant.json` `"seed"` -> `tenants/<seed>/seed/demo-users.yaml` +
+   `demo-relations.yaml`; Datensaetze fuer kiez, campus-match, miteinander, underground (2026-10-06)
 7. **Die 4 Mandanten anlegen** + Smoke-Test (pro Mandant: Login ok, gesperrtes Modul → 404)
 8. **Showcase** — Screenshots/Videos per Playwright skriptbar (gleicher Flow, 4 Mandanten
    nebeneinander)

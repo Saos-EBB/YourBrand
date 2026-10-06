@@ -1,0 +1,49 @@
+# Demo-Datensatz fuer den Mandanten "miteinander" (tenant.json "seed": "miteinander").
+# Format wie backend/src/database/seeds/demo-relations.yaml — von dort die Feld-Doku.
+# Logins: <nickname>@miteinander.demo, Passwort Demo1234!
+
+contact_requests:
+- sender: paul_malt
+  receiver: anna_backt
+  status: accepted
+  message_preview: Hallo Anna. Ich bin Paul. Magst du reden?
+- sender: lea_hund
+  receiver: greta_liest
+  status: accepted
+  message_preview: Hallo Greta. Gehen wir zusammen spazieren?
+- sender: murat_fussball
+  receiver: tim_tanzt
+  status: pending
+  message_preview: Hallo Tim. Kommst du mit ins Stadion?
+conversations:
+- user_a: paul_malt
+  user_b: anna_backt
+  contact_request_ref: paul_malt→anna_backt
+  status: active
+  messages:
+  - sender: paul_malt
+    content: Hallo Anna. Wie geht es dir?
+    minutes_ago: 150
+  - sender: anna_backt
+    content: Hallo Paul. Mir geht es gut. Ich habe heute Kuchen gebacken.
+    minutes_ago: 145
+  - sender: paul_malt
+    content: Schön. Was für ein Kuchen?
+    minutes_ago: 140
+  - sender: anna_backt
+    content: Apfel-Kuchen. Willst du am Sonntag ein Stück?
+    minutes_ago: 135
+  - sender: paul_malt
+    content: Ja, gerne. Ich male dir ein Bild.
+    minutes_ago: 130
+- user_a: lea_hund
+  user_b: greta_liest
+  contact_request_ref: lea_hund→greta_liest
+  status: active
+  messages:
+  - sender: lea_hund
+    content: Hallo Greta. Bruno und ich gehen um 3 Uhr in den Park.
+    minutes_ago: 60
+  - sender: greta_liest
+    content: Hallo Lea. Ich komme gern mit. Ich bringe Tee mit.
+    minutes_ago: 55

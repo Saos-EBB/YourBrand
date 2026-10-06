@@ -39,8 +39,8 @@
 
 import 'dotenv/config';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { demoSeedPath } from './demo-seed-path';
 import { DataSource } from 'typeorm';
 import { deleteObject, keyFromPublicUrl } from '../../common/storage/object-storage.helper';
 import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
@@ -63,7 +63,8 @@ async function main() {
     await ds.initialize();
     console.log('demo-full-reset: verbunden mit DB', tenantInfra().database);
 
-    const yamlPath = path.join(__dirname, 'demo-users.yaml');
+    // Mandanten-Datensatz (tenant.json "seed") oder die mitgelieferte Datei.
+    const yamlPath = demoSeedPath('demo-users.yaml')!;
     const seed = yaml.load(fs.readFileSync(yamlPath, 'utf8')) as SeedFile;
     const curatedNicknames = seed.users.map((u) => u.nickname);
 

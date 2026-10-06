@@ -1,0 +1,206 @@
+# Demo-Datensatz fuer den Mandanten "campus-match" (tenant.json "seed": "campus-match").
+# Format wie backend/src/database/seeds/demo-users.yaml — von dort die Feld-Doku.
+# Logins: <nickname>@campus.demo, Passwort Demo1234!
+
+users:
+- id: o1
+  email: campus_team@campus.demo
+  password: Demo1234!
+  role: owner
+  is_verified: true
+  nickname: campus_team
+  birthdate: '1990-10-10'
+  gender: not_specified
+  looking_for: exchange
+  bio: Das Team hinter Campus Match. Fragen? Schreib uns.
+  city: Münster
+  status: available
+  photo_file: o1.png
+  audio_file: ''
+  interests:
+  - Hochschule
+  - Events
+  - name: Spam
+    is_green: false
+- id: a1
+  email: mod_marie@campus.demo
+  password: Demo1234!
+  role: admin
+  is_verified: true
+  nickname: mod_marie
+  birthdate: '1996-06-06'
+  gender: female
+  looking_for: exchange
+  bio: Moderation. Ich lese Meldungen schneller als du "Prüfungsphase" sagen kannst.
+  city: Münster
+  status: available
+  photo_file: f2.jpg
+  audio_file: ''
+  interests:
+  - Psychologie
+  - Kaffee
+  - name: Belästigung
+    is_green: false
+- id: u1
+  email: lina_jura@campus.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: lina_jura
+  birthdate: '2002-03-21'
+  gender: female
+  looking_for: relationship
+  bio: Jura im 5. Semester. Suche jemanden für Mensa-Dates und Spaziergänge am Aasee.
+  city: Münster
+  status: looking_for_date
+  photo_file: f1.jpg
+  audio_file: ''
+  interests:
+  - Aasee
+  - Debattieren
+  - Brunch
+  - Indie-Musik
+  - name: Unpünktlichkeit
+    is_green: false
+- id: u2
+  email: jonas_info@campus.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: jonas_info
+  birthdate: '2001-11-02'
+  gender: male
+  looking_for: all
+  bio: Informatik, Hackathons, schlechte Wortwitze. Zeig mir dein Lieblings-Café.
+  city: Münster
+  status: looking_for_chat
+  photo_file: m1.jpg
+  audio_file: m1.mp3
+  interests:
+  - Programmieren
+  - Hackathons
+  - Bouldern
+  - Brettspiele
+  - name: Tabs statt Spaces
+    is_green: false
+- id: u3
+  email: sophie_medizin@campus.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: sophie_medizin
+  birthdate: '2000-07-14'
+  gender: female
+  looking_for: relationship
+  bio: Medizin, viel Lernstress, noch mehr Kaffee. Wer joggt morgens mit?
+  city: Münster
+  status: available
+  photo_file: f6.jpg
+  audio_file: ''
+  interests:
+  - Laufen
+  - Kaffee
+  - Podcasts
+  - name: Ausreden
+    is_green: false
+- id: u4
+  email: emre_bwl@campus.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: emre_bwl
+  birthdate: '1999-09-09'
+  gender: male
+  looking_for: friendship
+  bio: BWL in Osnabrück, am Wochenende oft in Münster. Suche Leute fürs Pubquiz.
+  city: Osnabrück
+  status: available
+  photo_file: m5.jpg
+  audio_file: m5.mp3
+  interests:
+  - Pubquiz
+  - Fußball
+  - Start-ups
+  - name: Langeweile
+    is_green: false
+- id: u5
+  email: clara_kunst@campus.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: clara_kunst
+  birthdate: '2003-01-30'
+  gender: female
+  looking_for: all
+  bio: Kunstakademie. Male Leute, die ich mag. Vielleicht bald dich?
+  city: Münster
+  status: looking_for_chat
+  photo_file: f8.jpg
+  audio_file: ''
+  interests:
+  - Malen
+  - Ausstellungen
+  - Flohmarkt
+  - Film
+  - name: Kunst ist nur Hobby
+    is_green: false
+- id: u6
+  email: ben_physik@campus.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: ben_physik
+  birthdate: '2000-04-04'
+  gender: male
+  looking_for: relationship
+  bio: Physik. Kann dir erklären, warum der Kaffee kalt wird. Lieber trinken wir ihn warm zusammen.
+  city: Münster
+  status: looking_for_date
+  photo_file: m2.webp
+  audio_file: m2.mp3
+  interests:
+  - Astronomie
+  - Kochen
+  - Volleyball
+  - name: Esoterik
+    is_green: false
+- id: u7
+  email: mia_lehramt@campus.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: mia_lehramt
+  birthdate: '2002-10-12'
+  gender: female
+  looking_for: friendship
+  bio: Lehramt Deutsch/Englisch. Lese dir gerne Gedichte vor, wenn du nicht wegläufst.
+  city: Münster
+  status: available
+  photo_file: f4.jpg
+  audio_file: ''
+  interests:
+  - Lesen
+  - Poetry Slam
+  - Radfahren
+  - name: Spoiler
+    is_green: false
+- id: u8
+  email: leon_sport@campus.demo
+  password: Demo1234!
+  role: user
+  is_verified: true
+  nickname: leon_sport
+  birthdate: '2001-05-25'
+  gender: male
+  looking_for: relationship
+  bio: Sportwissenschaft. Hochschulsport-Dauerkarte. Frühstück nach dem Training?
+  city: Bochum
+  status: looking_for_date
+  photo_file: m18.jpg
+  audio_file: m18.mp3
+  interests:
+  - Hochschulsport
+  - Fitness
+  - Kochen
+  - name: Couch-Wochenenden
+    is_green: false

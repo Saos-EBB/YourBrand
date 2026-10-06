@@ -1,3 +1,23 @@
+## 2026-10-06 — feat(tenant): Demo-Daten pro Mandant — Schritt 6 des Multitenant-Umbaus
+**Was:** `src/database/seeds/demo-seed-path.ts`: `tenant.json` `"seed": "<name>"` ->
+`<TENANT_DIR>/<name>/seed/demo-users.yaml` / `demo-relations.yaml`, ohne `seed` die mitgelieferten
+Dateien (default-Mandant unveraendert). `demo-seed.ts`, `demo-full-reset.ts` und
+`demo-relations-seed.ts` lesen darueber. Fehlt `demo-users.yaml` im Datensatz -> Fehler (sonst
+loescht `demo-full-reset` gegen die falsche Liste); fehlt `demo-relations.yaml` -> keine Relations,
+nie die default-Datei (andere Nicknames). Relations-Abschnitte duerfen fehlen.
+Vier Datensaetze unter `tenants/<slug>/seed/`: kiez (10 User, Nachbarschaft Berlin), campus-match
+(10, Studierende Muenster), miteinander (8, Leichte Sprache Koeln), underground (10, Gaming, 3 Beefs
+mit Votes/Kommentaren). Fotos/Audio aus den vorhandenen `demoPfp/`/`demoAudio/`.
+**Nicht gebaut:** eigene Profilfotos pro Mandant (vorhandene Bilder wiederverwendet). Keine
+Swipes/Matches im Seed (Discover-Deck entsteht aus Profilen + Standort). `tenant.json` fuer die vier
+Mandanten folgt in Schritt 7.
+Verifiziert: `tsc` sauber, 35 Jest-Tests gruen (neu: Pfadauflösung + Test, dass jede in
+`demo-relations.yaml` referenzierte Person im Datensatz existiert). Echter Lauf aller vier gegen
+lokales Postgres/PostGIS + S3-Mock (init, full-reset, demo-seed, relations, cities, backfill):
+kiez 10 User/5 Anfragen/3 Chats/11 Nachrichten, campus_match 10/5/3/11, miteinander 8/3/2/7,
+underground 10/4/2/7 + 3 Beefs/8 Votes; je eigener Owner, Medien im eigenen Bucket, Standorte
+gesetzt. Zweiter Lauf: nichts angelegt, nichts geloescht. Lint-Befunde der Seed-Skripte unveraendert.
+
 ## 2026-10-06 — feat(tenant): eigene Secrets und eigene .env pro Mandant
 **Was:** Bisher war `backend/.env` in jeden Mandanten-Container gemountet — alles, was Compose
 nicht setzte, kam vom default-Mandanten, u.a. `EMAIL_SALT` und `APP_ENCRYPTION_KEY` (ein Key fuer

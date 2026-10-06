@@ -20,6 +20,7 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { demoSeedPath } from './demo-seed-path';
 import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 import { encryptField, hashEmail } from '../../common/crypto/crypto.helper';
@@ -154,7 +155,8 @@ async function seedMediaFile(
 // ---------------------------------------------------------------------------
 
 async function main() {
-    const yamlPath = path.join(__dirname, 'demo-users.yaml');
+    // Mandanten-Datensatz (tenant.json "seed") oder die mitgelieferte Datei.
+    const yamlPath = demoSeedPath('demo-users.yaml')!;
     const seed = yaml.load(fs.readFileSync(yamlPath, 'utf8')) as SeedFile;
 
     await ds.initialize();
