@@ -1,3 +1,22 @@
+## 2026-10-06 — feat(tenant): Tenant-Config — Schritt 1 des Multitenant-Umbaus
+**Was:** `src/common/tenant/` neu. `tenants/<slug>/tenant.json` (Repo-Root) wird beim Boot geladen
+(`TENANT`, Default `default`; `TENANT_DIR`, Docker `/tenants`, lokal `../tenants`) und mit
+class-validator geprueft (`whitelist` + `forbidNonWhitelisted`, Tippfehler im Key brechen den Boot).
+Zusaetzlich: Slug = Ordnername, `locale.default` in `available`, Theme-Tokens nur `--color-*` mit
+Hex-Wert (landen spaeter als CSS-Variablen im Browser), Asset-Namen ohne Pfad. Alle Fehler werden
+auf einmal gemeldet. Tier (`core`/`connect`/`premium`) setzt Modul-Defaults (`chat`, `matching`,
+`payments`, `hidden`), `modules` ueberschreibt einzeln. `TenantModule` ist global und stellt
+`TENANT_CONFIG` bereit; `GET /api/v1/tenant` (oeffentlich, SkipThrottle) gibt alles ausser `seed`.
+Loader als plain functions (wie `crypto.helper.ts`), damit Seeds/Worker ihn spaeter ohne DI nutzen.
+`tenants/default` = bisheriges Verhalten (premium, alle Module an), `tenants/_template` als Vorlage.
+`docker-compose.yml`: `TENANT`/`TENANT_DIR` + read-only Mount `./tenants:/tenants` fuer nestjs/worker.
+**Nicht gebaut:** noch kein Gating — `modules` wird gelesen, aber noch nichts abgeschaltet (Schritt 2).
+`WorkerModule` laedt die Config noch nicht (braucht sie erst mit Schritt 2/3). Connect = Core,
+weil Orgs/Caretaker nicht existieren.
+Verifiziert: `tsc --noEmit` sauber, 14 Jest-Tests gruen (inkl. Validitaet aller eingecheckten
+`tenant.json`). Smoke-Test mit echtem Nest-Boot: `GET /api/v1/tenant` -> 200 mit aufgeloesten
+Modulen; kaputte Config und fehlender Mandant -> Boot bricht mit lesbarer Fehlerliste ab.
+
 ## 2026-10-05 — chore(deploy): Railway, ngrok, Vercel und Render entfernt — nur noch Docker
 **Was:** Einziger Betriebsweg ist jetzt `docker compose` (lokal). Geloescht: `railway.json`,
 `Dockerfile.railway`, `docker-entrypoint.railway.sh`, `scripts/deploy/ensure-db.js` (nur vom

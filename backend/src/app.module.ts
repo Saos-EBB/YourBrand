@@ -35,6 +35,7 @@ import { TeethModule } from './modules/hidden/teeth/teeth.module';
 import { BadgeModule } from './modules/hidden/badge/badge.module';
 import { SharedModule } from './modules/shared/shared.module';
 import { MatchingModule } from './modules/core/matching/matching.module';
+import { TenantModule } from './common/tenant/tenant.module';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -89,6 +90,7 @@ import databaseConfig from './config/database.config';
       }),
       inject: [ConfigService],
     }),
+    TenantModule,
     SharedModule,
     RedisModule,
     LastActiveModule,
