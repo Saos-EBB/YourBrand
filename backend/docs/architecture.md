@@ -34,7 +34,10 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   ueber allen Mandanten, laeuft auf dem Host statt im Container (braucht `tenants/` schreibbar, git,
   docker). Reines `node:http` + eine statische `index.html`, nur an 127.0.0.1 gebunden, keine Auth.
   Liest `tenants/*/tenant.json` und validiert mit `parseTenantConfig`, Status per `docker ps`.
-  Voraussetzung: `npm ci` in `backend/` auf dem Host.
+  Stats: Button „Aktualisieren“ ruft `collectDashboardStats` (`modules/core/admin/dashboard-stats.query.ts`)
+  pro Mandanten-DB (`tenantInfra(slug).database`, Zugang aus Root-`.env`, localhost:5432) auf und haengt
+  das Ergebnis an `.console/snapshots.jsonl` an (Repo-Root, gitignored) — Grundlage fuer Summen und Verlauf.
+  Voraussetzung: `npm ci` in `backend/` auf dem Host, `XXX_db` laeuft.
 
 ## Datenfluss (Ziel)
 

@@ -3,7 +3,10 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
 import { promisify } from 'util';
+import { Client } from 'pg';
 import { parseTenantConfig } from '../common/tenant/tenant-config.loader';
+import { tenantInfra } from '../common/tenant/tenant-infra.helper';
+import { collectDashboardStats } from '../modules/core/admin/dashboard-stats.query';
 
 // Mandanten-Console: lokales Dashboard ueber allen Mandanten (backend/docs/architecture.md).
 // Laeuft auf dem Host (nicht im Container) — braucht Schreibzugriff auf tenants/,
@@ -12,6 +15,8 @@ import { parseTenantConfig } from '../common/tenant/tenant-config.loader';
 const PORT = 3099;
 const REPO = path.resolve(__dirname, '..', '..', '..');
 const TENANTS = path.join(REPO, 'tenants');
+// Eine Zeile pro Mandant und Aktualisierung (gitignored)
+const SNAPSHOTS = path.join(REPO, '.console', 'snapshots.jsonl');
 
 const run = promisify(execFile);
 
@@ -72,6 +77,42 @@ async function listTenants() {
     });
 }
 
+// Zugangsdaten wie der Haupt-Stack (Root-.env), Postgres auf dem Host-Port aus
+// docker-compose.yml. DB_NAME gilt nur fuer default (tenantInfra).
+async function tenantStats(slug: string) {
+    const env = path.join(REPO, '.env');
+    process.env.DB_NAME = envValue(env, 'DB_NAME');
+    const client = new Client({
+        host: 'localhost',
+        port: 5432,
+        user: envValue(env, 'DB_USER'),
+        password: envValue(env, 'DB_PASSWORD'),
+        database: tenantInfra(slug).database,
+        connectionTimeoutMillis: 3000,
+    });
+    try {
+        await client.connect();
+        return { stats: await collectDashboardStats(async (sql) => (await client.query(sql)).rows) };
+    } catch (err) {
+        return { stats: null, error: (err as Error).message };
+    } finally {
+        await client.end().catch(() => undefined);
+    }
+}
+
+async function takeSnapshot() {
+    const at = new Date().toISOString();
+    const rows = await Promise.all(tenantSlugs().map(async (slug) => ({ at, slug, ...(await tenantStats(slug)) })));
+    fs.mkdirSync(path.dirname(SNAPSHOTS), { recursive: true });
+    fs.appendFileSync(SNAPSHOTS, rows.map((r) => JSON.stringify(r)).join('\n') + '\n');
+    return rows;
+}
+
+function readSnapshots(): unknown[] {
+    if (!fs.existsSync(SNAPSHOTS)) return [];
+    return fs.readFileSync(SNAPSHOTS, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as unknown);
+}
+
 function sendJson(res: http.ServerResponse, status: number, body: unknown) {
     res.writeHead(status, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(body));
@@ -87,6 +128,14 @@ const server = http.createServer((req, res) => {
         }
         if (req.method === 'GET' && url.pathname === '/api/tenants') {
             sendJson(res, 200, await listTenants());
+            return;
+        }
+        if (req.method === 'GET' && url.pathname === '/api/snapshots') {
+            sendJson(res, 200, readSnapshots());
+            return;
+        }
+        if (req.method === 'POST' && url.pathname === '/api/snapshots') {
+            sendJson(res, 200, await takeSnapshot());
             return;
         }
         sendJson(res, 404, { error: 'not found' });

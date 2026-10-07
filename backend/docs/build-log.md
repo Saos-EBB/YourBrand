@@ -1,3 +1,12 @@
+## 2026-10-07 — feat(console): Stats-Snapshots, Summen und Verlauf pro Mandant — Console Schritt 3
+**Was:** „Aktualisieren“ fragt alle Mandanten-DBs ab und speichert einen Snapshot (statt Live-Polling:
+weniger Last, und die Snapshots ergeben den Verlauf). Uebersicht: Summen ueber alle Mandanten (nur der
+letzte gemeinsame Stand) + User/online/Reports pro Kachel. Detailseite `#/t/<slug>`: alle 16 Werte mit
+Delta zum vorigen Stand, Klick auf einen Wert zeigt dessen Verlauf (SVG-Linie mit Hover). Geprueft gegen
+die lokale DB: alle 5 Mandanten liefern Stats (Showcase-Mandanten identisch — geteilter Seed).
+**Nicht gebaut:** kein SQLite (JSONL reicht), kein Chart-Framework, kein Auto-Refresh, keine
+Aufraeum-/Rotationslogik fuer die Snapshot-Datei.
+
 ## 2026-10-07 — feat(console): Mandanten-Console mit Uebersicht — Console Schritt 2
 **Was:** `npm run console` startet auf http://localhost:3099 eine Uebersicht aller Mandanten (default
 zuerst, `_template` ausgeblendet): Name, Tier, Theme, Farb-Tokens als Swatches, Sprachen, Validierungsfehler

@@ -6,23 +6,30 @@
 <title>Mandanten-Console</title>
 <style>
   :root {
-    --bg: #f6f7f9; --card: #fff; --text: #1a1d23; --muted: #646b78; --line: #e2e5ea;
-    --ok: #1f9d55; --off: #9aa1ad; --bad: #c62828; --bad-bg: #fdecea;
+    --bg: #f6f7f9; --card: #fff; --text: #1a1d23; --muted: #646b78; --line: #e2e5ea; --grid: #eef0f3;
+    --ok: #1f9d55; --off: #9aa1ad; --bad: #c62828; --bad-bg: #fdecea; --series: #2a78d6;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #12151b; --card: #1b1f27; --text: #e6e8ec; --muted: #9aa1ad; --line: #2b313c;
-      --ok: #4ade80; --off: #6b7280; --bad: #f87171; --bad-bg: #3b1d1d;
+      --bg: #12151b; --card: #1b1f27; --text: #e6e8ec; --muted: #9aa1ad; --line: #2b313c; --grid: #252a33;
+      --ok: #4ade80; --off: #6b7280; --bad: #f87171; --bad-bg: #3b1d1d; --series: #3987e5;
     }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
-  header { padding: 20px 24px 8px; display: flex; align-items: baseline; gap: 12px; }
+  header { padding: 20px 24px 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 24px 0 8px; }
   .muted { color: var(--muted); }
-  main { padding: 16px 24px 40px; }
+  .spacer { flex: 1; }
+  button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+  button:disabled { opacity: .6; cursor: wait; }
+  main { padding: 8px 24px 40px; }
+  a { color: inherit; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  a.card { text-decoration: none; }
+  a.card:hover { border-color: var(--muted); }
   .head { display: flex; align-items: center; gap: 10px; }
   .mark { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: #fff; flex: none; }
   .name { font-weight: 600; font-size: 15px; }
@@ -32,23 +39,56 @@
   .swatches { display: flex; gap: 4px; min-height: 18px; align-items: center; }
   .swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--line); }
   .error { background: var(--bad-bg); color: var(--bad); border-radius: 8px; padding: 8px; font-size: 12px; white-space: pre-wrap; }
-  a { color: inherit; }
+  .kpis { display: flex; gap: 14px; flex-wrap: wrap; }
+  .kpis b { font-size: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; text-align: left; }
+  .tile .value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .label { font-size: 12px; color: var(--muted); }
+  .tile .delta { font-size: 12px; color: var(--muted); }
+  button.tile[aria-pressed="true"] { border-color: var(--series); box-shadow: inset 0 0 0 1px var(--series); }
+  .chart { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; position: relative; }
+  .chart svg { display: block; width: 100%; height: 220px; }
+  .chart text { fill: var(--muted); font-size: 11px; }
+  .tooltip { position: absolute; pointer-events: none; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; white-space: nowrap; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 </style>
 </head>
 <body>
 <header>
-  <h1>Mandanten-Console</h1>
+  <h1><a href="#/" style="text-decoration:none">Mandanten-Console</a></h1>
   <span class="muted" id="summary"></span>
+  <span class="spacer"></span>
+  <span class="muted" id="stamp"></span>
+  <button id="refresh">Aktualisieren</button>
 </header>
-<main>
-  <div class="grid" id="grid"></div>
-</main>
+<main id="view"></main>
 <script>
 // Fallback, wenn ein Mandant die Primaerfarbe nicht ueberschreibt — Wert aus
 // frontend/app/globals.css (@theme).
 const DEFAULT_PRIMARY = '#73db9a';
 
+// Felder von AdminDashboardStatsDto, gruppiert fuer die Detailseite
+const GROUPS = [
+  ['Nutzer', { totalUsers: 'User gesamt', activeUsers: 'Aktiv (verifiziert)', onlineUsers: 'Online (15 min)', newUsersToday: 'Neu heute', newUsersThisWeek: 'Neu diese Woche', bannedUsers: 'Gesperrt' }],
+  ['Aktivität', { messagesToday: 'Nachrichten heute', messagesThisWeek: 'Nachrichten Woche', contactRequestsToday: 'Anfragen heute', contactRequestsThisWeek: 'Anfragen Woche' }],
+  ['Umsatz', { activeSubscriptions: 'Aktive Abos', totalRevenue: 'Umsatz gesamt' }],
+  ['Moderation', { openReports: 'Offene Reports', openTickets: 'Offene Tickets', strikesThisWeek: 'Strikes Woche', pendingMedia: 'Medien in Prüfung' }],
+];
+const LABELS = Object.assign({}, ...GROUPS.map(([, g]) => g));
+const TOTALS = ['totalUsers', 'onlineUsers', 'activeSubscriptions', 'totalRevenue', 'openReports', 'openTickets'];
+
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const fmt = (key, v) => key === 'totalRevenue'
+  ? v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
+  : v.toLocaleString('de-DE');
+const fmtTime = (iso) => new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+
+let tenants = [];
+let snapshots = [];
+let selected = 'totalUsers';
+
+const history = (slug) => snapshots.filter((s) => s.slug === slug);
+const latest = (slug) => history(slug).at(-1);
 
 function statusLabel(t) {
   if (t.running === null) return '<span class="dot"></span>Docker?';
@@ -63,8 +103,16 @@ function card(t) {
     .map(([k, v]) => `<span class="swatch" style="background:${esc(v)}" title="${esc(k)}: ${esc(v)}"></span>`)
     .join('') || '<span class="muted">Standardfarben</span>';
   const name = c.brand?.name ?? t.slug;
+  const snap = latest(t.slug);
+  const kpis = !snap ? '<span class="muted">noch keine Stats — Aktualisieren</span>'
+    : !snap.stats ? `<span class="muted">Stats nicht abrufbar</span>`
+    : `<div class="kpis">
+        <span><b>${fmt('totalUsers', snap.stats.totalUsers)}</b> <span class="muted">User</span></span>
+        <span><b>${fmt('onlineUsers', snap.stats.onlineUsers)}</b> <span class="muted">online</span></span>
+        <span><b>${fmt('openReports', snap.stats.openReports)}</b> <span class="muted">Reports</span></span>
+      </div>`;
   return `
-    <div class="card">
+    <a class="card" href="#/t/${encodeURIComponent(t.slug)}">
       <div class="head">
         <div class="mark" style="background:${esc(primary)}">${esc(name[0])}</div>
         <div>
@@ -74,19 +122,125 @@ function card(t) {
         <div class="status">${statusLabel(t)}</div>
       </div>
       <div class="swatches">${swatches}</div>
-      <div class="muted">Sprachen: ${esc((c.locale?.available ?? []).join(', '))}</div>
+      ${kpis}
       ${t.error ? `<div class="error">${esc(t.error)}</div>` : ''}
-      ${t.frontendUrl ? `<a href="${esc(t.frontendUrl)}" target="_blank" rel="noopener">${esc(t.frontendUrl)} ↗</a>` : '<span class="muted">noch nie gestartet</span>'}
-    </div>`;
+    </a>`;
 }
 
-async function load() {
-  const tenants = await (await fetch('/api/tenants')).json();
-  document.getElementById('grid').innerHTML = tenants.map(card).join('');
+function tile(key, value, previous, pressed) {
+  const delta = previous === undefined || previous === value ? ''
+    : `${value > previous ? '+' : '−'}${fmt(key, Math.abs(value - previous))} seit letztem Stand`;
+  const tag = pressed === undefined ? 'div' : 'button';
+  const attr = pressed === undefined ? '' : ` data-key="${key}" aria-pressed="${pressed}"`;
+  return `<${tag} class="tile"${attr}>
+      <div class="label">${esc(LABELS[key])}</div>
+      <div class="value">${fmt(key, value)}</div>
+      <div class="delta">${delta || '&nbsp;'}</div>
+    </${tag}>`;
+}
+
+function renderOverview() {
+  // Summe nur ueber den letzten gemeinsamen Stand, sonst mischen sich Zeitpunkte
+  const lastAt = snapshots.at(-1)?.at;
+  const batch = snapshots.filter((s) => s.at === lastAt && s.stats);
+  const totals = !batch.length ? '' : `
+    <h2>Alle Mandanten · ${batch.length} von ${tenants.length} mit Stats</h2>
+    <div class="tiles">${TOTALS.map((k) => tile(k, batch.reduce((sum, s) => sum + s.stats[k], 0))).join('')}</div>`;
+  return `${totals}<h2>Mandanten</h2><div class="grid">${tenants.map(card).join('')}</div>`;
+}
+
+function renderDetail(slug) {
+  const t = tenants.find((x) => x.slug === slug);
+  if (!t) return `<p>Mandant „${esc(slug)}“ nicht gefunden. <a href="#/">Zurück</a></p>`;
+  const rows = history(slug).filter((s) => s.stats);
+  const last = latest(slug);
+  const head = `<p><a href="#/">← Übersicht</a></p>${card(t).replace('<a class="card"', '<div class="card"').replace(/<\/a>\s*$/, '</div>')}`;
+  if (!last) return `${head}<p class="muted">Noch keine Stats — oben „Aktualisieren“.</p>`;
+  if (!last.stats) return `${head}<div class="error">Letzter Stand (${fmtTime(last.at)}): ${esc(last.error)}</div>`;
+  const prev = rows.at(-2)?.stats;
+  const groups = GROUPS.map(([title, g]) => `<h2>${title}</h2><div class="tiles">${
+    Object.keys(g).map((k) => tile(k, last.stats[k], prev?.[k], k === selected)).join('')
+  }</div>`).join('');
+  return `${head}${groups}<h2>Verlauf: ${esc(LABELS[selected])}</h2>
+    <div class="chart" id="chart"><svg></svg><div class="tooltip"></div></div>`;
+}
+
+function drawChart(slug) {
+  const box = document.getElementById('chart');
+  if (!box) return;
+  const points = history(slug).filter((s) => s.stats).map((s) => ({ at: s.at, v: s.stats[selected] }));
+  const svg = box.querySelector('svg');
+  const tip = box.querySelector('.tooltip');
+  const W = svg.clientWidth, H = 220, L = 48, R = 12, T = 10, B = 24;
+  if (points.length < 2) {
+    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">Mindestens zwei Stände nötig — öfter aktualisieren.</text>`;
+    return;
+  }
+  const max = Math.max(...points.map((p) => p.v)) || 1;
+  const x = (i) => L + (i / (points.length - 1)) * (W - L - R);
+  const y = (v) => T + (1 - v / max) * (H - T - B);
+  const ticks = [0, max / 2, max];
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = `
+    ${ticks.map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>
+      <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${fmt(selected, Math.round(v))}</text>`).join('')}
+    <text x="${L}" y="${H - 6}">${fmtTime(points[0].at)}</text>
+    <text x="${W - R}" y="${H - 6}" text-anchor="end">${fmtTime(points.at(-1).at)}</text>
+    <polyline fill="none" stroke="var(--series)" stroke-width="2" stroke-linejoin="round"
+      points="${points.map((p, i) => `${x(i)},${y(p.v)}`).join(' ')}"/>
+    ${points.length <= 40 ? points.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.v)}" r="4" fill="var(--series)" stroke="var(--card)" stroke-width="2"/>`).join('') : ''}
+    <line id="cross" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/>`;
+  const cross = svg.querySelector('#cross');
+  svg.onmousemove = (e) => {
+    const px = e.clientX - svg.getBoundingClientRect().left;
+    const i = Math.max(0, Math.min(points.length - 1, Math.round(((px - L) / (W - L - R)) * (points.length - 1))));
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+    tip.innerHTML = `${fmtTime(points[i].at)}<br><b>${fmt(selected, points[i].v)}</b>`;
+    tip.style.display = 'block';
+    tip.style.left = `${Math.min(x(i) + 24, W - 100)}px`;
+    tip.style.top = `${y(points[i].v)}px`;
+  };
+  svg.onmouseleave = () => { tip.style.display = 'none'; cross.setAttribute('visibility', 'hidden'); };
+}
+
+function render() {
+  const m = location.hash.match(/^#\/t\/(.+)$/);
+  const view = document.getElementById('view');
+  view.innerHTML = m ? renderDetail(decodeURIComponent(m[1])) : renderOverview();
+  if (m) drawChart(decodeURIComponent(m[1]));
   const up = tenants.filter((t) => t.running).length;
   document.getElementById('summary').textContent = `${tenants.length} Mandanten · ${up} laufen`;
+  const lastAt = snapshots.at(-1)?.at;
+  document.getElementById('stamp').textContent = lastAt ? `Stand ${fmtTime(lastAt)}` : 'noch kein Stand';
 }
 
+document.getElementById('view').addEventListener('click', (e) => {
+  const btn = e.target.closest('button.tile');
+  if (!btn) return;
+  selected = btn.dataset.key;
+  render();
+});
+
+document.getElementById('refresh').addEventListener('click', async (e) => {
+  e.target.disabled = true;
+  try {
+    await fetch('/api/snapshots', { method: 'POST' });
+    await load();
+  } finally {
+    e.target.disabled = false;
+  }
+});
+
+async function load() {
+  [tenants, snapshots] = await Promise.all([
+    fetch('/api/tenants').then((r) => r.json()),
+    fetch('/api/snapshots').then((r) => r.json()),
+  ]);
+  render();
+}
+
+window.addEventListener('hashchange', render);
+window.addEventListener('resize', () => { const m = location.hash.match(/^#\/t\/(.+)$/); if (m) drawChart(decodeURIComponent(m[1])); });
 load();
 </script>
 </body>

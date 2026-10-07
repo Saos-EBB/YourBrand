@@ -10,3 +10,6 @@
 # Showcase-Ausgabe (Screenshots/Videos)
 showcase/out/
 showcase/node_modules/
+
+# Mandanten-Console: Stats-Snapshots (backend/src/console/)
+.console/
