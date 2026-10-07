@@ -1,3 +1,11 @@
+## 2026-10-07 — feat(console): Farb-Editor mit Preview und Kontrast-Check — Console Schritt 6
+**Was:** Alle 19 `--color-*`-Tokens aus `globals.css` mit Picker + Hex-Feld + Reset; leer = Standard.
+Live-Preview (Navbar mit Badge-Glow, Card, Buttons, Chat-Bubbles) in dark und light nebeneinander, darunter
+WCAG-Kontrast fuer Button-Text auf Primaer, Primaer als Text auf Hintergrund und empfangene Chat-Bubble
+(`bg-primary-fixed-dim text-background`, wie in `chat/[id]/page.tsx`). Speichern ueber den Editor aus
+Schritt 5. Getestet im Wegwerf-Worktree per Playwright.
+**Nicht gebaut:** kein Color-Picker-Paket, keine Palettenvorschlaege/Auto-Fix bei schlechtem Kontrast.
+
 ## 2026-10-07 — feat(console): tenant.json-Editor mit Diff und Auto-Commit — Console Schritt 5
 **Was:** Formular fuer Name, Theme, Tier, Module (Tier-Standard/an/aus), Sprachen, Impressum, Seed.
 „Pruefen“ validiert mit dem echten Loader und zeigt den Diff, „Speichern & committen“ schreibt und

@@ -185,6 +185,18 @@ function readBody(req: http.IncomingMessage): Promise<unknown> {
     });
 }
 
+// Basis-Farben aus frontend/app/globals.css: @theme = dark (Standard), .light = Overrides.
+// Mandanten-Tokens gelten fuer beide Modi (themeTokensCss im Frontend).
+function baseTokens() {
+    const css = fs.readFileSync(path.join(REPO, 'frontend', 'app', 'globals.css'), 'utf8');
+    const block = (selector: string) => {
+        const body = css.slice(css.indexOf(`${selector} {`)).split('}')[0];
+        return Object.fromEntries([...body.matchAll(/(--color-[a-z0-9-]+):\s*(#[0-9a-f]{3,8})/gi)].map((m) => [m[1], m[2]]));
+    };
+    const dark = block('@theme');
+    return { dark, light: { ...dark, ...block('.light') } };
+}
+
 function sendJson(res: http.ServerResponse, status: number, body: unknown) {
     res.writeHead(status, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(body));
@@ -203,7 +215,13 @@ const server = http.createServer((req, res) => {
             return;
         }
         if (req.method === 'GET' && url.pathname === '/api/meta') {
-            sendJson(res, 200, { locales: TENANT_LOCALES, tiers: TENANT_TIERS, modules: TENANT_MODULES, tierModules: TIER_MODULES });
+            sendJson(res, 200, {
+                locales: TENANT_LOCALES,
+                tiers: TENANT_TIERS,
+                modules: TENANT_MODULES,
+                tierModules: TIER_MODULES,
+                baseTokens: baseTokens(),
+            });
             return;
         }
         // /api/tenants/<slug>/<aktion> — slug nur aus der Ordnerliste, nie als Pfad

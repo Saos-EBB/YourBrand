@@ -41,6 +41,9 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   `parseTenantConfig` und zeigt `git diff --no-index`; `/save` schreibt atomar und committet nur diese
   Datei (`git commit -- tenants/<slug>/tenant.json`, Betreff `chore(tenant/<slug>): <felder> geaendert`).
   `/restart` = `docker restart` von Backend + Worker (Loader liest beim Boot, Frontend holt `/tenant` pro Request).
+  Farben: `/api/meta` liefert die Basis-Tokens aus `frontend/app/globals.css` (`@theme` = dark,
+  `.light` = Overrides); der Editor zeigt Preview + WCAG-Kontrast fuer dark und light mit den
+  Mandanten-Tokens darueber (wie `themeTokensCss` im Frontend).
   Voraussetzung: `npm ci` in `backend/` auf dem Host, `XXX_db` laeuft.
 
 ## Datenfluss (Ziel)

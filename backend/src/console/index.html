@@ -62,6 +62,32 @@
   pre.diff { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; font-size: 12px; margin: 0; }
   .add { color: var(--ok); } .del { color: var(--bad); }
   .note { font-size: 13px; }
+  .tokens { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 6px 16px; }
+  .token { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .token code { flex: 1; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  .token.set code { color: var(--text); font-weight: 600; }
+  .token input[type=color] { width: 28px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
+  .token input[type=text] { width: 86px; padding: 3px 6px; font-family: ui-monospace, monospace; font-size: 12px; }
+  .token button { padding: 2px 8px; font-size: 12px; }
+  .previews { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .pv { border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--color-background); color: var(--color-on-surface); font-size: 13px; }
+  .pv-nav { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--color-surface-container-low); }
+  .pv-nav b { color: var(--color-primary-fixed-dim); }
+  .pv-nav .active { color: var(--color-primary-fixed-dim); border-bottom: 2px solid var(--color-primary-fixed-dim); }
+  .pv-nav .muted2 { color: var(--color-on-surface-variant); }
+  .pv-badge { margin-left: auto; background: var(--color-primary-fixed-dim); color: var(--color-on-primary-container); border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 700; box-shadow: 0 0 10px var(--color-nav-badge-glow); }
+  .pv-body { padding: 12px; display: grid; gap: 10px; }
+  .pv-card { background: var(--color-surface-container-high); border: 1px solid var(--color-outline-variant); border-radius: 8px; padding: 10px; display: grid; gap: 6px; }
+  .pv-card small { color: var(--color-on-surface-variant); }
+  .pv-tert { color: var(--color-tertiary-fixed-dim); font-weight: 600; }
+  .pv-btns { display: flex; gap: 8px; }
+  .pv-btn { background: var(--color-primary-fixed-dim); color: var(--color-on-primary-container); border-radius: 8px; padding: 6px 12px; font-weight: 600; }
+  .pv-btn2 { border: 1px solid var(--color-primary-fixed-dim); color: var(--color-primary-fixed-dim); border-radius: 8px; padding: 6px 12px; }
+  .pv-bubbles { display: grid; gap: 4px; }
+  .pv-in { justify-self: start; background: var(--color-primary-fixed-dim); color: var(--color-background); border-radius: 10px; padding: 4px 10px; }
+  .pv-out { justify-self: end; background: var(--color-surface-container); color: var(--color-on-surface); border-radius: 10px; padding: 4px 10px; }
+  .contrast { font-size: 12px; display: grid; gap: 2px; padding: 8px 12px; background: var(--card); color: var(--text); border-top: 1px solid var(--line); }
+  .contrast .warn { color: var(--bad); }
   .tooltip { position: absolute; pointer-events: none; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; white-space: nowrap; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 </style>
 </head>
@@ -75,9 +101,6 @@
 </header>
 <main id="view"></main>
 <script>
-// Fallback, wenn ein Mandant die Primaerfarbe nicht ueberschreibt — Wert aus
-// frontend/app/globals.css (@theme).
-const DEFAULT_PRIMARY = '#73db9a';
 
 // Felder von AdminDashboardStatsDto, gruppiert fuer die Detailseite
 const GROUPS = [
@@ -110,7 +133,7 @@ function statusLabel(t) {
 function card(t) {
   const c = t.config;
   const tokens = c.theme?.tokens ?? {};
-  const primary = tokens['--color-primary-fixed-dim'] ?? DEFAULT_PRIMARY;
+  const primary = tokens['--color-primary-fixed-dim'] ?? meta.baseTokens.dark['--color-primary-fixed-dim'];
   const swatches = Object.entries(tokens)
     .map(([k, v]) => `<span class="swatch" style="background:${esc(v)}" title="${esc(k)}: ${esc(v)}"></span>`)
     .join('') || '<span class="muted">Standardfarben</span>';
@@ -235,6 +258,88 @@ function text(label, p, optional) {
   return `<label>${label}${optional ? ' (optional)' : ''}<input type="text" data-path="${p}" value="${esc(getPath(draft, p) ?? '')}"></label>`;
 }
 
+// ── Farben ──────────────────────────────────────────────────────────────
+// Paare, die im Frontend wirklich zusammen vorkommen (bg-primary-fixed-dim +
+// text-on-primary-container ist die haeufigste Kombination, Chat-Bubbles siehe
+// frontend/app/(app)/chat/[id]/page.tsx)
+const CONTRAST_PAIRS = [
+  ['--color-on-primary-container', '--color-primary-fixed-dim', 'Button-Text auf Primär'],
+  ['--color-primary-fixed-dim', '--color-background', 'Primär als Text auf Hintergrund'],
+  ['--color-background', '--color-primary-fixed-dim', 'empfangene Chat-Bubble'],
+];
+
+function hexToRgb(hex) {
+  let h = hex.slice(1);
+  if (h.length <= 4) h = [...h].map((c) => c + c).join('');
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+}
+// WCAG 2.x relative Luminanz / Kontrastverhaeltnis
+function luminance(hex) {
+  const [r, g, b] = hexToRgb(hex).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrast(a, b) {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+const isHex = (v) => /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v ?? '');
+const toColorInput = (v) => {
+  if (!isHex(v)) return '#000000';
+  const [r, g, b] = hexToRgb(v);
+  return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
+};
+
+function effectiveTokens(mode) {
+  const own = Object.fromEntries(Object.entries(draft.theme?.tokens ?? {}).filter(([, v]) => isHex(v)));
+  return { ...meta.baseTokens[mode], ...own };
+}
+
+function previewPane(mode) {
+  const tk = effectiveTokens(mode);
+  const vars = Object.entries(tk).map(([k, v]) => `${k}:${v}`).join(';');
+  const rows = CONTRAST_PAIRS.map(([fg, bg, label]) => {
+    const r = contrast(tk[fg], tk[bg]);
+    const ok = r >= 4.5;
+    return `<div class="${ok ? '' : 'warn'}">${ok ? '✓' : '⚠'} ${label}: ${r.toFixed(1)}:1 ${ok ? '(AA)' : r >= 3 ? '(nur große Schrift)' : '(zu wenig)'}</div>`;
+  }).join('');
+  return `<div class="pv" style="${vars}">
+      <div class="pv-nav"><b>${esc(draft.brand?.name ?? '')}</b><span class="active">Chats</span><span class="muted2">Profil</span><span class="pv-badge">3</span></div>
+      <div class="pv-body">
+        <div class="pv-card"><strong>Neue Kontaktanfrage</strong><small>vor 5 Minuten · <span class="pv-tert">Premium</span></small>
+          <div class="pv-btns"><span class="pv-btn">Annehmen</span><span class="pv-btn2">Später</span></div></div>
+        <div class="pv-bubbles"><span class="pv-in">Hey, wie geht's?</span><span class="pv-out">Gut, und dir?</span></div>
+      </div>
+      <div class="contrast"><strong>${mode}</strong>${rows}</div>
+    </div>`;
+}
+
+function renderPreviews() {
+  return previewPane(draft.theme?.default === 'light' ? 'light' : 'dark') + previewPane(draft.theme?.default === 'light' ? 'dark' : 'light');
+}
+
+function colorFieldset() {
+  const own = draft.theme?.tokens ?? {};
+  const rows = Object.keys(meta.baseTokens.dark).map((k) => {
+    const set = k in own;
+    const v = set ? own[k] : '';
+    return `<div class="token${set ? ' set' : ''}" title="${k}">
+        <input type="color" data-token-color="${k}" value="${toColorInput(set ? v : meta.baseTokens[draft.theme?.default === 'light' ? 'light' : 'dark'][k])}">
+        <input type="text" data-token="${k}" value="${esc(v)}" placeholder="Standard">
+        <code>${k.replace('--color-', '')}</code>
+        ${set ? `<button type="button" data-token-reset="${k}">↺</button>` : ''}
+      </div>`;
+  }).join('');
+  return `<fieldset><legend>Farben — gelten in dark und light, leer = Standard</legend>
+      <div class="tokens">${rows}</div>
+      <div class="previews" id="previews">${renderPreviews()}</div>
+    </fieldset>`;
+}
+
+function setToken(key, value) {
+  draft.theme.tokens ??= {};
+  if (value) draft.theme.tokens[key] = value; else delete draft.theme.tokens[key];
+}
+
 function renderEditor(slug) {
   const t = tenants.find((x) => x.slug === slug);
   if (!t) return `<p>Mandant „${esc(slug)}“ nicht gefunden. <a href="#/">Zurück</a></p>`;
@@ -265,6 +370,7 @@ function renderEditor(slug) {
         <label><input type="radio" name="theme" data-path="theme.default" value="light"${draft.theme?.default === 'light' ? ' checked' : ''}>light</label>
         <label style="display:grid;color:var(--muted);font-size:12px">Tier<select data-path="tier">${meta.tiers.map((x) => `<option${draft.tier === x ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
       </div></fieldset>
+      ${colorFieldset()}
       <fieldset><legend>Module</legend><div class="row">${modules}</div></fieldset>
       <fieldset><legend>Sprachen</legend><div class="row">${locales}</div>
         <label>Standardsprache<select data-path="locale.default">${defaults}</select></label></fieldset>
@@ -287,6 +393,25 @@ function onEditorInput(e) {
     draft.modules ??= {};
     setPath(draft, `modules.${el.dataset.module}`, el.value === 'undefined' ? undefined : el.value === 'true');
     if (!Object.keys(draft.modules).length) delete draft.modules;
+  }
+  if (el.dataset.tokenColor) {
+    setToken(el.dataset.tokenColor, el.value);
+    const textField = document.querySelector(`input[data-token="${el.dataset.tokenColor}"]`);
+    textField.value = el.value;
+    textField.closest('.token').classList.add('set');
+  }
+  if (el.dataset.token) {
+    setToken(el.dataset.token, el.value.trim());
+    if (isHex(el.value.trim())) document.querySelector(`input[data-token-color="${el.dataset.token}"]`).value = toColorInput(el.value.trim());
+    el.closest('.token').classList.toggle('set', !!el.value.trim());
+  }
+  if (el.dataset.tokenColor || el.dataset.token) {
+    // Nur die Preview neu zeichnen — ein volles render() wuerde den Picker schliessen
+    document.getElementById('previews').innerHTML = renderPreviews();
+    checked = null;
+    document.getElementById('save').disabled = true;
+    document.querySelectorAll('#editor .diff, #editor .error').forEach((n) => n.remove());
+    return;
   }
   if (el.dataset.locale) {
     const set = new Set(draft.locale.available);
@@ -311,6 +436,7 @@ async function onEditorClick(e) {
     render();
   }
   if (id === 'reset') { draftSlug = null; render(); }
+  if (e.target.dataset.tokenReset) { setToken(e.target.dataset.tokenReset, ''); checked = null; render(); }
   if (id === 'save') {
     const slug = draftSlug;
     const res = await post(`/api/tenants/${slug}/save`, draft);

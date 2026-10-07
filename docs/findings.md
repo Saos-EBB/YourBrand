@@ -3,6 +3,27 @@
 Was beim Bauen der Mandanten-Console aufgefallen ist, aber nicht (oder noch nicht) gefixt wurde.
 Neue Einträge oben.
 
+## 2026-10-07 — Farb-Editor (Schritt 6)
+
+- **Jeder Mandant unterschreitet WCAG AA (4,5:1) in mindestens einem Modus** — nachgerechnet mit den
+  Paaren aus dem Editor:
+
+  | Mandant | Modus | zu wenig Kontrast |
+  |---|---|---|
+  | default | dark (Standard) | Button-Text auf Primaer 3,8 |
+  | default | light | Button 3,6 · Primaer-Text 4,4 · empfangene Bubble 4,4 |
+  | kiez | light (Standard) | Primaer-Text 3,3 · empfangene Bubble 3,3 |
+  | campus-match | light | Primaer-Text 3,0 · Bubble 3,0 |
+  | miteinander | dark | Primaer-Text 3,1 · Bubble 3,1 |
+  | underground | light | Primaer-Text 1,6 · Bubble 1,6 |
+
+  Ursache: ein Token-Satz gilt fuer dark **und** light (`themeTokensCss`), eine Akzentfarbe passt
+  selten auf beide Hintergruende. Nicht gefixt — Designentscheidung (getrennte Tokens pro Modus?).
+- **`--color-primary-container` / `--color-secondary-container` werden im Frontend nicht benutzt**
+  (nur in `globals.css` definiert). Im Farb-Editor trotzdem gelistet, wirken aber nicht.
+- **Empfangene Chat-Bubbles sind die Primaerfarbe, eigene sind neutral** (`chat/[id]/page.tsx`) —
+  umgekehrt zu den meisten Messengern; gewollt?
+
 ## 2026-10-07 — Console-Editor (Schritt 5)
 
 - **„Mandant neu starten“ ist ungetestet** — beim Bauen lief kein Mandanten-Stack. Es ist ein
