@@ -6,8 +6,8 @@ Neue Einträge oben.
 ## 2026-10-07 — Logo in der App (Schritt 8)
 
 - **Mandanten-Stack nach Logo-Wechsel neu starten** — das Backend liest `tenant.json` nur beim Boot, bis
-  dahin liefert `/tenant/asset/` das alte Logo bzw. 404. Der Button „Mandant neu starten“ erscheint in der
-  Console nur nach Speichern im Formular, nicht nach einem Logo-Upload.
+  dahin liefert `/tenant/asset/` das alte Logo bzw. 404. Die Console bietet dafuer nach dem Upload
+  „Mandant neu starten“ an (wenn er laeuft).
 - **Browser cachen das Logo bis zu 5 Minuten** (`Cache-Control: max-age=300`), Favicons oft laenger —
   nach einem Wechsel ggf. hart neu laden.
 - **Lange Markennamen + Logo werden in der Sidebar eng** — mit „KiezConnect“ + Logo (64 px) passt es

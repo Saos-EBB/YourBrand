@@ -415,7 +415,9 @@ async function uploadLogo(file) {
   draft.brand.favicon = res.favicon;
   checked = null;
   await load();
-  document.getElementById('logo-msg').innerHTML = `Gespeichert: <code>${esc(res.commit)}</code>`;
+  const running = tenants.find((x) => x.slug === draftSlug)?.running;
+  document.getElementById('logo-msg').innerHTML = `Gespeichert: <code>${esc(res.commit)}</code>`
+    + (running ? ' <button type="button" id="restart">Mandant neu starten</button>' : ' — Mandant läuft nicht, wirkt beim nächsten Start.');
 }
 
 function onEditorInput(e) {

@@ -1,3 +1,8 @@
+## 2026-10-07 — fix(console): „Mandant neu starten“ auch nach Logo-Upload
+**Was:** Das Backend liest `tenant.json` nur beim Boot — ohne Neustart zeigt die App das neue Logo nicht.
+Der Button kam bisher nur nach dem Formular-Speichern.
+**Nicht gebaut:** kein automatischer Neustart (bewusst ein Klick, der Mandant ist kurz weg).
+
 ## 2026-10-07 — feat(tenant): GET /tenant/asset/:name — Console Schritt 8
 **Was:** Liefert Logo/Favicon aus `tenants/<slug>/`, aber nur die zwei in `tenant.json` genannten Dateien
 (`.env`, `tenant.json` → 404), mit CSP und 5 min Cache. Frontend-Teil siehe `frontend/docs/build-log.md`.
