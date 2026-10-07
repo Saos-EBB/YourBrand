@@ -24,7 +24,7 @@ Farb-Tokens gelten im hellen und dunklen Modus — deshalb setzen die Mandanten 
 |---|---|---|
 | `slug` | ja | `a-z0-9-`, muss dem Ordnernamen entsprechen |
 | `brand.name` | ja | Anzeigename |
-| `brand.logo` / `brand.favicon` | nein | Dateiname im selben Ordner, keine Pfade |
+| `brand.logo` / `brand.favicon` | nein | Dateiname im selben Ordner, keine Pfade. Logo steht im Logo-Button vor dem Namen, Favicon im Browser-Tab (`GET /api/v1/tenant/asset/<datei>`). Am einfachsten per Mandanten-Console (unten) — die erzeugt das Favicon mit |
 | `theme.default` | ja | `dark` oder `light` |
 | `theme.tokens` | nein | überschreibt Farb-Tokens aus `frontend/app/globals.css`, nur `--color-*` mit Hex-Wert |
 | `locale.default` / `locale.available` | ja | Sprachen aus `frontend/lib/i18n` |
@@ -103,3 +103,11 @@ idempotent und bei neuen Migrationen automatisch nachgezogen. Erst danach starte
 Connect entspricht vorerst Core — die Connect-Features (Orgs, Caretaker) sind im Backend noch
 nicht gebaut. Öffentlich abrufbar: `GET /api/v1/tenant` (alles außer `seed`).
 Plan: [`docs/multitenant.md`](../docs/multitenant.md).
+
+## Mandanten-Console
+
+Lokales Dashboard ueber allen Mandanten: `cd backend && npm ci && npm run console` → http://localhost:3099
+(braucht laufendes `XXX_db` fuer die Stats). Uebersicht + Stats-Snapshots (Button „Aktualisieren“),
+Editor fuer `tenant.json` mit Farb-Preview und Logo-Upload; jede Aenderung wird sofort als
+`chore(tenant/<slug>): …` committet. Details: `backend/docs/architecture.md`, offene Punkte:
+`docs/findings.md`.

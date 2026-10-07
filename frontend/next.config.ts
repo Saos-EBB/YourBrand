@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
       source: '/api/v1/media/file/:path*',
       destination: `${backendInternalUrl}/api/v1/media/file/:path*`,
     },
+    // Logo/Favicon des Mandanten (tenant.controller.ts) — relativ eingebunden,
+    // damit es wie die Medien immer das Backend des eigenen Mandanten trifft.
+    {
+      source: '/api/v1/tenant/asset/:name',
+      destination: `${backendInternalUrl}/api/v1/tenant/asset/:name`,
+    },
   ],
   images: {
     remotePatterns: [

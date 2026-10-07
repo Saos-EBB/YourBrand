@@ -1,3 +1,8 @@
+## 2026-10-07 — feat(tenant): GET /tenant/asset/:name — Console Schritt 8
+**Was:** Liefert Logo/Favicon aus `tenants/<slug>/`, aber nur die zwei in `tenant.json` genannten Dateien
+(`.env`, `tenant.json` → 404), mit CSP und 5 min Cache. Frontend-Teil siehe `frontend/docs/build-log.md`.
+**Nicht gebaut:** kein Upload im Backend (macht die Console), keine Bildgroessen-Varianten.
+
 ## 2026-10-07 — feat(console): Logo-Upload mit Favicon — Console Schritt 7
 **Was:** Im Editor Logo per Klick oder Drag & Drop; Vorschau auf hellem und dunklem Grund, Logo auch auf
 der Uebersichtskachel. Upload speichert und committet sofort, uebernimmt nur Logo/Favicon in den Draft

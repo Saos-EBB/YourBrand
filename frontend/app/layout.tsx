@@ -20,6 +20,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: tenant.brand.name,
     description: "Barrierefreie Dating-App",
+    // Standard-Favicon liegt in public/, nicht app/ — eine app/favicon.ico
+    // haette Vorrang vor icons und ueberstimmte das Mandanten-Favicon.
+    icons: { icon: tenant.brand.favicon ? `/api/v1/tenant/asset/${tenant.brand.favicon}` : "/favicon.ico" },
   };
 }
 

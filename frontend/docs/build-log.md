@@ -1,3 +1,14 @@
+## 2026-10-07 — feat(tenant): Logo + Favicon des Mandanten in der App — Console Schritt 8
+**Was:** `brand.logo` erscheint im Logo-Button (Sidebar + TopNav) vor dem Namen, `brand.favicon` als
+Favicon (`metadata.icons`). Beide relativ ueber `/api/v1/tenant/asset/:name`, `next.config.ts` leitet wie
+bei den Medien an das Backend des Mandanten weiter. `app/favicon.ico` → `public/favicon.ico`: die
+dateibasierte Icon-Datei haette Vorrang vor `metadata.icons` gehabt. Der Easter-Egg-Klick bleibt gleich
+(`alt=""`, `textContent` = Name fuer `runLogoBreak`).
+Verifiziert am laufenden Kiez-Stack mit Test-Logo (danach zurueckgenommen): `<link rel="icon"
+href="/api/v1/tenant/asset/favicon.png">`, Rewrite 200 image/png, Logo geladen in Sidebar (1280) und
+TopNav (390), Name passt daneben.
+**Nicht gebaut:** kein Logo-Wrapper-Component, kein `next/image`, kein getrenntes Logo fuer dark/light.
+
 ## 2026-10-06 — fix(media): Rewrite fuer /api/v1/media/file — Profilbilder waren lokal kaputt
 **Was:** Beim Showcase gefunden: Profilseiten machen aus der Medien-URL `new URL(...).pathname`,
 Chat/Discover/Matches entfernen fest `http://localhost:3000` — beides ergibt einen relativen Pfad

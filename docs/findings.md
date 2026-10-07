@@ -3,9 +3,20 @@
 Was beim Bauen der Mandanten-Console aufgefallen ist, aber nicht (oder noch nicht) gefixt wurde.
 Neue Einträge oben.
 
+## 2026-10-07 — Logo in der App (Schritt 8)
+
+- **Mandanten-Stack nach Logo-Wechsel neu starten** — das Backend liest `tenant.json` nur beim Boot, bis
+  dahin liefert `/tenant/asset/` das alte Logo bzw. 404. Der Button „Mandant neu starten“ erscheint in der
+  Console nur nach Speichern im Formular, nicht nach einem Logo-Upload.
+- **Browser cachen das Logo bis zu 5 Minuten** (`Cache-Control: max-age=300`), Favicons oft laenger —
+  nach einem Wechsel ggf. hart neu laden.
+- **Lange Markennamen + Logo werden in der Sidebar eng** — mit „KiezConnect“ + Logo (64 px) passt es
+  gerade; ein deutlich laengerer Name koennte umbrechen/abgeschnitten werden.
+- **Beim Test wurde im Kiez-Mandanten die DSGVO-Zustimmung fuer `owner@demo.example.com` erteilt**
+  (wie beim Showcase) — Demo-Daten, aber der Zustimmungs-Screen erscheint dort fuer den Owner nicht mehr.
+
 ## 2026-10-07 — Logo-Upload (Schritt 7)
 
-- **Logo/Favicon sind bis Schritt 8 nur in der Console sichtbar** — die App zeigt sie noch nicht an.
 - **Neue Logos liegen in `tenants/<slug>/` und sind damit in git** (Binaerdateien, max. 2 MB). Bei
   vielen Logo-Wechseln waechst das Repo; ggf. spaeter Git LFS.
 - **SVGs mit `<style>`/CSS werden durchgelassen** (nur Script, Event-Handler, `javascript:`,
@@ -48,9 +59,7 @@ Neue Einträge oben.
 
 ## 2026-10-07 — Mandanten-Console (Schritte 1–3)
 
-- **`brand.logo` / `brand.favicon` werden im Frontend nirgends angezeigt.** Die Felder stehen im
-  Schema (`backend/src/common/tenant/tenant-config.schema.ts`), Navbar/Sidebar zeigen aber fest den
-  `HiddenLogoButton`. Wird im Console-Logo-Schritt mit erledigt.
+- ~~`brand.logo` / `brand.favicon` werden im Frontend nirgends angezeigt.~~ Erledigt in Schritt 8.
 - **3 Backend-Tests rot, schon vor der Console:** `tictactoe.handler.spec.ts` (2×: „initiator wins
   series 2-0“, „draw resets board without awarding score“) und `demo-seed-path.spec.ts` („alle
   Nicknames in demo-relations.yaml existieren“). Nicht angefasst.

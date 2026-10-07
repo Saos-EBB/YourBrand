@@ -44,9 +44,14 @@ export function HiddenLogoButton() {
     <button
       ref={logoButtonRef}
       onClick={handleLogoClick}
-      className="text-xl font-bold text-on-surface tracking-tight"
+      className="flex items-center gap-2 text-xl font-bold text-on-surface tracking-tight"
       aria-label={`${tenant.brand.name} home`}
     >
+      {/* alt="" — der Name steht daneben; textContent bleibt der Name fuer runLogoBreak */}
+      {tenant.brand.logo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={`/api/v1/tenant/asset/${tenant.brand.logo}`} alt="" className="h-7 w-auto max-w-[64px] object-contain" />
+      ) : null}
       {tenant.brand.name}
     </button>
   )
