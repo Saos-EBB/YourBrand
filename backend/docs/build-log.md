@@ -1,3 +1,7 @@
+## 2026-10-07 — docs: findings.md — Console Schritt 4
+**Was:** `docs/findings.md` sammelt, was beim Bauen auffaellt, aber nicht gefixt wird (Wunsch des Users: „Gut zu wissen“ nicht nur im Chat).
+**Nicht gebaut:** —
+
 ## 2026-10-07 — feat(console): Stats-Snapshots, Summen und Verlauf pro Mandant — Console Schritt 3
 **Was:** „Aktualisieren“ fragt alle Mandanten-DBs ab und speichert einen Snapshot (statt Live-Polling:
 weniger Last, und die Snapshots ergeben den Verlauf). Uebersicht: Summen ueber alle Mandanten (nur der
