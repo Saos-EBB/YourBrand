@@ -1,3 +1,11 @@
+## 2026-10-07 — refactor(admin): Dashboard-Stats als reine Funktion — Console Schritt 1
+**Was:** Die 16 Queries aus `AdminService.getDashboardStats()` liegen jetzt in
+`src/modules/core/admin/dashboard-stats.query.ts` (`collectDashboardStats(query)`), ohne DI. Grund: die
+Mandanten-Console fragt jede Mandanten-DB direkt per pg ab und soll dieselben Queries nutzen, statt sie zu
+kopieren. SQL unveraendert, nur Alias einheitlich `value`. Jest: dieselben 3 vorbestehenden Fehler
+(TicTacToe ×2, demo-seed-path) wie vor der Aenderung.
+**Nicht gebaut:** kein Query-Runner-Interface/keine Klasse — ein Funktionstyp reicht.
+
 ## 2026-10-06 — feat(showcase): Screenshots + Videos aller Mandanten — Schritt 8
 **Was:** `showcase/` (eigenes kleines Playwright-Projekt): pro laufendem Mandant (`tenants/<slug>/.env`
 + default) derselbe Ablauf mit Video — Login, DSGVO-Zustimmung (falls verlangt), Dashboard, Chat-Liste,

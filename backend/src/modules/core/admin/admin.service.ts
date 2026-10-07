@@ -31,6 +31,7 @@ import { AdminCreateStrikeDto } from './dto/admin-create-strike.dto';
 import { AddProfanityWordDto } from './dto/add-profanity-word.dto';
 import { SetVulnerableFlagDto } from './dto/set-vulnerable-flag.dto';
 import { AdminDashboardStatsDto } from './dto/admin-dashboard-stats.dto';
+import { collectDashboardStats } from './dashboard-stats.query';
 import { UserDashboardStatsDto } from './dto/user-dashboard-stats.dto';
 import { AdminStatsDto } from './dto/admin-stats.dto';
 import { ConversationsService } from '../chat/conversations.service';
@@ -670,93 +671,8 @@ export class AdminService {
 
     // ── Dashboard stats (owner only) ───────────────────────────────────────────
 
-    async getDashboardStats(): Promise<AdminDashboardStatsDto> {
-        const [
-            [totalUsersRow],
-            [activeUsersRow],
-            [bannedUsersRow],
-            [newUsersTodayRow],
-            [newUsersThisWeekRow],
-            [activeSubscriptionsRow],
-            [totalRevenueRow],
-            [onlineUsersRow],
-            [messagesTodayRow],
-            [messagesThisWeekRow],
-            [contactRequestsTodayRow],
-            [contactRequestsThisWeekRow],
-            [openReportsRow],
-            [strikesThisWeekRow],
-            [openTicketsRow],
-            [pendingMediaRow],
-        ] = await Promise.all([
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM users WHERE deleted_at IS NULL`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM users WHERE deleted_at IS NULL AND is_banned = false AND is_verified = true`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM users WHERE is_banned = true`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM users WHERE created_at >= DATE_TRUNC('day', NOW())`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM users WHERE created_at >= DATE_TRUNC('week', NOW())`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM subscriptions WHERE status = 'active'`,
-            ),
-            this.dataSource.query<{ total: string }[]>(
-                `SELECT COALESCE(SUM(amount), 0) AS total FROM payment_logs WHERE status = 'success'`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM profiles WHERE last_active_at > NOW() - INTERVAL '15 minutes'`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM messages WHERE sent_at >= DATE_TRUNC('day', NOW())`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM messages WHERE sent_at >= DATE_TRUNC('week', NOW())`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM contact_requests WHERE created_at >= DATE_TRUNC('day', NOW())`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM contact_requests WHERE created_at >= DATE_TRUNC('week', NOW())`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM reports WHERE status = 'open'`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM strikes WHERE created_at >= DATE_TRUNC('week', NOW())`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM admin_tickets WHERE status = 'open'`,
-            ),
-            this.dataSource.query<{ count: string }[]>(
-                `SELECT COUNT(*) AS count FROM media_uploads WHERE moderation_status = 'pending'`,
-            ),
-        ]);
-
-        return {
-            totalUsers:              parseInt(totalUsersRow.count, 10),
-            activeUsers:             parseInt(activeUsersRow.count, 10),
-            bannedUsers:             parseInt(bannedUsersRow.count, 10),
-            newUsersToday:           parseInt(newUsersTodayRow.count, 10),
-            newUsersThisWeek:        parseInt(newUsersThisWeekRow.count, 10),
-            activeSubscriptions:     parseInt(activeSubscriptionsRow.count, 10),
-            totalRevenue:            parseFloat(totalRevenueRow.total),
-            onlineUsers:             parseInt(onlineUsersRow.count, 10),
-            messagesToday:           parseInt(messagesTodayRow.count, 10),
-            messagesThisWeek:        parseInt(messagesThisWeekRow.count, 10),
-            contactRequestsToday:    parseInt(contactRequestsTodayRow.count, 10),
-            contactRequestsThisWeek: parseInt(contactRequestsThisWeekRow.count, 10),
-            openReports:             parseInt(openReportsRow.count, 10),
-            strikesThisWeek:         parseInt(strikesThisWeekRow.count, 10),
-            openTickets:             parseInt(openTicketsRow.count, 10),
-            pendingMedia:            parseInt(pendingMediaRow.count, 10),
-        };
+    getDashboardStats(): Promise<AdminDashboardStatsDto> {
+        return collectDashboardStats((sql) => this.dataSource.query(sql));
     }
 
     // ── User dashboard stats (any authenticated user) ──────────────────────────
