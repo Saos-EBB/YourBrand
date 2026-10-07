@@ -3,6 +3,18 @@
 Was beim Bauen der Mandanten-Console aufgefallen ist, aber nicht (oder noch nicht) gefixt wurde.
 Neue Einträge oben.
 
+## 2026-10-07 — Console-Editor (Schritt 5)
+
+- **„Mandant neu starten“ ist ungetestet** — beim Bauen lief kein Mandanten-Stack. Es ist ein
+  `docker restart` von Backend + Worker; erster echter Lauf bitte beobachten.
+- **Gespeicherte `tenant.json` werden einheitlich formatiert** (2 Spaces, ein Key pro Zeile). Der erste
+  Save von `tenants/default/tenant.json` (heute kompakt) zeigt deshalb mehr Diff als die eigentliche
+  Aenderung.
+- **Neue Keys landen am Ende der Datei** (z.B. `modules` nach `legal`) — JSON-Reihenfolge ist egal, nur
+  optisch.
+- **Auto-Commits laufen auf dem aktuellen Branch** — wer gerade auf einem Feature-Branch ist, committet
+  Mandanten-Aenderungen dorthin.
+
 ## 2026-10-07 — Mandanten-Console (Schritte 1–3)
 
 - **`brand.logo` / `brand.favicon` werden im Frontend nirgends angezeigt.** Die Felder stehen im

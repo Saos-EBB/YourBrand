@@ -37,6 +37,10 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   Stats: Button „Aktualisieren“ ruft `collectDashboardStats` (`modules/core/admin/dashboard-stats.query.ts`)
   pro Mandanten-DB (`tenantInfra(slug).database`, Zugang aus Root-`.env`, localhost:5432) auf und haengt
   das Ergebnis an `.console/snapshots.jsonl` an (Repo-Root, gitignored) — Grundlage fuer Summen und Verlauf.
+  Editor (`#/t/<slug>/edit`): Formular ueber die rohe `tenant.json`, `/preview` validiert mit
+  `parseTenantConfig` und zeigt `git diff --no-index`; `/save` schreibt atomar und committet nur diese
+  Datei (`git commit -- tenants/<slug>/tenant.json`, Betreff `chore(tenant/<slug>): <felder> geaendert`).
+  `/restart` = `docker restart` von Backend + Worker (Loader liest beim Boot, Frontend holt `/tenant` pro Request).
   Voraussetzung: `npm ci` in `backend/` auf dem Host, `XXX_db` laeuft.
 
 ## Datenfluss (Ziel)

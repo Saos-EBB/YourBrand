@@ -1,3 +1,10 @@
+## 2026-10-07 — feat(console): tenant.json-Editor mit Diff und Auto-Commit — Console Schritt 5
+**Was:** Formular fuer Name, Theme, Tier, Module (Tier-Standard/an/aus), Sprachen, Impressum, Seed.
+„Pruefen“ validiert mit dem echten Loader und zeigt den Diff, „Speichern & committen“ schreibt und
+committet nur `tenants/<slug>/tenant.json` (User will fuer jede Aenderung einen Log). Danach „Mandant neu
+starten“, wenn er laeuft. Getestet in einem Wegwerf-Worktree (API + Klickpfad per Playwright), nicht im Repo.
+**Nicht gebaut:** kein Raw-JSON-Tab, kein Undo-Button (`git revert`), kein Formular-Framework.
+
 ## 2026-10-07 — docs: findings.md — Console Schritt 4
 **Was:** `docs/findings.md` sammelt, was beim Bauen auffaellt, aber nicht gefixt wird (Wunsch des Users: „Gut zu wissen“ nicht nur im Chat).
 **Nicht gebaut:** —

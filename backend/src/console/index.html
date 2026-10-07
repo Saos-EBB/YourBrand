@@ -50,6 +50,18 @@
   .chart { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; position: relative; }
   .chart svg { display: block; width: 100%; height: 220px; }
   .chart text { fill: var(--muted); font-size: 11px; }
+  .form { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 14px; max-width: 760px; }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0; display: grid; gap: 8px; }
+  legend { color: var(--muted); font-size: 12px; padding: 0 4px; }
+  label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .row label { display: flex; gap: 6px; align-items: center; color: var(--text); font-size: 14px; }
+  input[type=text], select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button.primary { background: var(--series); border-color: var(--series); color: #fff; }
+  pre.diff { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; font-size: 12px; margin: 0; }
+  .add { color: var(--ok); } .del { color: var(--bad); }
+  .note { font-size: 13px; }
   .tooltip { position: absolute; pointer-events: none; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; white-space: nowrap; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 </style>
 </head>
@@ -154,7 +166,8 @@ function renderDetail(slug) {
   if (!t) return `<p>Mandant „${esc(slug)}“ nicht gefunden. <a href="#/">Zurück</a></p>`;
   const rows = history(slug).filter((s) => s.stats);
   const last = latest(slug);
-  const head = `<p><a href="#/">← Übersicht</a></p>${card(t).replace('<a class="card"', '<div class="card"').replace(/<\/a>\s*$/, '</div>')}`;
+  const head = `<p class="actions"><a href="#/">← Übersicht</a><span class="spacer"></span><a href="#/t/${encodeURIComponent(slug)}/edit"><button>Bearbeiten</button></a></p>
+    ${card(t).replace('<a class="card"', '<div class="card"').replace(/<\/a>\s*$/, '</div>')}`;
   if (!last) return `${head}<p class="muted">Noch keine Stats — oben „Aktualisieren“.</p>`;
   if (!last.stats) return `${head}<div class="error">Letzter Stand (${fmtTime(last.at)}): ${esc(last.error)}</div>`;
   const prev = rows.at(-2)?.stats;
@@ -203,10 +216,126 @@ function drawChart(slug) {
   svg.onmouseleave = () => { tip.style.display = 'none'; cross.setAttribute('visibility', 'hidden'); };
 }
 
+
+// ── Editor ──────────────────────────────────────────────────────────────
+let meta = null;
+let draft = null;      // Arbeitskopie der rohen tenant.json
+let draftSlug = null;
+let checked = null;    // Ergebnis von /preview fuer genau diesen Draft
+
+function getPath(obj, p) { return p.split('.').reduce((o, k) => o?.[k], obj); }
+function setPath(obj, p, v) {
+  const keys = p.split('.');
+  const last = keys.pop();
+  const target = keys.reduce((o, k) => (o[k] ??= {}), obj);
+  if (v === undefined || v === '') delete target[last]; else target[last] = v;
+}
+
+function text(label, p, optional) {
+  return `<label>${label}${optional ? ' (optional)' : ''}<input type="text" data-path="${p}" value="${esc(getPath(draft, p) ?? '')}"></label>`;
+}
+
+function renderEditor(slug) {
+  const t = tenants.find((x) => x.slug === slug);
+  if (!t) return `<p>Mandant „${esc(slug)}“ nicht gefunden. <a href="#/">Zurück</a></p>`;
+  if (draftSlug !== slug) { draft = structuredClone(t.config); draftSlug = slug; checked = null; }
+  const tierDefaults = meta.tierModules[draft.tier] ?? {};
+  const modules = meta.modules.map((m) => {
+    const v = draft.modules?.[m];
+    const opt = (val, label) => `<option value="${val}"${String(v) === val ? ' selected' : ''}>${label}</option>`;
+    return `<label>${m}<select data-module="${m}">
+      ${opt('undefined', `Tier-Standard (${tierDefaults[m] ? 'an' : 'aus'})`)}${opt('true', 'an')}${opt('false', 'aus')}
+    </select></label>`;
+  }).join('');
+  const avail = draft.locale?.available ?? [];
+  const locales = meta.locales.map((l) => `<label><input type="checkbox" data-locale="${l}"${avail.includes(l) ? ' checked' : ''}>${l}</label>`).join('');
+  const defaults = avail.map((l) => `<option${draft.locale.default === l ? ' selected' : ''}>${l}</option>`).join('');
+  const result = !checked ? ''
+    : checked.error ? `<div class="error">${esc(checked.error)}</div>`
+    : !checked.diff ? '<p class="note muted">Keine Änderung.</p>'
+    : `<pre class="diff">${checked.diff.split('\n').filter((l) => !/^(diff|index|---|\+\+\+)/.test(l)).map((l) =>
+        `<span class="${l[0] === '+' ? 'add' : l[0] === '-' ? 'del' : ''}">${esc(l)}</span>`).join('\n')}</pre>`;
+  const canSave = checked && !checked.error && checked.diff;
+  return `<p class="actions"><a href="#/t/${encodeURIComponent(slug)}">← ${esc(t.config.brand?.name ?? slug)}</a></p>
+    <h2>${esc(slug)}/tenant.json bearbeiten</h2>
+    <form class="form" id="editor" onsubmit="return false">
+      <fieldset><legend>Marke</legend>${text('Name', 'brand.name')}</fieldset>
+      <fieldset><legend>Theme & Tier</legend><div class="row">
+        <label><input type="radio" name="theme" data-path="theme.default" value="dark"${draft.theme?.default === 'dark' ? ' checked' : ''}>dark</label>
+        <label><input type="radio" name="theme" data-path="theme.default" value="light"${draft.theme?.default === 'light' ? ' checked' : ''}>light</label>
+        <label style="display:grid;color:var(--muted);font-size:12px">Tier<select data-path="tier">${meta.tiers.map((x) => `<option${draft.tier === x ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
+      </div></fieldset>
+      <fieldset><legend>Module</legend><div class="row">${modules}</div></fieldset>
+      <fieldset><legend>Sprachen</legend><div class="row">${locales}</div>
+        <label>Standardsprache<select data-path="locale.default">${defaults}</select></label></fieldset>
+      <fieldset><legend>Impressum</legend>${text('Name', 'legal.name')}${text('Anschrift', 'legal.address')}${text('E-Mail', 'legal.email')}</fieldset>
+      <fieldset><legend>Demo-Daten</legend>${text('Seed (Ordner unter tenants/)', 'seed', true)}</fieldset>
+      <div class="actions">
+        <button type="button" id="check">Prüfen</button>
+        <button type="button" class="primary" id="save"${canSave ? '' : ' disabled'}>Speichern & committen</button>
+        <button type="button" id="reset">Verwerfen</button>
+        <span class="note muted" id="saved"></span>
+      </div>
+      ${result}
+    </form>`;
+}
+
+function onEditorInput(e) {
+  const el = e.target;
+  if (el.dataset.path) setPath(draft, el.dataset.path, el.value);
+  if (el.dataset.module) {
+    draft.modules ??= {};
+    setPath(draft, `modules.${el.dataset.module}`, el.value === 'undefined' ? undefined : el.value === 'true');
+    if (!Object.keys(draft.modules).length) delete draft.modules;
+  }
+  if (el.dataset.locale) {
+    const set = new Set(draft.locale.available);
+    el.checked ? set.add(el.dataset.locale) : set.delete(el.dataset.locale);
+    draft.locale.available = meta.locales.filter((l) => set.has(l));
+  }
+  checked = null;
+  // Sprachliste/Tier-Standard haengen vom Draft ab — neu zeichnen, Fokus bei Textfeldern behalten
+  if (el.type !== 'text') render();
+  else { document.getElementById('save').disabled = true; document.querySelectorAll('#editor .diff, #editor .error').forEach((n) => n.remove()); }
+}
+
+async function post(path, body) {
+  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return res.json();
+}
+
+async function onEditorClick(e) {
+  const id = e.target.id;
+  if (id === 'check') {
+    checked = await post(`/api/tenants/${draftSlug}/preview`, draft);
+    render();
+  }
+  if (id === 'reset') { draftSlug = null; render(); }
+  if (id === 'save') {
+    const slug = draftSlug;
+    const res = await post(`/api/tenants/${slug}/save`, draft);
+    if (res.error) { checked = res; render(); return; }
+    await load();
+    draftSlug = null;
+    render();
+    const t = tenants.find((x) => x.slug === slug);
+    document.getElementById('saved').innerHTML = `Gespeichert: <code>${esc(res.commit ?? 'keine Änderung')}</code>`
+      + (t.running ? ' <button type="button" id="restart">Mandant neu starten</button>' : ' — Mandant läuft nicht, wirkt beim nächsten Start.');
+  }
+  if (id === 'restart') {
+    e.target.disabled = true;
+    e.target.textContent = 'startet neu …';
+    await post(`/api/tenants/${draftSlug}/restart`, {});
+    e.target.textContent = 'neu gestartet';
+  }
+}
+
 function render() {
-  const m = location.hash.match(/^#\/t\/(.+)$/);
+  const edit = location.hash.match(/^#\/t\/([^/]+)\/edit$/);
+  const m = location.hash.match(/^#\/t\/([^/]+)$/);
   const view = document.getElementById('view');
-  view.innerHTML = m ? renderDetail(decodeURIComponent(m[1])) : renderOverview();
+  view.innerHTML = edit ? renderEditor(decodeURIComponent(edit[1]))
+    : m ? renderDetail(decodeURIComponent(m[1])) : renderOverview();
   if (m) drawChart(decodeURIComponent(m[1]));
   const up = tenants.filter((t) => t.running).length;
   document.getElementById('summary').textContent = `${tenants.length} Mandanten · ${up} laufen`;
@@ -214,6 +343,8 @@ function render() {
   document.getElementById('stamp').textContent = lastAt ? `Stand ${fmtTime(lastAt)}` : 'noch kein Stand';
 }
 
+document.getElementById('view').addEventListener('input', (e) => { if (e.target.closest('#editor')) onEditorInput(e); });
+document.getElementById('view').addEventListener('click', (e) => { if (e.target.closest('#editor')) onEditorClick(e); });
 document.getElementById('view').addEventListener('click', (e) => {
   const btn = e.target.closest('button.tile');
   if (!btn) return;
@@ -232,15 +363,16 @@ document.getElementById('refresh').addEventListener('click', async (e) => {
 });
 
 async function load() {
-  [tenants, snapshots] = await Promise.all([
+  [tenants, snapshots, meta] = await Promise.all([
     fetch('/api/tenants').then((r) => r.json()),
     fetch('/api/snapshots').then((r) => r.json()),
+    fetch('/api/meta').then((r) => r.json()),
   ]);
   render();
 }
 
 window.addEventListener('hashchange', render);
-window.addEventListener('resize', () => { const m = location.hash.match(/^#\/t\/(.+)$/); if (m) drawChart(decodeURIComponent(m[1])); });
+window.addEventListener('resize', () => { const m = location.hash.match(/^#\/t\/([^/]+)$/); if (m) drawChart(decodeURIComponent(m[1])); });
 load();
 </script>
 </body>

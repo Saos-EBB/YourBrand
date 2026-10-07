@@ -5,6 +5,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { Client } from 'pg';
 import { parseTenantConfig } from '../common/tenant/tenant-config.loader';
+import { TENANT_LOCALES, TENANT_MODULES, TENANT_TIERS, TIER_MODULES } from '../common/tenant/tenant.types';
 import { tenantInfra } from '../common/tenant/tenant-infra.helper';
 import { collectDashboardStats } from '../modules/core/admin/dashboard-stats.query';
 
@@ -28,13 +29,21 @@ function envValue(file: string, key: string): string | undefined {
 
 // default ist der Haupt-Stack (docker-compose.yml, feste Namen/Ports), alle
 // anderen laufen ueber scripts/tenant.sh (Ports aus tenants/<slug>/.env).
+// restart: was nach einer Config-Aenderung neu starten muss (Loader liest beim
+// Boot, das Frontend holt GET /tenant pro Request).
 function stackInfo(slug: string) {
     if (slug === 'default') {
-        return { containers: ['XXX_backend', 'XXX_frontend'], backendPort: '3000', frontendPort: '3001' };
+        return {
+            containers: ['XXX_backend', 'XXX_frontend'],
+            restart: ['XXX_backend', 'XXX_worker'],
+            backendPort: '3000',
+            frontendPort: '3001',
+        };
     }
     const env = path.join(TENANTS, slug, '.env');
     return {
         containers: [`yb-${slug}-backend`, `yb-${slug}-frontend`],
+        restart: [`yb-${slug}-backend`, `yb-${slug}-worker`],
         backendPort: envValue(env, 'BACKEND_PORT'),
         frontendPort: envValue(env, 'FRONTEND_PORT'),
     };
@@ -59,13 +68,8 @@ function tenantSlugs(): string[] {
 async function listTenants() {
     const running = await runningContainers();
     return tenantSlugs().map((slug) => {
-        const raw: unknown = JSON.parse(fs.readFileSync(path.join(TENANTS, slug, 'tenant.json'), 'utf8'));
-        let error: string | null = null;
-        try {
-            parseTenantConfig(raw, slug);
-        } catch (err) {
-            error = (err as Error).message;
-        }
+        const raw: unknown = JSON.parse(fs.readFileSync(configFile(slug), 'utf8'));
+        const error = validate(slug, raw);
         const stack = stackInfo(slug);
         return {
             slug,
@@ -113,6 +117,74 @@ function readSnapshots(): unknown[] {
     return fs.readFileSync(SNAPSHOTS, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as unknown);
 }
 
+// null = gueltig, sonst alle Fehler auf einmal (Text aus parseTenantConfig)
+function validate(slug: string, raw: unknown): string | null {
+    try {
+        parseTenantConfig(raw, slug);
+        return null;
+    } catch (err) {
+        return (err as Error).message;
+    }
+}
+
+const configFile = (slug: string) => path.join(TENANTS, slug, 'tenant.json');
+const serialize = (raw: unknown) => JSON.stringify(raw, null, 2) + '\n';
+
+// Unified Diff aktuelle Datei -> Vorschlag. git diff --no-index endet mit
+// Exit-Code 1, wenn es Unterschiede gibt — das ist hier der Normalfall.
+async function diffConfig(slug: string, raw: unknown): Promise<string> {
+    const tmp = path.join(TENANTS, slug, '.tenant.json.preview');
+    fs.writeFileSync(tmp, serialize(raw));
+    try {
+        await run('git', ['diff', '--no-index', '--no-color', configFile(slug), tmp], { cwd: REPO });
+        return '';
+    } catch (err) {
+        const out = (err as { stdout?: string }).stdout;
+        if (out === undefined) throw err;
+        return out;
+    } finally {
+        fs.unlinkSync(tmp);
+    }
+}
+
+// Commit-Betreff aus den geaenderten Top-Level-Feldern, z.B. "brand, theme geaendert"
+function changedFields(before: Record<string, unknown>, after: Record<string, unknown>): string[] {
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    return [...keys].filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+}
+
+// Atomar schreiben (tmp + rename) und nur diese Datei committen — andere
+// Aenderungen im Working Tree bleiben unberuehrt (git commit -- <pfad>).
+async function saveConfig(slug: string, raw: Record<string, unknown>) {
+    const file = configFile(slug);
+    const before = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+    const fields = changedFields(before, raw);
+    if (fields.length === 0) return { commit: null };
+    const tmp = `${file}.tmp`;
+    fs.writeFileSync(tmp, serialize(raw));
+    fs.renameSync(tmp, file);
+    const rel = path.relative(REPO, file);
+    await run('git', ['add', '--', rel], { cwd: REPO });
+    await run('git', ['commit', '-m', `chore(tenant/${slug}): ${fields.join(', ')} geaendert`, '--', rel], { cwd: REPO });
+    const { stdout } = await run('git', ['log', '-1', '--format=%h %s'], { cwd: REPO });
+    return { commit: stdout.trim() };
+}
+
+function readBody(req: http.IncomingMessage): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+        let data = '';
+        req.on('data', (chunk: Buffer) => (data += chunk.toString()));
+        req.on('end', () => {
+            try {
+                resolve(JSON.parse(data));
+            } catch (err) {
+                reject(err as Error);
+            }
+        });
+        req.on('error', reject);
+    });
+}
+
 function sendJson(res: http.ServerResponse, status: number, body: unknown) {
     res.writeHead(status, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(body));
@@ -128,6 +200,32 @@ const server = http.createServer((req, res) => {
         }
         if (req.method === 'GET' && url.pathname === '/api/tenants') {
             sendJson(res, 200, await listTenants());
+            return;
+        }
+        if (req.method === 'GET' && url.pathname === '/api/meta') {
+            sendJson(res, 200, { locales: TENANT_LOCALES, tiers: TENANT_TIERS, modules: TENANT_MODULES, tierModules: TIER_MODULES });
+            return;
+        }
+        // /api/tenants/<slug>/<aktion> — slug nur aus der Ordnerliste, nie als Pfad
+        const m = url.pathname.match(/^\/api\/tenants\/([^/]+)\/(preview|save|restart)$/);
+        if (req.method === 'POST' && m && tenantSlugs().includes(m[1])) {
+            const [, slug, action] = m;
+            if (action === 'restart') {
+                await run('docker', ['restart', ...stackInfo(slug).restart]);
+                sendJson(res, 200, { ok: true });
+                return;
+            }
+            const raw = await readBody(req);
+            const error = validate(slug, raw);
+            if (action === 'preview') {
+                sendJson(res, 200, { error, diff: error ? '' : await diffConfig(slug, raw) });
+                return;
+            }
+            if (error) {
+                sendJson(res, 400, { error });
+                return;
+            }
+            sendJson(res, 200, await saveConfig(slug, raw as Record<string, unknown>));
             return;
         }
         if (req.method === 'GET' && url.pathname === '/api/snapshots') {
