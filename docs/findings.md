@@ -3,6 +3,15 @@
 Was beim Bauen der Mandanten-Console aufgefallen ist, aber nicht (oder noch nicht) gefixt wurde.
 Neue Einträge oben.
 
+## 2026-10-07 — Logo-Upload (Schritt 7)
+
+- **Logo/Favicon sind bis Schritt 8 nur in der Console sichtbar** — die App zeigt sie noch nicht an.
+- **Neue Logos liegen in `tenants/<slug>/` und sind damit in git** (Binaerdateien, max. 2 MB). Bei
+  vielen Logo-Wechseln waechst das Repo; ggf. spaeter Git LFS.
+- **SVGs mit `<style>`/CSS werden durchgelassen** (nur Script, Event-Handler, `javascript:`,
+  `<foreignObject>` und externe `href`/`src` werden abgelehnt). Im `<img>`-Tag kann CSS im SVG nichts
+  ausfuehren; wird das SVG irgendwann inline eingebettet, neu pruefen.
+
 ## 2026-10-07 — Farb-Editor (Schritt 6)
 
 - **Jeder Mandant unterschreitet WCAG AA (4,5:1) in mindestens einem Modus** — nachgerechnet mit den
@@ -20,7 +29,8 @@ Neue Einträge oben.
   Ursache: ein Token-Satz gilt fuer dark **und** light (`themeTokensCss`), eine Akzentfarbe passt
   selten auf beide Hintergruende. Nicht gefixt — Designentscheidung (getrennte Tokens pro Modus?).
 - **`--color-primary-container` / `--color-secondary-container` werden im Frontend nicht benutzt**
-  (nur in `globals.css` definiert). Im Farb-Editor trotzdem gelistet, wirken aber nicht.
+  (nur in `globals.css` und der Dev-Palette `components/DevColorPalette.tsx`). Im Farb-Editor trotzdem
+  gelistet, wirken aber nicht.
 - **Empfangene Chat-Bubbles sind die Primaerfarbe, eigene sind neutral** (`chat/[id]/page.tsx`) —
   umgekehrt zu den meisten Messengern; gewollt?
 

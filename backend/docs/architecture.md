@@ -44,6 +44,10 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   Farben: `/api/meta` liefert die Basis-Tokens aus `frontend/app/globals.css` (`@theme` = dark,
   `.light` = Overrides); der Editor zeigt Preview + WCAG-Kontrast fuer dark und light mit den
   Mandanten-Tokens darueber (wie `themeTokensCss` im Frontend).
+  Logo: `/logo` nimmt PNG/JPG/WebP/SVG (max. 2 MB) als Request-Body, lehnt SVG mit Script/Event-Handlern/
+  externen Referenzen ab, erzeugt per `sharp` `favicon.png` (64×64), setzt `brand.logo`/`brand.favicon`
+  und committet Logo, Favicon, `tenant.json` (und ein ersetztes altes Logo) zusammen. `/asset/<datei>`
+  liefert nur die in `tenant.json` genannten Dateien aus.
   Voraussetzung: `npm ci` in `backend/` auf dem Host, `XXX_db` laeuft.
 
 ## Datenfluss (Ziel)

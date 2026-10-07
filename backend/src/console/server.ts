@@ -4,6 +4,7 @@ import * as http from 'http';
 import * as path from 'path';
 import { promisify } from 'util';
 import { Client } from 'pg';
+import sharp from 'sharp';
 import { parseTenantConfig } from '../common/tenant/tenant-config.loader';
 import { TENANT_LOCALES, TENANT_MODULES, TENANT_TIERS, TIER_MODULES } from '../common/tenant/tenant.types';
 import { tenantInfra } from '../common/tenant/tenant-infra.helper';
@@ -160,14 +161,84 @@ async function saveConfig(slug: string, raw: Record<string, unknown>) {
     const before = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
     const fields = changedFields(before, raw);
     if (fields.length === 0) return { commit: null };
-    const tmp = `${file}.tmp`;
+    writeConfig(slug, raw);
+    return { commit: await commitPaths([file], `chore(tenant/${slug}): ${fields.join(', ')} geaendert`) };
+}
+
+function writeConfig(slug: string, raw: unknown) {
+    const tmp = `${configFile(slug)}.tmp`;
     fs.writeFileSync(tmp, serialize(raw));
-    fs.renameSync(tmp, file);
-    const rel = path.relative(REPO, file);
-    await run('git', ['add', '--', rel], { cwd: REPO });
-    await run('git', ['commit', '-m', `chore(tenant/${slug}): ${fields.join(', ')} geaendert`, '--', rel], { cwd: REPO });
+    fs.renameSync(tmp, configFile(slug));
+}
+
+async function commitPaths(files: string[], message: string): Promise<string> {
+    const rels = files.map((f) => path.relative(REPO, f));
+    await run('git', ['add', '-A', '--', ...rels], { cwd: REPO });
+    await run('git', ['commit', '-m', message, '--', ...rels], { cwd: REPO });
     const { stdout } = await run('git', ['log', '-1', '--format=%h %s'], { cwd: REPO });
-    return { commit: stdout.trim() };
+    return stdout.trim();
+}
+
+// ── Logo ──────────────────────────────────────────────────────────────────
+const LOGO_TYPES: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/svg+xml': 'svg' };
+const ASSET_TYPES: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', svg: 'image/svg+xml' };
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+// Das Logo landet spaeter im Browser jedes Mandanten — ein SVG mit Script waere
+// XSS. Ablehnen statt bereinigen: kein Sanitizer noetig, Fehlermeldung sagt warum.
+function unsafeSvg(svg: string): string | null {
+    if (/<script/i.test(svg)) return '<script>';
+    if (/\son[a-z]+\s*=/i.test(svg)) return 'Event-Handler (on…=)';
+    if (/javascript:/i.test(svg)) return 'javascript:-URL';
+    if (/<foreignObject/i.test(svg)) return '<foreignObject>';
+    if (/(href|src)\s*=\s*["'](?!#|data:image\/)/i.test(svg)) return 'externe Referenz';
+    return null;
+}
+
+// Speichert logo.<ext> + favicon.png (64×64, per sharp), traegt beide in tenant.json
+// ein, raeumt ein altes Logo mit anderer Endung weg und committet alles zusammen.
+async function saveLogo(slug: string, type: string, data: Buffer) {
+    const ext = LOGO_TYPES[type];
+    if (!ext) return { error: `Dateityp ${type} nicht erlaubt (PNG, JPG, WebP, SVG)` };
+    if (data.length > MAX_LOGO_BYTES) return { error: 'Datei groesser als 2 MB' };
+    if (ext === 'svg') {
+        const bad = unsafeSvg(data.toString('utf8'));
+        if (bad) return { error: `SVG abgelehnt: enthaelt ${bad}` };
+    }
+    let favicon: Buffer;
+    try {
+        favicon = await sharp(data).resize(64, 64, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+    } catch (err) {
+        return { error: `Kein lesbares Bild: ${(err as Error).message}` };
+    }
+    const dir = path.join(TENANTS, slug);
+    const raw = JSON.parse(fs.readFileSync(configFile(slug), 'utf8')) as { brand: { logo?: string; favicon?: string } };
+    const touched = [configFile(slug), path.join(dir, `logo.${ext}`), path.join(dir, 'favicon.png')];
+    const old = raw.brand.logo;
+    if (old && old !== `logo.${ext}` && fs.existsSync(path.join(dir, old))) {
+        fs.unlinkSync(path.join(dir, old));
+        touched.push(path.join(dir, old));
+    }
+    fs.writeFileSync(path.join(dir, `logo.${ext}`), data);
+    fs.writeFileSync(path.join(dir, 'favicon.png'), favicon);
+    raw.brand.logo = `logo.${ext}`;
+    raw.brand.favicon = 'favicon.png';
+    writeConfig(slug, raw);
+    return { logo: raw.brand.logo, favicon: raw.brand.favicon, commit: await commitPaths(touched, `chore(tenant/${slug}): logo + favicon getauscht`) };
+}
+
+function readRaw(req: http.IncomingMessage, limit: number): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        const chunks: Buffer[] = [];
+        let size = 0;
+        req.on('data', (chunk: Buffer) => {
+            size += chunk.length;
+            // Mehr als das Limit nicht puffern; saveLogo meldet die Groesse
+            if (size <= limit + 1) chunks.push(chunk);
+        });
+        req.on('end', () => resolve(Buffer.concat(chunks)));
+        req.on('error', reject);
+    });
 }
 
 function readBody(req: http.IncomingMessage): Promise<unknown> {
@@ -224,13 +295,36 @@ const server = http.createServer((req, res) => {
             });
             return;
         }
+        // Nur die Dateien, die tenant.json als Logo/Favicon nennt (Namen sind per Schema ohne Pfad)
+        const asset = url.pathname.match(/^\/api\/tenants\/([^/]+)\/asset\/([^/]+)$/);
+        if (req.method === 'GET' && asset && tenantSlugs().includes(asset[1])) {
+            const [, slug, name] = asset;
+            const brand = (JSON.parse(fs.readFileSync(configFile(slug), 'utf8')) as { brand: Record<string, string> }).brand;
+            const file = path.join(TENANTS, slug, name);
+            if ((name === brand.logo || name === brand.favicon) && fs.existsSync(file)) {
+                res.writeHead(200, {
+                    'Content-Type': ASSET_TYPES[path.extname(name).slice(1)] ?? 'application/octet-stream',
+                    'Cache-Control': 'no-store',
+                    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+                });
+                res.end(fs.readFileSync(file));
+                return;
+            }
+            sendJson(res, 404, { error: 'not found' });
+            return;
+        }
         // /api/tenants/<slug>/<aktion> — slug nur aus der Ordnerliste, nie als Pfad
-        const m = url.pathname.match(/^\/api\/tenants\/([^/]+)\/(preview|save|restart)$/);
+        const m = url.pathname.match(/^\/api\/tenants\/([^/]+)\/(preview|save|restart|logo)$/);
         if (req.method === 'POST' && m && tenantSlugs().includes(m[1])) {
             const [, slug, action] = m;
             if (action === 'restart') {
                 await run('docker', ['restart', ...stackInfo(slug).restart]);
                 sendJson(res, 200, { ok: true });
+                return;
+            }
+            if (action === 'logo') {
+                const result = await saveLogo(slug, req.headers['content-type'] ?? '', await readRaw(req, MAX_LOGO_BYTES));
+                sendJson(res, 'error' in result ? 400 : 200, result);
                 return;
             }
             const raw = await readBody(req);

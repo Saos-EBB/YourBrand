@@ -88,6 +88,13 @@
   .pv-out { justify-self: end; background: var(--color-surface-container); color: var(--color-on-surface); border-radius: 10px; padding: 4px 10px; }
   .contrast { font-size: 12px; display: grid; gap: 2px; padding: 8px 12px; background: var(--card); color: var(--text); border-top: 1px solid var(--line); }
   .contrast .warn { color: var(--bad); }
+  .mark img { width: 100%; height: 100%; object-fit: contain; }
+  .mark.has-logo { background: transparent !important; border: 1px solid var(--line); }
+  .logo-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .logo-bg { width: 120px; height: 56px; border-radius: 8px; padding: 6px; border: 1px solid var(--line); }
+  .logo-bg img { width: 100%; height: 100%; object-fit: contain; }
+  .drop { flex: 1; min-width: 200px; border: 2px dashed var(--line); border-radius: 8px; padding: 12px; text-align: center; color: var(--muted); cursor: pointer; }
+  .drop.over { border-color: var(--series); color: var(--text); }
   .tooltip { position: absolute; pointer-events: none; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; white-space: nowrap; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 </style>
 </head>
@@ -149,7 +156,9 @@ function card(t) {
   return `
     <a class="card" href="#/t/${encodeURIComponent(t.slug)}">
       <div class="head">
-        <div class="mark" style="background:${esc(primary)}">${esc(name[0])}</div>
+        ${c.brand?.logo
+          ? `<div class="mark has-logo"><img src="${assetUrl(t.slug, c.brand.logo)}" alt=""></div>`
+          : `<div class="mark" style="background:${esc(primary)}">${esc(name[0])}</div>`}
         <div>
           <div class="name">${esc(name)}</div>
           <div class="muted">${esc(t.slug)} · ${esc(c.tier)} · ${esc(c.theme?.default)}</div>
@@ -242,6 +251,9 @@ function drawChart(slug) {
 
 // ── Editor ──────────────────────────────────────────────────────────────
 let meta = null;
+// Cache-Buster fuer Logo-Bilder, neu bei jedem load()
+let assetVersion = Date.now();
+const assetUrl = (slug, name) => `/api/tenants/${encodeURIComponent(slug)}/asset/${encodeURIComponent(name)}?v=${assetVersion}`;
 let draft = null;      // Arbeitskopie der rohen tenant.json
 let draftSlug = null;
 let checked = null;    // Ergebnis von /preview fuer genau diesen Draft
@@ -364,7 +376,14 @@ function renderEditor(slug) {
   return `<p class="actions"><a href="#/t/${encodeURIComponent(slug)}">← ${esc(t.config.brand?.name ?? slug)}</a></p>
     <h2>${esc(slug)}/tenant.json bearbeiten</h2>
     <form class="form" id="editor" onsubmit="return false">
-      <fieldset><legend>Marke</legend>${text('Name', 'brand.name')}</fieldset>
+      <fieldset><legend>Marke</legend>${text('Name', 'brand.name')}
+        <div class="logo-row">
+          ${draft.brand?.logo ? ['#ffffff', '#0b1326'].map((bg) => `<div class="logo-bg" style="background:${bg}"><img src="${assetUrl(slug, draft.brand.logo)}" alt="Logo"></div>`).join('') : '<span class="muted">kein Logo</span>'}
+          <label class="drop" id="drop">Logo hierher ziehen oder klicken<br><small>PNG, JPG, WebP oder SVG · max. 2 MB · Favicon wird erzeugt · speichert + committet sofort</small>
+            <input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
+        </div>
+        <span class="note" id="logo-msg"></span>
+      </fieldset>
       <fieldset><legend>Theme & Tier</legend><div class="row">
         <label><input type="radio" name="theme" data-path="theme.default" value="dark"${draft.theme?.default === 'dark' ? ' checked' : ''}>dark</label>
         <label><input type="radio" name="theme" data-path="theme.default" value="light"${draft.theme?.default === 'light' ? ' checked' : ''}>light</label>
@@ -386,8 +405,22 @@ function renderEditor(slug) {
     </form>`;
 }
 
+async function uploadLogo(file) {
+  const msg = document.getElementById('logo-msg');
+  msg.textContent = 'lädt hoch …';
+  const res = await fetch(`/api/tenants/${draftSlug}/logo`, { method: 'POST', headers: { 'Content-Type': file.type }, body: file }).then((r) => r.json());
+  if (res.error) { msg.innerHTML = `<span class="error">${esc(res.error)}</span>`; return; }
+  // Nur Logo/Favicon in den Draft uebernehmen — andere ungespeicherte Eingaben bleiben
+  draft.brand.logo = res.logo;
+  draft.brand.favicon = res.favicon;
+  checked = null;
+  await load();
+  document.getElementById('logo-msg').innerHTML = `Gespeichert: <code>${esc(res.commit)}</code>`;
+}
+
 function onEditorInput(e) {
   const el = e.target;
+  if (el.id === 'logo-file') { if (el.files[0]) uploadLogo(el.files[0]); return; }
   if (el.dataset.path) setPath(draft, el.dataset.path, el.value);
   if (el.dataset.module) {
     draft.modules ??= {};
@@ -489,6 +522,7 @@ document.getElementById('refresh').addEventListener('click', async (e) => {
 });
 
 async function load() {
+  assetVersion = Date.now();
   [tenants, snapshots, meta] = await Promise.all([
     fetch('/api/tenants').then((r) => r.json()),
     fetch('/api/snapshots').then((r) => r.json()),
@@ -496,6 +530,17 @@ async function load() {
   ]);
   render();
 }
+
+const view = document.getElementById('view');
+view.addEventListener('dragover', (e) => { const d = e.target.closest('#drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
+view.addEventListener('dragleave', (e) => e.target.closest('#drop')?.classList.remove('over'));
+view.addEventListener('drop', (e) => {
+  const d = e.target.closest('#drop');
+  if (!d) return;
+  e.preventDefault();
+  d.classList.remove('over');
+  if (e.dataTransfer.files[0]) uploadLogo(e.dataTransfer.files[0]);
+});
 
 window.addEventListener('hashchange', render);
 window.addEventListener('resize', () => { const m = location.hash.match(/^#\/t\/([^/]+)$/); if (m) drawChart(decodeURIComponent(m[1])); });

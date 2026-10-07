@@ -1,3 +1,12 @@
+## 2026-10-07 — feat(console): Logo-Upload mit Favicon — Console Schritt 7
+**Was:** Im Editor Logo per Klick oder Drag & Drop; Vorschau auf hellem und dunklem Grund, Logo auch auf
+der Uebersichtskachel. Upload speichert und committet sofort, uebernimmt nur Logo/Favicon in den Draft
+(ungespeicherte Formular-Eingaben bleiben). Getestet im Wegwerf-Worktree: PNG, SVG, Wechsel PNG↔SVG
+(altes Logo wird mit geloescht), SVG mit `onload` abgelehnt, falscher Typ/kaputtes Bild abgelehnt,
+`/asset/.env` → 404.
+**Nicht gebaut:** kein SVG-Sanitizer (ablehnen statt bereinigen), kein Zuschneiden, keine Favicon-Groessen
+ausser 64×64.
+
 ## 2026-10-07 — feat(console): Farb-Editor mit Preview und Kontrast-Check — Console Schritt 6
 **Was:** Alle 19 `--color-*`-Tokens aus `globals.css` mit Picker + Hex-Feld + Reset; leer = Standard.
 Live-Preview (Navbar mit Badge-Glow, Card, Buttons, Chat-Bubbles) in dark und light nebeneinander, darunter
