@@ -1,3 +1,9 @@
+## 2026-10-07 — feat(console): Mandanten-Console mit Uebersicht — Console Schritt 2
+**Was:** `npm run console` startet auf http://localhost:3099 eine Uebersicht aller Mandanten (default
+zuerst, `_template` ausgeblendet): Name, Tier, Theme, Farb-Tokens als Swatches, Sprachen, Validierungsfehler
+aus `parseTenantConfig`, Status (Backend + Frontend-Container laufen) und Frontend-Link.
+**Nicht gebaut:** kein Express/Framework, kein Logo-Endpoint (kommt mit dem Logo-Schritt), keine Stats.
+
 ## 2026-10-07 — refactor(admin): Dashboard-Stats als reine Funktion — Console Schritt 1
 **Was:** Die 16 Queries aus `AdminService.getDashboardStats()` liegen jetzt in
 `src/modules/core/admin/dashboard-stats.query.ts` (`collectDashboardStats(query)`), ohne DI. Grund: die

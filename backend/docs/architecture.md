@@ -30,6 +30,12 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   Guards/Gateways), hostet die BullMQ-`@Processor`-Provider: `MediaProcessor`, `AutoSuspendProcessor`,
   `MediaTicketProcessor`, `GdprExportProcessor`.
 
+- `src/console/` — Mandanten-Console (`npm run console`, http://localhost:3099): lokales Dashboard
+  ueber allen Mandanten, laeuft auf dem Host statt im Container (braucht `tenants/` schreibbar, git,
+  docker). Reines `node:http` + eine statische `index.html`, nur an 127.0.0.1 gebunden, keine Auth.
+  Liest `tenants/*/tenant.json` und validiert mit `parseTenantConfig`, Status per `docker ps`.
+  Voraussetzung: `npm ci` in `backend/` auf dem Host.
+
 ## Datenfluss (Ziel)
 
 ```
@@ -90,6 +96,11 @@ Track-B-Punkte (Correctness-Bugs, God-Objects, Duplikate — siehe Roadmap unten
 keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
+
+- 2026-10-07 — Mandanten-Console als Script im Backend (`src/console/`, wie `tenant-init.ts`) statt
+  eigener App. Grund: sie importiert Schema/Loader und die Stats-Queries direkt, ohne neue
+  Dependencies; die Mandanten-DBs fragt sie per pg direkt ab (Postgres auf Host-Port 5432) statt
+  ueber einen Endpoint pro Mandant — kein Token-Verteilen. Nur lokal, deshalb ohne Auth.
 
 - 2026-09-12 — `ConversationsService.getOrCreate()` lebt im `ChatModule` (exportiert), `MatchingModule`
   und `AdminModule` importieren `ChatModule` statt eigener `Conversation`-Repository-Injection/Raw-SQL.
