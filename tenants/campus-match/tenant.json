@@ -17,11 +17,7 @@
     "default": "de",
     "available": [
       "de",
-      "en",
-      "fr",
-      "ru",
-      "ja",
-      "de_easy"
+      "en"
     ]
   },
   "tier": "premium",
