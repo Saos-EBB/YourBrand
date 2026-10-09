@@ -1,7 +1,8 @@
 {
   "slug": "campus-match",
   "brand": {
-    "name": "Campus Match"
+    "name": "Campus Match",
+    "favicon": "favicon.png"
   },
   "theme": {
     "default": "dark",
@@ -16,7 +17,11 @@
     "default": "de",
     "available": [
       "de",
-      "en"
+      "en",
+      "fr",
+      "ru",
+      "ja",
+      "de_easy"
     ]
   },
   "tier": "premium",
