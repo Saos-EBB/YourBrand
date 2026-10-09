@@ -32,6 +32,7 @@ Farb-Tokens gelten im hellen und dunklen Modus — deshalb setzen die Mandanten 
 | `modules` | nein | überschreibt einzelne Module: `chat`, `matching`, `payments`, `hidden` |
 | `legal` | ja | Impressum-Angaben (`name`, `address`, `email`) |
 | `seed` | nein | Demo-Datensatz aus `tenants/<seed>/seed/` (siehe unten), wird nicht öffentlich ausgegeben |
+| `seedAgeDays` | nein | Demo: so viele Tage „läuft“ der Mandant schon (siehe unten), wird nicht öffentlich ausgegeben |
 
 Tier-Defaults (`backend/src/common/tenant/tenant.types.ts`):
 
@@ -73,6 +74,20 @@ mitgelieferten Dateien) — fuer einen Mandanten mit eigenem, abweichendem Demo-
 Datensatz wie `default`: einfacher fuer Demos, ein Login funktioniert ueberall. Owner-Login
 ueberall gleich: `owner@demo.example.com` / `Demo1234!` (45 kuratierte User insgesamt, siehe
 `backend/src/database/seeds/demo-users.yaml`).
+
+Damit die Stats nicht bei allen gleich aussehen, verteilt `seed-backdate.ts` (letzter Schritt in
+`backend/docker-entrypoint.sh`) bei jedem Start die Zeitstempel so, als liefe der Mandant schon
+`seedAgeDays` Tage: Anmeldungen zwischen Start und heute (gegen Ende dichter), Coins/Abos/Zahlungen/
+Media nie vor der Anmeldung des Users. Gerechnet ab dem Boot, der Mandant wirkt also immer gleich alt.
+Ohne `seedAgeDays` und im Lasttest (`LOADTEST_MODE`) passiert nichts.
+
+| Mandant | `seedAgeDays` |
+|---|---|
+| default (YourBrand) | 120 |
+| underground | 75 |
+| campus-match | 40 |
+| miteinander | 14 |
+| kiez | 2 |
 
 ## Docker
 

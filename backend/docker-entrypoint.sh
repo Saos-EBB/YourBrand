@@ -35,4 +35,9 @@ npx ts-node -r tsconfig-paths/register src/database/seeds/seed-media.ts
 npx ts-node -r tsconfig-paths/register src/database/seeds/seed-cities.ts
 npx ts-node -r tsconfig-paths/register src/database/seeds/backfill-profile-locations.ts
 
+# Als letztes: Zeitstempel so verteilen, als liefe der Mandant schon
+# tenant.json "seedAgeDays" Tage (no-op ohne). Muss nach allen Seeds laufen,
+# die Daten mit NOW() anlegen.
+npx ts-node -r tsconfig-paths/register src/database/seeds/seed-backdate.ts
+
 exec npm run start:dev

@@ -32,9 +32,10 @@ export interface TenantConfig {
     modules: Record<TenantModule, boolean>;
     legal: { name: string; address: string; email: string };
     seed?: string;
+    seedAgeDays?: number;
 }
 
-// Was GET /tenant nach aussen gibt — ohne interne Felder (seed).
-export type PublicTenantConfig = Omit<TenantConfig, 'seed'>;
+// Was GET /tenant nach aussen gibt — ohne interne Felder (seed, seedAgeDays).
+export type PublicTenantConfig = Omit<TenantConfig, 'seed' | 'seedAgeDays'>;
 
 export const TENANT_CONFIG = 'TENANT_CONFIG';

@@ -26,5 +26,6 @@
     "name": "Underground Gaming UG (Demo)",
     "address": "Rheinlanddamm 200, 44139 Dortmund",
     "email": "crew@underground.demo"
-  }
+  },
+  "seedAgeDays": 75
 }

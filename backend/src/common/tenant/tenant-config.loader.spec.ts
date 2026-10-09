@@ -10,6 +10,7 @@ const valid = () => ({
     tier: 'core',
     legal: { name: 'Max Muster', address: 'Musterstr. 1, 12345 Musterstadt', email: 'kontakt@example.com' },
     seed: 'kiez',
+    seedAgeDays: 30,
 });
 
 describe('parseTenantConfig', () => {
@@ -71,8 +72,15 @@ describe('parseTenantConfig', () => {
         expect(message).toMatch(/legal.email/);
     });
 
-    it('oeffentliche Config enthaelt kein seed', () => {
-        expect(toPublicTenantConfig(parseTenantConfig(valid(), 'kiez'))).not.toHaveProperty('seed');
+    it('oeffentliche Config enthaelt kein seed / seedAgeDays', () => {
+        const publicConfig = toPublicTenantConfig(parseTenantConfig(valid(), 'kiez'));
+        expect(publicConfig).not.toHaveProperty('seed');
+        expect(publicConfig).not.toHaveProperty('seedAgeDays');
+    });
+
+    it('lehnt seedAgeDays ab, das keine positive Ganzzahl ist', () => {
+        expect(() => parseTenantConfig({ ...valid(), seedAgeDays: 0 }, 'kiez')).toThrow(/seedAgeDays/);
+        expect(() => parseTenantConfig({ ...valid(), seedAgeDays: 1.5 }, 'kiez')).toThrow(/seedAgeDays/);
     });
 });
 

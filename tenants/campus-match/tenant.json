@@ -28,5 +28,6 @@
     "name": "Campus Match GmbH (Demo)",
     "address": "Schlossplatz 2, 48149 Münster",
     "email": "team@campus.demo"
-  }
+  },
+  "seedAgeDays": 40
 }

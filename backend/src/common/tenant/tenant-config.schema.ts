@@ -2,8 +2,8 @@
 import 'reflect-metadata';
 import { Type } from 'class-transformer';
 import {
-    ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsObject, IsOptional,
-    IsString, Length, Matches, ValidateNested,
+    ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsObject, IsOptional,
+    IsString, Length, Matches, Max, Min, ValidateNested,
 } from 'class-validator';
 import { TENANT_LOCALES, TENANT_TIERS } from './tenant.types';
 import type { TenantLocale, TenantTier } from './tenant.types';
@@ -86,4 +86,8 @@ export class TenantConfigSchema {
 
     @IsOptional() @Matches(/^[a-z][a-z0-9-]{1,30}$/)
     seed?: string;
+
+    // Demo: so viele Tage "laeuft" der Mandant schon (seed-backdate.ts)
+    @IsOptional() @IsInt() @Min(1) @Max(3650)
+    seedAgeDays?: number;
 }

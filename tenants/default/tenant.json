@@ -4,5 +4,6 @@
   "theme": { "default": "dark", "tokens": {} },
   "locale": { "default": "de", "available": ["de", "en", "fr", "es", "it", "ru", "ja", "de_easy", "leet"] },
   "tier": "premium",
-  "legal": { "name": "<NAME>", "address": "<ANSCHRIFT>", "email": "kontakt@example.com" }
+  "legal": { "name": "<NAME>", "address": "<ANSCHRIFT>", "email": "kontakt@example.com" },
+  "seedAgeDays": 120
 }

@@ -78,6 +78,7 @@ export function parseTenantConfig(raw: unknown, expectedSlug: string): TenantCon
         modules,
         legal: { ...schema.legal },
         ...(schema.seed ? { seed: schema.seed } : {}),
+        ...(schema.seedAgeDays ? { seedAgeDays: schema.seedAgeDays } : {}),
     };
 }
 
@@ -107,7 +108,8 @@ export function isModuleEnabled(module: TenantModule): boolean {
 }
 
 export function toPublicTenantConfig(config: TenantConfig): PublicTenantConfig {
-    const publicConfig: PublicTenantConfig & { seed?: string } = { ...config };
+    const publicConfig: PublicTenantConfig & { seed?: string; seedAgeDays?: number } = { ...config };
     delete publicConfig.seed;
+    delete publicConfig.seedAgeDays;
     return publicConfig;
 }
