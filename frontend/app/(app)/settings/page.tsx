@@ -232,6 +232,7 @@ export default function SettingsPage() {
   const [gdprLoading, setGdprLoading]     = useState(false)
   const [gdprError, setGdprError]         = useState<string | null>(null)
   const [gdprCooldown, setGdprCooldown]   = useState<string | null>(null)
+  const [gdprSuccess, setGdprSuccess]     = useState<string | null>(null)
 
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const toastTimer        = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -560,6 +561,7 @@ export default function SettingsPage() {
     setGdprLoading(true)
     setGdprError(null)
     setGdprCooldown(null)
+    setGdprSuccess(null)
     try {
       const token = useAuthStore.getState().accessToken
       const res = await fetch(`${API_BASE}/gdpr/export`, {
@@ -575,13 +577,10 @@ export default function SettingsPage() {
         }
         return
       }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'paarship-daten-export.pdf'
-      a.click()
-      URL.revokeObjectURL(url)
+      // Backend baut das PDF im Worker und schickt es per Mail (gdpr-export.processor.ts),
+      // die Antwort ist nur eine Bestaetigung.
+      const body = await res.json().catch(() => ({})) as { message?: string }
+      setGdprSuccess(body.message ?? 'Dein Datenexport wird erstellt und per E-Mail zugeschickt.')
     } catch {
       setGdprError('Export fehlgeschlagen. Bitte versuche es später erneut.')
     } finally {
@@ -966,6 +965,9 @@ export default function SettingsPage() {
               <p className="text-xs text-on-surface-variant mt-1 px-1">
                 {t.settings.gdprInfo}
               </p>
+              {gdprSuccess && (
+                <p role="status" className="text-xs text-on-surface mt-1 px-1">{gdprSuccess}</p>
+              )}
               {gdprCooldown && (
                 <p className="text-xs text-amber-500 mt-1 px-1">{gdprCooldown}</p>
               )}

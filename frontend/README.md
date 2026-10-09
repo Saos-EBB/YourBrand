@@ -143,7 +143,7 @@ Owner-only section on `/dashboard` (`components/analytics/AnalyticsSection.tsx`)
 - `AuthProvider` fetches `/profile/me` on mount, populates user store, establishes global WebSocket, and applies accessibility settings
 - Multi-step onboarding wizard required before profile can be published
 - Consent flow (`/consent`) after registration
-- `/forgot-password` — email form with a generic success message (no account enumeration)
+- `/forgot-password` — email form with a generic success message (no account enumeration); the mailed link opens `/reset-password`
 - No server-side route gate: the old `proxy.ts` cookie check was removed (it broke split-domain logins). Protection is client-side — `fetchApi` refreshes on 401 and logs out on failure
 
 ### Discover
@@ -275,6 +275,7 @@ The auth layout (`app/(auth)/layout.tsx`) wraps all auth routes with a sticky fo
 | Route | Description |
 |---|---|
 | `/forgot-password` | Request a password reset email. Always shows the same success message. |
+| `/reset-password` | Target of the reset email (`?token=`). New password + confirmation, checked against the same rule as the backend, then `POST /auth/reset-password`. |
 | `/login` | Email or nickname + password login. Stores JWT access token in Zustand. Shows a success banner when redirected from `/setup?setup=done`. "Support kontaktieren" button opens `ContactSupportModal`. |
 | `/register` | Registration form. Sends verification email via backend. |
 | `/setup` | One-time owner bootstrap wizard. Checks `GET /setup/status` on load; redirects to `/login` if setup is already complete. Form creates the first owner account via `POST /setup`. |
@@ -376,7 +377,7 @@ Accordion layout — single section open at a time, CSS `grid-rows` height trans
 
 **D) Konto:**
 - Subscription info sourced from `GET /profile/me` (`subscription` field) — shows plan badge, status label, and expiry date; displays "Kein aktives Abonnement" when `null`.
-- **Daten exportieren (PDF)** — calls `GET /gdpr/export` and still expects a PDF blob (`paarship-daten-export.pdf`); the backend now mails the PDF and returns JSON instead, see [Known gaps](#known-gaps). Rate-limit (403) shows cooldown message in amber; other errors show red message. DSGVO hint ("max. 1× pro 30 Tage") shown below the button. Spinner while loading.
+- **Daten exportieren (PDF)** — calls `GET /gdpr/export`; the backend builds the PDF in the worker and mails it, the page shows the confirmation message. Rate-limit (403) shows cooldown message in amber; other errors show red message. DSGVO hint ("max. 1× pro 30 Tage") shown below the button. Spinner while loading.
 - **Passwort ändern** (nested sub-accordion within Konto) — current password + new password + confirmation; show/hide toggles; calls `PATCH /auth/change-password`; success state clears fields.
 - **E-Mail ändern** (nested sub-accordion within Konto) — current password + new email address; calls `PATCH /auth/change-email`; success state clears fields.
 - **Konto löschen** — focus-trapped confirmation dialog; calls `DELETE /auth/account`, clears auth store and redirects to `/login` on success; shows inline error on failure with spinner during the request.
@@ -753,12 +754,14 @@ Posts to `POST /hidden/beef/dev/quick-fight` (backend returns 404 in production)
 | `chat/[id]` header | Generic user icon — partner photo not loaded |
 | `BottomNav` | No unread badge on Chat or Requests tabs |
 | `chat/[id]` | `read_at` exists on messages but read receipts not rendered |
-| `settings` → Konto | GDPR export still downloads a blob, but `GET /gdpr/export` now returns JSON and mails the PDF — the button saves a broken file |
-| `/forgot-password` | The reset mail links to `/auth/reset-password`, which doesn't exist (backend `mail.service.ts`); there is no reset page yet |
 
 ---
 
 ## Changelog
+
+### 2026-10-09 — GDPR Export & Password Reset Fixes
+- fix(settings): GDPR export no longer tries to download a PDF blob — shows the backend's confirmation that the PDF is coming by email
+- feat(auth): `/reset-password` page, so the link from the reset email works
 
 ### 2026-10-09 — Analytics
 - feat(analytics): owner analytics on `/dashboard` — KPI tiles with sparklines, growth, activity, sign-ups, revenue, funnel, heatmap, plan mix, top interests/cities; table view for every chart; texts in all 9 languages

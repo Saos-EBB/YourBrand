@@ -786,6 +786,9 @@ The dashboard (`dashboard/`, plain Node `http`, zero dependencies, no build step
 
 ## Changelog
 
+### 2026-10-09 — Password Reset Link
+- fix(mail): reset email linked to `/auth/reset-password`, which doesn't exist in the frontend — now `/reset-password`
+
 ### 2026-10-09 — Analytics, Demo Age
 - feat(analytics): `GET /admin/dashboard/analytics` (owner) — time series, KPIs vs. previous period, funnel, heatmap, plan mix, top interests and cities; same queries used by the tenant console
 - feat(seed): `seed-backdate.ts` spreads demo timestamps over `seedAgeDays` from `tenant.json`, last step of `docker-entrypoint.sh`
