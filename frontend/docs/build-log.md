@@ -1,3 +1,13 @@
+## 2026-10-09 — fix(settings, auth): GDPR-Export-Bestaetigung + /reset-password
+**Was:** Der Export-Button speicherte die Antwort weiter als PDF-Blob — seit dem Worker-Umbau liefert
+`GET /gdpr/export` aber JSON und schickt das PDF per Mail, also kam eine kaputte Datei raus. Jetzt wird die
+Bestaetigung vom Backend angezeigt. Neue Seite `/reset-password` (Token aus `?token=`, Passwort zweimal,
+gleiche Regel wie `ResetPasswordDto`) — der Link aus der Reset-Mail fuehrte bisher ins Leere.
+Verifiziert: `tsc` sauber im `yb_frontend:local`-Image; nicht im Browser durchgeklickt (Resend-Key im Demo
+ist Platzhalter, es geht keine Mail raus).
+**Nicht gebaut:** keine i18n fuer die neuen Texte (Nachbarseite `/forgot-password` ist auch nur deutsch),
+kein Passwort-Staerke-Balken, kein Show/Hide-Toggle.
+
 ## 2026-10-07 — feat(tenant): Logo + Favicon des Mandanten in der App — Console Schritt 8
 **Was:** `brand.logo` erscheint im Logo-Button (Sidebar + TopNav) vor dem Namen, `brand.favicon` als
 Favicon (`metadata.icons`). Beide relativ ueber `/api/v1/tenant/asset/:name`, `next.config.ts` leitet wie

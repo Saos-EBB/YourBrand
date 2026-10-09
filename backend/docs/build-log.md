@@ -1,3 +1,8 @@
+## 2026-10-09 — fix(mail): Reset-Link zeigt auf /reset-password
+**Was:** `sendPasswordResetEmail` baute `${APP_URL}/auth/reset-password` — im Frontend gibt es kein
+`/auth`-Praefix, der Link war 404. Seite dazu siehe `frontend/docs/build-log.md`.
+**Nicht gebaut:** keine i18n/Branding der Mail (Text sagt weiter „Paarship“).
+
 ## 2026-10-07 — fix(console): „Mandant neu starten“ auch nach Logo-Upload
 **Was:** Das Backend liest `tenant.json` nur beim Boot — ohne Neustart zeigt die App das neue Logo nicht.
 Der Button kam bisher nur nach dem Formular-Speichern.
