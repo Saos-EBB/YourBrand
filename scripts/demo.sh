@@ -3,9 +3,10 @@
 # Stack aus docker-compose.yml) + alle Mandanten aus tenants/ (scripts/tenant.sh),
 # auf derselben geteilten Infra (Postgres/Redis/MinIO, Netz yb_network).
 #
-#   scripts/demo.sh up     Env-Dateien anlegen (falls noetig), alles bauen + starten
-#   scripts/demo.sh down   Alles stoppen (Daten bleiben in Postgres/MinIO)
-#   scripts/demo.sh ls     Alle laufenden Stacks mit URLs (default + Mandanten)
+#   scripts/demo.sh up     Env-Dateien anlegen (falls noetig), alles bauen + starten,
+#                          danach die Mandanten-Console (http://localhost:3099)
+#   scripts/demo.sh down   Alles stoppen inkl. Console (Daten bleiben in Postgres/MinIO)
+#   scripts/demo.sh ls     Alle laufenden Stacks mit URLs (default + Mandanten + Console)
 #
 # .env / backend/.env / frontend/.env werden beim ersten "up" aus den
 # *.env.example-Vorlagen generiert (gitignored, eigene Secrets) — danach
@@ -108,6 +109,37 @@ ensure_frontend_env() {
 
 die() { echo "Fehler: $*" >&2; exit 1; }
 
+# Die Console (backend/src/console/) laeuft auf dem Host, nicht im Container —
+# sie braucht git und docker. Hintergrundprozess, PID/Log in .console/ (gitignored).
+CONSOLE_PID=.console/console.pid
+CONSOLE_LOG=.console/console.log
+
+console_running() { [[ -f $CONSOLE_PID ]] && kill -0 "$(cat "$CONSOLE_PID")" 2>/dev/null; }
+
+start_console() {
+  if console_running; then
+    echo "Console laeuft bereits: http://localhost:3099"
+    return
+  fi
+  if [[ ! -x backend/node_modules/.bin/ts-node ]]; then
+    echo "Console nicht gestartet: backend/node_modules fehlt auf dem Host (einmalig: cd backend && npm ci)" >&2
+    return
+  fi
+  mkdir -p .console
+  (cd backend && exec setsid nohup npm run console >"../$CONSOLE_LOG" 2>&1) &
+  echo $! >"$CONSOLE_PID"
+  echo "Console gestartet: http://localhost:3099 (Log: $CONSOLE_LOG)"
+}
+
+stop_console() {
+  if console_running; then
+    # setsid -> eigene Prozessgruppe, so wird npm samt ts-node beendet
+    kill -- -"$(cat "$CONSOLE_PID")" 2>/dev/null || kill "$(cat "$CONSOLE_PID")"
+    echo "Console gestoppt"
+  fi
+  rm -f "$CONSOLE_PID"
+}
+
 cmd_up() {
   ensure_root_env
   ensure_backend_env
@@ -116,9 +148,12 @@ cmd_up() {
   docker compose up -d --build
   echo "== Mandanten"
   scripts/tenant.sh up all
+  echo "== Mandanten-Console"
+  start_console
 }
 
 cmd_down() {
+  stop_console
   scripts/tenant.sh down all
   docker compose down
 }
@@ -126,6 +161,7 @@ cmd_down() {
 case "${1:-}" in
   up)   cmd_up ;;
   down) cmd_down ;;
-  ls)   scripts/tenant.sh ls ;;
-  *)    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  ls)   scripts/tenant.sh ls
+        if console_running; then echo "console  http://localhost:3099"; else echo "console  aus"; fi ;;
+  *)    sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
