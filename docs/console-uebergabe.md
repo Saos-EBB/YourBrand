@@ -3,7 +3,14 @@
 ## Starten
 
 ```bash
-docker compose up -d XXX_db        # Postgres fuer die Stats (laeuft gerade schon)
+scripts/demo.sh up                 # startet alles und die Console im Hintergrund → http://localhost:3099
+```
+
+`demo.sh down` stoppt die Console mit, `demo.sh ls` zeigt ihren Status. Log: `.console/console.log`.
+Nur die Console, ohne Mandanten-Stacks:
+
+```bash
+docker compose up -d XXX_db        # Postgres fuer die Stats
 cd backend && npm run console      # → http://localhost:3099
 ```
 
@@ -22,6 +29,8 @@ Einmalig nötig (ist erledigt): `npm ci` in `backend/` auf dem Host. Dafür war
 | Logo | Drag & Drop oder Klick, PNG/JPG/WebP/SVG bis 2 MB. Favicon wird erzeugt, alles wird sofort committet |
 | Neustart | Nach dem Speichern bzw. nach einem Logo-Upload: „Mandant neu starten“ (wenn er läuft). Nötig, weil das Backend `tenant.json` nur beim Start liest |
 | App | Logo steht jetzt in Sidebar/Navbar vor dem Namen, Favicon im Browser-Tab |
+| Analytics | Übersicht: Vergleich aller Mandanten (Wachstumskurven, Mitglieder/Aktivität/Umsatz je Mandant). Detailseite: KPI-Kacheln mit Sparkline und Vergleich zur Vorperiode, Wachstum, Aktivität nach Art, Neuanmeldungen, Umsatz, Conversion-Funnel, Heatmap Wochentag × Uhrzeit, Abo-Mix, Top-Interessen. Zeitraum 7/30/90 Tage, jede Karte auch als Tabelle. Live aus den Mandanten-DBs, unabhängig von den Snapshots |
+| Owner-Dashboard (App) | Gleiche Analytics unter „Plattform-Übersicht“ in `/dashboard`, Daten von `GET /admin/dashboard/analytics?days=` (Owner) |
 
 ## Commits (lokal, nichts gepusht)
 

@@ -60,7 +60,10 @@ Monorepo combining frontend and backend in subfolders, with the full commit hist
 ```
 .
 ├── frontend/   # Next.js application
-└── backend/    # NestJS API + WebSocket gateway
+├── backend/    # NestJS API + WebSocket gateway (+ tenant console in src/console/)
+├── tenants/    # one tenant.json (+ logo/favicon) per branded tenant
+├── scripts/    # demo.sh / tenant.sh
+└── docs/       # design notes, findings, handoffs
 ```
 
 For environment variables and architecture details, see:
@@ -76,8 +79,9 @@ For environment variables and architecture details, see:
 ```bash
 scripts/demo.sh up    # generates .env/backend/.env/frontend/.env (first run only), then
                        # starts the shared infra + YourBrand (default) + all four tenants
-scripts/demo.sh ls     # every running stack with its URL (default + tenants)
-scripts/demo.sh down   # stop everything, data stays in Postgres/MinIO
+                       # + the tenant console on http://localhost:3099
+scripts/demo.sh ls     # every running stack with its URL (default + tenants + console)
+scripts/demo.sh down   # stop everything incl. the console, data stays in Postgres/MinIO
 ```
 
 First run generates `.env`, `backend/.env` and `frontend/.env` with real random secrets
@@ -86,7 +90,8 @@ editing needed to get a working demo. Stripe/Resend keys stay as inert placehold
 never call those APIs). Re-running `up` is idempotent — existing env files and running stacks are
 left alone. Internally this is `docker compose up -d --build` (shared infra + the default/YourBrand
 stack) followed by `scripts/tenant.sh up all` (the four tenants, see below) — reach for those
-directly only if you want one of the two without the other.
+directly only if you want one of the two without the other. The console runs on the host, not in a
+container, and needs `npm ci` in `backend/` once; without it `up` skips the console with a hint.
 
 ### Just YourBrand (default), by hand
 
@@ -116,6 +121,31 @@ scripts/tenant.sh down kiez  # stop one tenant, data stays
 ```
 
 Tenant configs live in [`tenants/`](./tenants/README.md); the design is in [`docs/multitenant.md`](./docs/multitenant.md).
+
+Every tenant has its own favicon. To make the demo stats look like real usage, each tenant's seed data is spread
+over a simulated lifetime (`seedAgeDays` in `tenant.json`): YourBrand has been "live" for about four
+months, KiezConnect for two days. Sign-ups, messages, coins and payments get timestamps inside that
+window, never before the user signed up.
+
+---
+
+## Tenant Console & Analytics
+
+A small operator console (`backend/src/console/`, http://localhost:3099) manages all tenants in one
+place: overview with status, a `tenant.json` editor with validation and auto-commit, color tokens with
+live preview and WCAG contrast check, logo upload with generated favicon, and tenant restart.
+
+Both the console and the owner dashboard in the app (`/dashboard`) show analytics read live from
+each tenant's database. They cover the last 7, 30 or 90 days:
+
+- KPI tiles with sparklines and the change against the previous period
+- Member growth, activity by type, sign-ups and revenue
+- A conversion funnel: registered → verified → photo → contact → conversation → premium
+- A heatmap by weekday × hour
+- The subscription mix, top interests and top cities
+
+Every chart can also be switched to a table. The console overview also compares all tenants side by side.
+Details: [`docs/console-uebergabe.md`](./docs/console-uebergabe.md).
 
 ---
 

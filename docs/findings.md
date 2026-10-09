@@ -3,6 +3,20 @@
 Was beim Bauen der Mandanten-Console aufgefallen ist, aber nicht (oder noch nicht) gefixt wurde.
 Neue Einträge oben.
 
+## 2026-10-09 — Analytics + Demo-Alter
+
+- **Demo-Daten sind bewusst „geschönt“** — `seed-backdate.ts` verteilt bei jedem Backend-Start Anmeldungen
+  über `seedAgeDays`, streckt Chat-Nachrichten über die Laufzeit ihrer Conversation und legt Coins/Uploads
+  auf typische Tageszeiten (Spitzen mittags und abends). Für Demos gedacht, nicht für Messungen.
+- **Interessen und Städte sind bei allen Mandanten gleich** — gleicher Demo-Seed. Fällt im Vergleich auf.
+- **Uploads haben heute eine Spitze** — die kuratierten Medien bekommen beim Seed `NOW()`; die Heatmap
+  deckelt die Farbskala deshalb beim 95. Perzentil.
+- **Coins zählen nur mit Hidden Zone**, Umsatz/Abos/Premium-Stufe nur mit `payments` — in App und Console.
+- **Turbopack übernimmt `globals.css`-Änderungen nicht immer** — nach dem Hinzufügen der Diagramm-Farben
+  zeigten die Mandanten-Frontends alte CSS bzw. einen Font-Build-Fehler, bis der Container neu gestartet war.
+- **Lint in `dashboard/page.tsx`:** zwei vorbestehende Fehler (`setState` im Effect, `Date.now()` im Render)
+  — nicht angefasst.
+
 ## 2026-10-07 — Logo in der App (Schritt 8)
 
 - **Mandanten-Stack nach Logo-Wechsel neu starten** — das Backend liest `tenant.json` nur beim Boot, bis
