@@ -112,6 +112,11 @@ Miteinander connect **ohne** Payments.
    Owner-Login, jedes Modul an/aus, Frontend-Titel) (2026-10-06)
 8. ✅ **Showcase** — `showcase/` (Playwright): gleicher Ablauf pro Mandant, Screenshots + Video,
    Vergleichsbilder und 2×2-Vergleichsvideo (2026-10-06, siehe [`showcase/README.md`](../showcase/README.md))
+9. ✅ **Eigenes Gesicht pro Mandant** (2026-10-09, Entwürfe: [`mockups/mandanten-designs.html`](mockups/mandanten-designs.html)):
+   Logo + Favicon für alle fünf, Farben pro Modus (`theme.dark`/`theme.light`), `theme.layout`
+   (Navigation, Schrift, Rundung, Textgröße, Assistenz, eigene Menünamen), YourBrand in Candy.
+   Neue Module `board` (KiezConnect), `caretaker` + `orgs` (Miteinander) — Migration
+   `006_board_and_care.sql`, Details in [`tenants/README.md`](../tenants/README.md).
 
 ## Risiken / offene Punkte
 

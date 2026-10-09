@@ -13,3 +13,6 @@ showcase/node_modules/
 
 # Mandanten-Console: Stats-Snapshots (backend/src/console/)
 .console/
+
+# Lokale Notiz: was aus den Mockups noch fehlt
+NOT-BUILT.md

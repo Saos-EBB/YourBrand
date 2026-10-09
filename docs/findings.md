@@ -3,6 +3,37 @@
 Was beim Bauen der Mandanten-Console aufgefallen ist, aber nicht (oder noch nicht) gefixt wurde.
 Neue Einträge oben.
 
+## 2026-10-09 — Mandanten-Designs, Schwarzes Brett, Betreuung
+
+- **YourBrand hatte nie seine Schrift** — die next/font-Variablen hingen an `<body>`, `--font-sans`
+  aus `@theme` wird aber auf `:root` aufgelöst. Ergebnis: überall Systemschrift statt Plus Jakarta Sans.
+  Gefixt (Variablen jetzt auf `<html>`), die App sieht dadurch etwas anders aus als vorher.
+- **Heller Modus hatte immer auch `dark` am `<html>`** — `useHiddenZone` setzte beim Verlassen der
+  Hidden Zone `savedTheme ?? 'dark'`, also bei jedem Laden ohne Zone ein zusätzliches `dark`. Fiel nur
+  nicht auf, weil die hellen Regeln später im CSS stehen. Gefixt (nur wiederherstellen, was gespeichert war).
+- **Stray `was` im ChatController** — eine einzelne Zeile `was` vor `@Get('requests/incoming')`,
+  kompilierte als Klassen-Property. Entfernt.
+- **Console-Farbeditor arbeitet jetzt pro Modus** — Umschalter „beide Modi / nur dark / nur light“,
+  startet im Standard-Modus des Mandanten. Layout-Felder (`theme.layout`) hat der Editor nicht, die
+  bleiben beim Speichern aber erhalten (der Editor schreibt die ganze `tenant.json` zurück).
+- **„Für Sie schreiben“ ist nicht gebaut** — `managed_accounts.can_write_chat` gibt es im Schema, die
+  Betreuung kann aber nur lesen. Bewusst: im Namen anderer schreiben braucht ein eigenes Konzept
+  (Kennzeichnung der Nachricht, Einwilligung). Die UI sagt „Für Sie schreiben darf niemand“.
+- **Umkreis im Brett ist ungenau** — Profile kennen nur die Stadt (`profiles.location` = Stadtmitte).
+  „Straße“ ist darum 150 m um diesen Punkt, nicht die echte Straße. Für die Demo hängen die Aushänge
+  rund um den Ort des Owners, sonst wären sie in einem echten Umkreis unsichtbar.
+- **Rechtstexte fürs Brett sind Entwürfe** — AGB § 7 und Datenschutz 4.3 stehen jetzt auf `/agb` und
+  `/datenschutz` (nur mit Modul `board`), sind aber nicht juristisch geprüft. Die im Mockup erwähnte
+  `noindex`-Kennzeichnung öffentlicher Aushänge ist nicht gebaut (es gibt keine eigene Seite pro Aushang,
+  nur die Vorschau auf der Login-Seite) und steht darum nicht im Text.
+- **Haupt-DB bekommt Migration 006 nicht automatisch** — nur neue Volumes (db/Dockerfile) und
+  Mandanten-DBs (tenant-init). Braucht YourBrand je eins der neuen Module: `006` von Hand einspielen.
+- **Nicht gebaut aus den Mockups** — Campus-Sticker auf Profilen, Swipe-Stapel als Entdecken-Startseite,
+  Geisterbahnhof-Optik der Hidden Zone, Kiezkasse-Seite. Die Abfahrtstafel (Underground) erscheint nur
+  bei offener Hidden Zone, weil Beefs dorthin gehören.
+- **Fehlertexte aus dem Backend sind deutsch** — neue Endpoints (Brett, Betreuung) liefern Meldungen
+  auf Deutsch, die das Frontend direkt anzeigt. Wie bei den bestehenden Modulen.
+
 ## 2026-10-09 — Analytics + Demo-Alter
 
 - **Demo-Daten sind bewusst „geschönt“** — `seed-backdate.ts` verteilt bei jedem Backend-Start Anmeldungen

@@ -25,7 +25,7 @@ Einmalig nötig (ist erledigt): `npm ci` in `backend/` auf dem Host. Dafür war
 | Stats | Button „Aktualisieren“ fragt alle Mandanten-DBs ab und speichert einen Snapshot (`.console/snapshots.jsonl`, nicht in git). Oben Summen über alle Mandanten |
 | Detailseite | Klick auf eine Kachel: alle 16 Kennzahlen mit Veränderung seit dem letzten Stand, Klick auf eine Zahl zeigt den Verlauf |
 | Editor | „Bearbeiten“: Name, Theme, Tier, Module, Sprachen, Impressum, Seed. „Prüfen“ zeigt Fehler und Diff, „Speichern & committen“ committet nur diese `tenant.json` |
-| Farben | 19 Farb-Tokens mit Picker, Live-Vorschau dark + light, Kontrastprüfung (WCAG) |
+| Farben | 19 Farb-Tokens mit Picker, getrennt für beide Modi / nur dark / nur light (`theme.tokens`, `theme.dark`, `theme.light`), Live-Vorschau dark + light, Kontrastprüfung (WCAG) |
 | Logo | Drag & Drop oder Klick, PNG/JPG/WebP/SVG bis 2 MB. Favicon wird erzeugt, alles wird sofort committet |
 | Neustart | Nach dem Speichern bzw. nach einem Logo-Upload: „Mandant neu starten“ (wenn er läuft). Nötig, weil das Backend `tenant.json` nur beim Start liest |
 | App | Logo steht jetzt in Sidebar/Navbar vor dem Namen, Favicon im Browser-Tab |
