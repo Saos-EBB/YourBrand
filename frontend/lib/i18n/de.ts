@@ -37,6 +37,7 @@ export const de = {
     board: 'Schwarzes Brett',
     care: 'Betreuung',
     org: 'Organisation',
+    shop: 'Shop',
   },
 
   status: {

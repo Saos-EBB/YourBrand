@@ -60,6 +60,8 @@ const FEATURE_MODULES: Record<TenantFeature, Type[]> = {
   board: [BoardModule],
   caretaker: [CareModule],
   orgs: [OrgModule],
+  // ShopModule kommt mit der Produkt-API
+  shop: [],
 };
 const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) ? FEATURE_MODULES[m] : []));
 

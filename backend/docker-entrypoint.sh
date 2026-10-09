@@ -44,4 +44,7 @@ npx ts-node -r tsconfig-paths/register src/database/seeds/seed-backdate.ts
 # Module). Nach seed-backdate, damit die Zeiten relativ zu jetzt bleiben.
 npx ts-node -r tsconfig-paths/register src/database/seeds/seed-board-care.ts
 
+# Demo-Artikel fuer den Shop (no-op ohne das Modul)
+npx ts-node -r tsconfig-paths/register src/database/seeds/seed-shop.ts
+
 exec npm run start:dev

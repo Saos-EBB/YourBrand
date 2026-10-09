@@ -35,6 +35,7 @@ export const deEasy = {
     board: 'Schwarzes Brett',
     care: 'Betreuung',
     org: 'Organisation',
+    shop: 'Laden',
   },
 
   status: {

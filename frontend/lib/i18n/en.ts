@@ -35,6 +35,7 @@ export const en = {
     board: 'Notice board',
     care: 'Care',
     org: 'Organisation',
+    shop: 'Shop',
   },
 
   status: {

@@ -32,6 +32,7 @@ export interface Translations {
     board: string
     care: string
     org: string
+    shop: string
   }
   status: {
     label: string

@@ -35,6 +35,7 @@ export const it = {
     board: 'Bacheca',
     care: 'Assistenza',
     org: 'Organizzazione',
+    shop: 'Negozio',
   },
 
   status: {

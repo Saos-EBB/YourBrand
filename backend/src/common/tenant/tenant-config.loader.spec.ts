@@ -17,21 +17,21 @@ describe('parseTenantConfig', () => {
     it('loest Tier-Defaults auf', () => {
         const config = parseTenantConfig(valid(), 'kiez');
         expect(config.modules).toEqual({
-            chat: true, matching: false, payments: true, hidden: false, board: false, caretaker: false, orgs: false,
+            chat: true, matching: false, payments: true, hidden: false, board: false, caretaker: false, orgs: false, shop: false,
         });
     });
 
     it('Overrides in "modules" schlagen die Tier-Defaults', () => {
         const config = parseTenantConfig({ ...valid(), modules: { matching: true, payments: false } }, 'kiez');
         expect(config.modules).toEqual({
-            chat: true, matching: true, payments: false, hidden: false, board: false, caretaker: false, orgs: false,
+            chat: true, matching: true, payments: false, hidden: false, board: false, caretaker: false, orgs: false, shop: false,
         });
     });
 
-    it('premium schaltet die Tier-Module an, board/caretaker/orgs bleiben opt-in', () => {
+    it('premium schaltet die Tier-Module an, board/caretaker/orgs/shop bleiben opt-in', () => {
         const { modules } = parseTenantConfig({ ...valid(), tier: 'premium' }, 'kiez');
         expect([modules.chat, modules.matching, modules.payments, modules.hidden]).toEqual([true, true, true, true]);
-        expect([modules.board, modules.caretaker, modules.orgs]).toEqual([false, false, false]);
+        expect([modules.board, modules.caretaker, modules.orgs, modules.shop]).toEqual([false, false, false, false]);
     });
 
     it('board braucht chat, orgs braucht caretaker', () => {
@@ -41,6 +41,19 @@ describe('parseTenantConfig', () => {
             .toThrow(/orgs erfordert modules.caretaker/);
         const ok = parseTenantConfig({ ...valid(), modules: { caretaker: true, orgs: true } }, 'kiez');
         expect([ok.modules.caretaker, ok.modules.orgs]).toEqual([true, true]);
+    });
+
+    it('shop braucht payments und USt-IdNr. oder Steuernummer', () => {
+        const legal = valid().legal;
+        expect(() => parseTenantConfig({ ...valid(), modules: { shop: true } }, 'kiez'))
+            .toThrow(/shop erfordert legal.vatId oder legal.taxNumber/);
+        expect(() => parseTenantConfig({ ...valid(), legal: { ...legal, vatId: 'DE123456789' }, modules: { shop: true, payments: false } }, 'kiez'))
+            .toThrow(/shop erfordert modules.payments/);
+        expect(() => parseTenantConfig({ ...valid(), legal: { ...legal, vatId: 'AT123' }, modules: { shop: true } }, 'kiez'))
+            .toThrow(/vatId/);
+        const ok = parseTenantConfig({ ...valid(), legal: { ...legal, taxNumber: '12/345/67890' }, modules: { shop: true } }, 'kiez');
+        expect(ok.modules.shop).toBe(true);
+        expect(ok.legal.taxNumber).toBe('12/345/67890');
     });
 
     it('Layout: ohne Angabe die Werte des default-Mandanten', () => {

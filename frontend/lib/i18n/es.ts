@@ -35,6 +35,7 @@ export const es = {
     board: 'Tablón',
     care: 'Cuidado',
     org: 'Organización',
+    shop: 'Tienda',
   },
 
   status: {

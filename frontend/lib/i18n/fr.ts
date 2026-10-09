@@ -35,6 +35,7 @@ export const fr = {
     board: "Tableau d'annonces",
     care: 'Accompagnement',
     org: 'Organisation',
+    shop: 'Boutique',
   },
 
   status: {

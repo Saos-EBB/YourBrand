@@ -35,6 +35,7 @@ export const ja = {
     board: '掲示板',
     care: 'サポート',
     org: '組織',
+    shop: 'ショップ',
   },
 
   status: {
