@@ -26,7 +26,6 @@ export class ChatController {
     sendContactRequest(@Request() req: any, @Body() dto: SendContactRequestDto) {
         return this.chatService.sendContactRequest(req.user.sub, dto);
     }
-was
     @Get('requests/incoming')
     getIncomingRequests(@Request() req: any) {
         return this.chatService.getIncomingRequests(req.user.sub);

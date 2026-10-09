@@ -40,4 +40,8 @@ npx ts-node -r tsconfig-paths/register src/database/seeds/backfill-profile-locat
 # die Daten mit NOW() anlegen.
 npx ts-node -r tsconfig-paths/register src/database/seeds/seed-backdate.ts
 
+# Demo-Daten fuer Schwarzes Brett / Betreuung / Organisation (no-op ohne die
+# Module). Nach seed-backdate, damit die Zeiten relativ zu jetzt bleiben.
+npx ts-node -r tsconfig-paths/register src/database/seeds/seed-board-care.ts
+
 exec npm run start:dev

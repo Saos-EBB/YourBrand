@@ -20,6 +20,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TypedEventBus, AppEvents } from '../../shared/events/app-events';
 import { ConversationsService } from './conversations.service';
+import { isModuleEnabled } from '../../../common/tenant/tenant-config.loader';
 
 @Injectable()
 export class ChatService {
@@ -79,10 +80,18 @@ export class ChatService {
     }
 
     async getIncomingRequests(userId: string) {
-        return this.contactRequestRepository.find({
+        const requests = await this.contactRequestRepository.find({
             where: { receiver_id: userId, status: ContactRequestStatus.PENDING },
             order: { created_at: 'DESC' },
         });
+        if (!isModuleEnabled('caretaker') || requests.length === 0) return requests;
+        // Schon Ja gesagt, wartet auf die Betreuung (siehe acceptRequest)
+        const held: { id: string }[] = await this.contactRequestRepository.manager.query(
+            `SELECT id FROM contact_requests WHERE receiver_id = $1 AND caretaker_status = 'pending'`,
+            [userId],
+        );
+        const heldIds = new Set(held.map((h) => h.id));
+        return requests.map((r) => ({ ...r, awaiting_caretaker: heldIds.has(r.id) }));
     }
 
     async getOutgoingRequests(userId: string) {
@@ -101,6 +110,35 @@ export class ChatService {
         if (request.receiver_id !== userId) throw new ForbiddenException('Keine Berechtigung');
         if (request.status !== ContactRequestStatus.PENDING) {
             throw new ConflictException('Anfrage ist nicht mehr ausstehend');
+        }
+
+        // Betreuung (Modul caretaker): Bei vulnerable_flag und aktiver
+        // Betreuung mit can_set_protection zaehlt das Ja erst, wenn die
+        // Betreuung freigibt (CareService.decide). Rohes SQL, weil die
+        // Spalten aus 006 nur in Mandanten mit dem Modul gebraucht werden.
+        if (isModuleEnabled('caretaker')) {
+            const held = await this.contactRequestRepository.manager.query(
+                `UPDATE contact_requests cr SET receiver_accepted_at = now(), caretaker_status = 'pending'
+                  WHERE cr.id = $1 AND cr.caretaker_status IS NULL AND EXISTS (
+                        SELECT 1 FROM managed_accounts ma JOIN users u ON u.id = ma.user_id
+                         WHERE ma.user_id = cr.receiver_id AND u.vulnerable_flag AND ma.can_set_protection
+                           AND ma.accepted_at IS NOT NULL AND ma.revoked_at IS NULL
+                           AND (ma.expires_at IS NULL OR ma.expires_at > now()))
+                 RETURNING cr.id`,
+                [request.id],
+            );
+            // UPDATE ... RETURNING liefert bei pg [rows, rowCount]
+            const heldRows: unknown[] = Array.isArray(held[0]) ? held[0] : held;
+            if (heldRows.length > 0) {
+                this.eventEmitter.emit('care.approval_needed', { receiverId: userId });
+                return { pendingCaretaker: true };
+            }
+            const [state] = await this.contactRequestRepository.manager.query(
+                'SELECT caretaker_status FROM contact_requests WHERE id = $1', [request.id],
+            );
+            if (state?.caretaker_status === 'pending') {
+                throw new ConflictException('Wartet schon auf die Freigabe der Betreuung');
+            }
         }
 
         request.status = ContactRequestStatus.ACCEPTED;

@@ -35,6 +35,9 @@ import { TeethModule } from './modules/hidden/teeth/teeth.module';
 import { BadgeModule } from './modules/hidden/badge/badge.module';
 import { SharedModule } from './modules/shared/shared.module';
 import { MatchingModule } from './modules/core/matching/matching.module';
+import { BoardModule } from './modules/core/board/board.module';
+import { CareModule } from './modules/core/care/care.module';
+import { OrgModule } from './modules/core/care/org.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { FeatureGuard } from './common/tenant/feature.guard';
 import { isModuleEnabled } from './common/tenant/tenant-config.loader';
@@ -54,6 +57,9 @@ const FEATURE_MODULES: Record<TenantFeature, Type[]> = {
   matching: [MatchingModule],
   payments: [PaymentModule],
   hidden: [BeefModule, CoinModule, TeethModule, BadgeModule],
+  board: [BoardModule],
+  caretaker: [CareModule],
+  orgs: [OrgModule],
 };
 const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) ? FEATURE_MODULES[m] : []));
 

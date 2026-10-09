@@ -16,17 +16,60 @@ const valid = () => ({
 describe('parseTenantConfig', () => {
     it('loest Tier-Defaults auf', () => {
         const config = parseTenantConfig(valid(), 'kiez');
-        expect(config.modules).toEqual({ chat: true, matching: false, payments: true, hidden: false });
+        expect(config.modules).toEqual({
+            chat: true, matching: false, payments: true, hidden: false, board: false, caretaker: false, orgs: false,
+        });
     });
 
     it('Overrides in "modules" schlagen die Tier-Defaults', () => {
         const config = parseTenantConfig({ ...valid(), modules: { matching: true, payments: false } }, 'kiez');
-        expect(config.modules).toEqual({ chat: true, matching: true, payments: false, hidden: false });
+        expect(config.modules).toEqual({
+            chat: true, matching: true, payments: false, hidden: false, board: false, caretaker: false, orgs: false,
+        });
     });
 
-    it('premium schaltet alle Module an', () => {
-        const config = parseTenantConfig({ ...valid(), tier: 'premium' }, 'kiez');
-        expect(Object.values(config.modules).every(Boolean)).toBe(true);
+    it('premium schaltet die Tier-Module an, board/caretaker/orgs bleiben opt-in', () => {
+        const { modules } = parseTenantConfig({ ...valid(), tier: 'premium' }, 'kiez');
+        expect([modules.chat, modules.matching, modules.payments, modules.hidden]).toEqual([true, true, true, true]);
+        expect([modules.board, modules.caretaker, modules.orgs]).toEqual([false, false, false]);
+    });
+
+    it('board braucht chat, orgs braucht caretaker', () => {
+        expect(() => parseTenantConfig({ ...valid(), modules: { board: true, chat: false } }, 'kiez'))
+            .toThrow(/board erfordert modules.chat/);
+        expect(() => parseTenantConfig({ ...valid(), modules: { orgs: true } }, 'kiez'))
+            .toThrow(/orgs erfordert modules.caretaker/);
+        const ok = parseTenantConfig({ ...valid(), modules: { caretaker: true, orgs: true } }, 'kiez');
+        expect([ok.modules.caretaker, ok.modules.orgs]).toEqual([true, true]);
+    });
+
+    it('Layout: ohne Angabe die Werte des default-Mandanten', () => {
+        const { theme } = parseTenantConfig(valid(), 'kiez');
+        expect(theme.layout).toEqual({ nav: 'sidebar', font: 'jakarta', textScale: 1, assist: false, labels: {} });
+        expect(theme.dark).toEqual({});
+        expect(theme.light).toEqual({});
+    });
+
+    it('Layout: nur bekannte Werte, Menuenamen nur fuer bekannte Punkte und Sprachen', () => {
+        const withLayout = (layout: object) => ({ ...valid(), theme: { default: 'light', layout } });
+        const ok = parseTenantConfig(withLayout({
+            nav: 'topbar', font: 'archivo', radius: 'sm', textScale: 1.125, assist: true,
+            labels: { dashboard: 'Kiez', board: { de: 'Brett', en: 'Board' } },
+        }), 'kiez');
+        expect(ok.theme.layout.labels.board).toEqual({ de: 'Brett', en: 'Board' });
+        expect(() => parseTenantConfig(withLayout({ nav: 'hamburger' }), 'kiez')).toThrow(/layout.nav/);
+        expect(() => parseTenantConfig(withLayout({ font: 'comic-sans' }), 'kiez')).toThrow(/layout.font/);
+        expect(() => parseTenantConfig(withLayout({ textScale: 3 }), 'kiez')).toThrow(/textScale/);
+        expect(() => parseTenantConfig(withLayout({ labels: { kitchen: 'X' } }), 'kiez')).toThrow(/unbekannter Menuepunkt/);
+        expect(() => parseTenantConfig(withLayout({ labels: { chat: { xx: 'X' } } }), 'kiez')).toThrow(/unbekannte Sprache/);
+        expect(() => parseTenantConfig(withLayout({ labels: { chat: 'x'.repeat(30) } }), 'kiez')).toThrow(/1-24 Zeichen/);
+    });
+
+    it('Modus-Tokens (dark/light) werden wie tokens geprueft', () => {
+        const raw = { ...valid(), theme: { default: 'dark', dark: { '--color-error': 'url(x)' }, light: { color: '#fff' } } };
+        const message = (() => { try { parseTenantConfig(raw, 'kiez'); return ''; } catch (e) { return (e as Error).message; } })();
+        expect(message).toMatch(/theme.dark.--color-error/);
+        expect(message).toMatch(/theme.light: Key "color"/);
     });
 
     it('lehnt unbekannte Keys ab (Tippfehler bricht den Boot)', () => {

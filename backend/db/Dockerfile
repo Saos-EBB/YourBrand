@@ -23,3 +23,4 @@ COPY migrations/002_seed_system_user.sql                  /docker-entrypoint-ini
 COPY migrations/003_track_b_missing_indexes.sql           /docker-entrypoint-initdb.d/003_track_b_missing_indexes.sql
 COPY migrations/004_drop_redundant_ban_expiry_trigger.sql /docker-entrypoint-initdb.d/004_drop_redundant_ban_expiry_trigger.sql
 COPY migrations/005_drop_duplicate_beef_status_check.sql  /docker-entrypoint-initdb.d/005_drop_duplicate_beef_status_check.sql
+COPY migrations/006_board_and_care.sql                     /docker-entrypoint-initdb.d/006_board_and_care.sql

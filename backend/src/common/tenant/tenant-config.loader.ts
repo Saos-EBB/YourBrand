@@ -3,8 +3,8 @@ import * as path from 'path';
 import { plainToInstance } from 'class-transformer';
 import { validateSync, ValidationError } from 'class-validator';
 import { TenantConfigSchema } from './tenant-config.schema';
-import { TENANT_MODULES, TIER_MODULES } from './tenant.types';
-import type { PublicTenantConfig, TenantConfig, TenantModule } from './tenant.types';
+import { NAV_KEYS, TENANT_LOCALES, TENANT_MODULES, TIER_MODULES } from './tenant.types';
+import type { PublicTenantConfig, TenantConfig, TenantLayout, TenantModule } from './tenant.types';
 
 // Plain functions wie crypto.helper.ts, kein DI — auch von Seeds und vom
 // Worker aus nutzbar. Der Mandant kommt aus TENANT (Default "default"), die
@@ -46,12 +46,15 @@ export function parseTenantConfig(raw: unknown, expectedSlug: string): TenantCon
         if (!schema.locale.available.includes(schema.locale.default)) {
             errors.push(`locale.default: "${schema.locale.default}" fehlt in locale.available`);
         }
-        for (const [key, value] of Object.entries(schema.theme.tokens ?? {})) {
-            if (!TOKEN_KEY.test(key)) errors.push(`theme.tokens: Key "${key}" muss --color-* sein`);
-            if (typeof value !== 'string' || !TOKEN_VALUE.test(value)) {
-                errors.push(`theme.tokens.${key}: "${String(value)}" ist keine Hex-Farbe`);
+        for (const field of ['tokens', 'dark', 'light'] as const) {
+            for (const [key, value] of Object.entries(schema.theme[field] ?? {})) {
+                if (!TOKEN_KEY.test(key)) errors.push(`theme.${field}: Key "${key}" muss --color-* sein`);
+                if (typeof value !== 'string' || !TOKEN_VALUE.test(value)) {
+                    errors.push(`theme.${field}.${key}: "${String(value)}" ist keine Hex-Farbe`);
+                }
             }
         }
+        errors.push(...labelErrors(schema.theme.layout?.labels));
     }
 
     if (errors.length > 0) {
@@ -63,6 +66,14 @@ export function parseTenantConfig(raw: unknown, expectedSlug: string): TenantCon
         const override = schema.modules?.[key];
         if (override !== undefined) modules[key] = override;
     }
+    // "Zettel abreissen" ist eine Kontaktanfrage, der Rest laeuft im Chat
+    if (modules.board && !modules.chat) {
+        throw new Error(`Ungueltige Tenant-Config "${expectedSlug}":\n  - modules.board erfordert modules.chat`);
+    }
+    // Eine Organisation verwaltet Konten ueber Betreuungen (managed_accounts)
+    if (modules.orgs && !modules.caretaker) {
+        throw new Error(`Ungueltige Tenant-Config "${expectedSlug}":\n  - modules.orgs erfordert modules.caretaker`);
+    }
     // Ein Match legt eine Conversation an (SwipeService -> ConversationsService)
     // — ohne Chat waere jedes Match eine Sackgasse.
     if (modules.matching && !modules.chat) {
@@ -72,13 +83,57 @@ export function parseTenantConfig(raw: unknown, expectedSlug: string): TenantCon
     return {
         slug: schema.slug,
         brand: { ...schema.brand },
-        theme: { default: schema.theme.default, tokens: { ...(schema.theme.tokens ?? {}) } },
+        theme: {
+            default: schema.theme.default,
+            tokens: { ...(schema.theme.tokens ?? {}) },
+            dark: { ...(schema.theme.dark ?? {}) },
+            light: { ...(schema.theme.light ?? {}) },
+            layout: resolveLayout(schema.theme.layout),
+        },
         locale: { default: schema.locale.default, available: [...schema.locale.available] },
         tier: schema.tier,
         modules,
         legal: { ...schema.legal },
         ...(schema.seed ? { seed: schema.seed } : {}),
         ...(schema.seedAgeDays ? { seedAgeDays: schema.seedAgeDays } : {}),
+    };
+}
+
+// Menuenamen landen als Text im Frontend (React escaped), trotzdem kurz und
+// nur fuer bekannte Menuepunkte/Sprachen — Tippfehler sollen auffallen.
+const LABEL_MAX = 24;
+function labelErrors(labels: Record<string, unknown> | undefined): string[] {
+    const errors: string[] = [];
+    for (const [key, value] of Object.entries(labels ?? {})) {
+        if (!(NAV_KEYS as readonly string[]).includes(key)) {
+            errors.push(`theme.layout.labels: unbekannter Menuepunkt "${key}" (erlaubt: ${NAV_KEYS.join(', ')})`);
+            continue;
+        }
+        const texts = typeof value === 'string' ? { '*': value } : value;
+        if (!texts || typeof texts !== 'object' || Array.isArray(texts)) {
+            errors.push(`theme.layout.labels.${key}: Text oder Objekt pro Sprache erwartet`);
+            continue;
+        }
+        for (const [lang, text] of Object.entries(texts as Record<string, unknown>)) {
+            if (lang !== '*' && !(TENANT_LOCALES as readonly string[]).includes(lang)) {
+                errors.push(`theme.layout.labels.${key}: unbekannte Sprache "${lang}"`);
+            }
+            if (typeof text !== 'string' || text.trim().length === 0 || text.length > LABEL_MAX) {
+                errors.push(`theme.layout.labels.${key}: Text muss 1-${LABEL_MAX} Zeichen haben`);
+            }
+        }
+    }
+    return errors;
+}
+
+function resolveLayout(raw: TenantConfigSchema['theme']['layout']): TenantLayout {
+    return {
+        nav: raw?.nav ?? 'sidebar',
+        font: raw?.font ?? 'jakarta',
+        ...(raw?.radius ? { radius: raw.radius } : {}),
+        textScale: raw?.textScale ?? 1,
+        assist: raw?.assist ?? false,
+        labels: { ...((raw?.labels ?? {}) as TenantLayout['labels']) },
     };
 }
 

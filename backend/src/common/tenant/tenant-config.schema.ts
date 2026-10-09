@@ -2,11 +2,11 @@
 import 'reflect-metadata';
 import { Type } from 'class-transformer';
 import {
-    ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsObject, IsOptional,
+    ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional,
     IsString, Length, Matches, Max, Min, ValidateNested,
 } from 'class-validator';
-import { TENANT_LOCALES, TENANT_TIERS } from './tenant.types';
-import type { TenantLocale, TenantTier } from './tenant.types';
+import { LAYOUT_FONTS, LAYOUT_NAVS, LAYOUT_RADII, TENANT_LOCALES, TENANT_TIERS } from './tenant.types';
+import type { LayoutFont, LayoutNav, LayoutRadius, TenantLocale, TenantTier } from './tenant.types';
 
 // Rohform von tenants/<slug>/tenant.json. Wird mit whitelist +
 // forbidNonWhitelisted validiert: ein Tippfehler im Key (z.B. "modlues")
@@ -26,6 +26,27 @@ class BrandSchema {
     favicon?: string;
 }
 
+class LayoutSchema {
+    @IsOptional() @IsIn(LAYOUT_NAVS)
+    nav?: LayoutNav;
+
+    @IsOptional() @IsIn(LAYOUT_FONTS)
+    font?: LayoutFont;
+
+    @IsOptional() @IsIn(LAYOUT_RADII)
+    radius?: LayoutRadius;
+
+    @IsOptional() @IsNumber() @Min(1) @Max(1.5)
+    textScale?: number;
+
+    @IsOptional() @IsBoolean()
+    assist?: boolean;
+
+    // Inhalt im Loader geprueft (Keys aus NAV_KEYS, Texte kurz)
+    @IsOptional() @IsObject()
+    labels?: Record<string, unknown>;
+}
+
 class ThemeSchema {
     @IsIn(['dark', 'light'])
     default!: 'dark' | 'light';
@@ -34,6 +55,16 @@ class ThemeSchema {
     // Record-Eintraege nicht direkt validieren.
     @IsOptional() @IsObject()
     tokens?: Record<string, string>;
+
+    // Nur im dunklen bzw. hellen Modus, ueberschreiben tokens
+    @IsOptional() @IsObject()
+    dark?: Record<string, string>;
+
+    @IsOptional() @IsObject()
+    light?: Record<string, string>;
+
+    @IsOptional() @ValidateNested() @Type(() => LayoutSchema)
+    layout?: LayoutSchema;
 }
 
 class LocaleSchema {
@@ -49,6 +80,9 @@ class ModulesSchema {
     @IsOptional() @IsBoolean() matching?: boolean;
     @IsOptional() @IsBoolean() payments?: boolean;
     @IsOptional() @IsBoolean() hidden?: boolean;
+    @IsOptional() @IsBoolean() board?: boolean;
+    @IsOptional() @IsBoolean() caretaker?: boolean;
+    @IsOptional() @IsBoolean() orgs?: boolean;
 }
 
 class LegalSchema {
