@@ -22,7 +22,7 @@
   },
   "tier": "premium",
   "modules": {
-    "hidden": false
+    "hidden": true
   },
   "legal": {
     "name": "Campus Match GmbH (Demo)",
