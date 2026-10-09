@@ -1,6 +1,6 @@
 /**
- * Demo-Daten fuer das Modul shop: 1000 digitale Artikel ueber alle
- * Kategorien, Preise und Bewertungen verteilt, damit Filter und Sortierung
+ * Demo-Daten fuer das Modul shop: 1000 Artikel (Essen, Merch, Lizenzen,
+ * Freischalt-Codes) ueber Kategorien, Preise und Bewertungen verteilt, damit Filter und Sortierung
  * etwas zu tun haben. No-op, wenn der Mandant das Modul nicht an hat.
  * Ausfuehren: npx ts-node -r tsconfig-paths/register src/database/seeds/seed-shop.ts
  *
@@ -28,14 +28,17 @@ const ds = new DataSource({
 
 const PRODUCT_COUNT = 1000;
 
-// [Kategorie, Nomen, Preisspanne in Cent, MwSt] — E-Books 7 %, Rest 19 %
-const CATEGORIES: [string, string[], [number, number], number][] = [
-    ['ebook', ['Ratgeber', 'Roman', 'Kochbuch', 'Reiseführer', 'Sachbuch'], [299, 1999], 7],
-    ['course', ['Videokurs', 'Workshop', 'Masterclass', 'Crashkurs'], [1900, 14900], 19],
-    ['template', ['Vorlagen-Set', 'Planer', 'Präsentation', 'Lebenslauf-Vorlage'], [399, 2900], 19],
-    ['audio', ['Hörbuch', 'Soundpack', 'Meditation', 'Podcast-Staffel'], [199, 2499], 19],
-    ['software', ['App-Lizenz', 'Plugin', 'Tool', 'Add-on'], [499, 9900], 19],
-    ['graphics', ['Icon-Set', 'Font', 'Fotopaket', 'Illustrationen'], [299, 4900], 19],
+// [Kategorie, Art, Nomen, Preisspanne in Cent, MwSt, Freischalt-Ziele]
+// Essen 7 %, Rest 19 %. unlock: Ziel in der App oder null = externer Code.
+// license-Artikel bekommen ihre Keys erst ueber den Admin-Import — bis dahin
+// sind sie "ausverkauft", wie im echten Betrieb.
+const CATEGORIES: [string, string, string[], [number, number], number, (string | null)[]][] = [
+    ['pizza', 'food', ['Pizza', 'Calzone', 'Focaccia'], [690, 1490], 7, []],
+    ['bowls', 'food', ['Bowl', 'Salat', 'Wrap', 'Suppe'], [590, 1290], 7, []],
+    ['merch', 'physical', ['T-Shirt', 'Hoodie', 'Tasse', 'Sticker-Set', 'Jutebeutel', 'Cap'], [299, 4990], 19, []],
+    ['software', 'license', ['App-Lizenz', 'Plugin', 'Tool', 'Add-on'], [499, 9900], 19, []],
+    ['in-app', 'unlock', ['Premium-Pass', 'Coin-Paket'], [199, 2999], 19, ['premium:30', 'premium:365', 'coins:500', 'coins:2000']],
+    ['gutscheine', 'unlock', ['Gutschein', 'Kinoticket', 'Kurs-Zugang'], [500, 5000], 19, [null]],
 ];
 const TOPICS = [
     'Kiez', 'Garten', 'Fotografie', 'Finanzen', 'Fitness', 'Yoga', 'Programmieren', 'Design', 'Musik',
@@ -59,17 +62,21 @@ async function seedProducts(): Promise<void> {
     const pick = <T>(xs: T[]): T => xs[Math.floor(rand() * xs.length)];
     const rows: unknown[][] = [];
     for (let i = 1; i <= PRODUCT_COUNT; i++) {
-        const [category, nouns, [min, max], vat] = CATEGORIES[i % CATEGORIES.length];
+        const [category, fulfillment, nouns, [min, max], vat, targets] = CATEGORIES[i % CATEGORIES.length];
         const topic = pick(TOPICS);
         // Preise enden auf 9, schief verteilt (mehr guenstige als teure)
         const price = Math.round((min + (max - min) * rand() ** 2) / 10) * 10 - 1;
         rows.push([
             `DEMO-${String(i).padStart(4, '0')}`,
             `${pick(ADJECTIVES)}: ${pick(nouns)} ${topic}`,
-            `${pick(nouns)} rund um ${topic}. Sofort nach dem Kauf verfügbar.`,
+            `${pick(nouns)} rund um ${topic}.`,
             category,
+            fulfillment,
+            fulfillment === 'unlock' ? pick(targets) : null,
             Math.max(price, min),
             vat,
+            // Merch hat Lagerbestand, der Rest ist unbegrenzt
+            fulfillment === 'physical' ? Math.floor(rand() * 50) : null,
             Math.floor(rand() * 365),
         ]);
     }
@@ -77,11 +84,12 @@ async function seedProducts(): Promise<void> {
     for (let i = 0; i < rows.length; i += 200) {
         const chunk = rows.slice(i, i + 200);
         const values = chunk.map((_, j) => {
-            const b = j * 7;
-            return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, now() - make_interval(days => $${b + 7}))`;
+            const b = j * 10;
+            const p = (n: number) => `$${b + n}`;
+            return `(${p(1)}, ${p(2)}, ${p(3)}, ${p(4)}, ${p(5)}, ${p(6)}, ${p(7)}, ${p(8)}, ${p(9)}, now() - make_interval(days => ${p(10)}))`;
         });
         await ds.query(
-            `INSERT INTO shop_products (sku, title, description, category, price_cents, vat_rate, created_at)
+            `INSERT INTO shop_products (sku, title, description, category, fulfillment, unlock_target, price_cents, vat_rate, stock, created_at)
              VALUES ${values.join(', ')}
              ON CONFLICT (sku) DO NOTHING`,
             chunk.flat(),

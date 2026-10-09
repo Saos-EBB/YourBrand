@@ -82,9 +82,16 @@ Regeln: `matching` und `board` erfordern `chat`, `orgs` erfordert `caretaker`, `
 - **`orgs` — Organisation** (`/org`): ein Träger mit Team (`organizations`, `org_members`);
   Betreuungen tragen die `org_id`, die Organisation sieht alle auf einen Blick. Anlegen dürfen
   Plattform-Admin/Owner.
-- **`shop` — Shop** (`/shop`, im Aufbau): der Mandant verkauft digitale Artikel (bis ~1000) mit
-  Filtern nach Preis, Bewertung, Kategorie. Bezahlung über Stripe Checkout, danach geht automatisch
-  eine Rechnung (§ 14 UStG, regelbesteuert) als PDF per Mail raus. Bewerten dürfen nur Käufer.
+- **`shop` — Shop** (`/shop`, im Aufbau): der Mandant verkauft Essen (abholen/liefern), Merch
+  (Versand), Lizenz-Keys und Freischalt-Codes (in der App oder extern), bis ~1000 Artikel mit
+  Filtern nach Preis, Bewertung, Kategorie, Art. Die Bestellung ist ein Angebot; Stripe reserviert
+  nur. Unauffällige Bestellungen nimmt das System an, auffällige (Doppelbuchung, zu viele
+  Bestellungen, hoher Betrag, Radar-Risiko …) hält es an — annehmen, ablehnen, erstatten und
+  sperren entscheidet ein Mensch mit Begründung (Protokoll `shop_order_events`, nur anhängen).
+  Erst mit der Annahme wird abgebucht, ausgeliefert und die Rechnung (§ 14 UStG) per Mail
+  verschickt; Erstattungen bekommen eine Stornorechnung. Käufer und Team können sich gegenseitig
+  melden und den Support erreichen (`shop_cases`), Fälle haben eine Frist und melden sich erneut.
+  Schema: `backend/migrations/007_shop.sql`, Demo-Daten: `seed-shop.ts`.
 
 Schema: `backend/migrations/006_board_and_care.sql` (Mandanten-DBs bekommen es automatisch über
 `tenant-init`, die Haupt-DB nur bei neuem Volume). Demo-Daten: `seed-board-care.ts`.
