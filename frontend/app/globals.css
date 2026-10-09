@@ -184,3 +184,20 @@ html, body {
   border-color: var(--color-error) !important;
   color: var(--color-error) !important;
 }
+
+/* ── Diagramm-Farben (Owner-Analytics) ─────────────────────────────────────
+   Kategorische Reihen, Reihenfolge fest (farbfehlsichtig geprueft gegen
+   surface-container, dark + light). Einzelreihen nutzen die Mandanten-
+   Primaerfarbe, nicht diese Palette. */
+:root {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+}
+html.light {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+}

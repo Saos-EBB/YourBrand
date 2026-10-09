@@ -7,6 +7,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { OwnerGuard } from '../../../common/guards/owner.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { AdminService } from './admin.service';
+import { parseAnalyticsRange } from './dashboard-analytics.query';
 import { SetVulnerableFlagDto } from './dto/set-vulnerable-flag.dto';
 import { BanUserDto } from './dto/ban-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
@@ -232,6 +233,12 @@ export class AdminController {
     @UseGuards(OwnerGuard)
     getDashboardStats() {
         return this.adminService.getDashboardStats();
+    }
+
+    @Get('dashboard/analytics')
+    @UseGuards(OwnerGuard)
+    getDashboardAnalytics(@Query('days') days?: string) {
+        return this.adminService.getDashboardAnalytics(parseAnalyticsRange(days));
     }
 
     // ── Admin management (owner only) ─────────────────────────────────────────

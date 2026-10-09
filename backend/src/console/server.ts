@@ -8,6 +8,9 @@ import sharp from 'sharp';
 import { parseTenantConfig } from '../common/tenant/tenant-config.loader';
 import { TENANT_LOCALES, TENANT_MODULES, TENANT_TIERS, TIER_MODULES } from '../common/tenant/tenant.types';
 import { tenantInfra } from '../common/tenant/tenant-infra.helper';
+import {
+    collectDashboardAnalytics, parseAnalyticsRange, type AnalyticsRange, type RowsFn,
+} from '../modules/core/admin/dashboard-analytics.query';
 import { collectDashboardStats } from '../modules/core/admin/dashboard-stats.query';
 
 // Mandanten-Console: lokales Dashboard ueber allen Mandanten (backend/docs/architecture.md).
@@ -84,7 +87,7 @@ async function listTenants() {
 
 // Zugangsdaten wie der Haupt-Stack (Root-.env), Postgres auf dem Host-Port aus
 // docker-compose.yml. DB_NAME gilt nur fuer default (tenantInfra).
-async function tenantStats(slug: string) {
+async function withTenantDb<T>(slug: string, fn: (rows: RowsFn) => Promise<T>): Promise<T> {
     const env = path.join(REPO, '.env');
     process.env.DB_NAME = envValue(env, 'DB_NAME');
     const client = new Client({
@@ -97,11 +100,28 @@ async function tenantStats(slug: string) {
     });
     try {
         await client.connect();
-        return { stats: await collectDashboardStats(async (sql) => (await client.query(sql)).rows) };
-    } catch (err) {
-        return { stats: null, error: (err as Error).message };
+        return await fn(async (sql, params) => (await client.query(sql, params as unknown[])).rows);
     } finally {
         await client.end().catch(() => undefined);
+    }
+}
+
+async function tenantStats(slug: string) {
+    try {
+        return { stats: await withTenantDb(slug, (rows) => collectDashboardStats((sql) => rows(sql) as Promise<{ value: string }[]>)) };
+    } catch (err) {
+        return { stats: null, error: (err as Error).message };
+    }
+}
+
+// Coins nur mit Hidden Zone (wie im AdminService), Module aus tenant.json
+async function tenantAnalytics(slug: string, days: AnalyticsRange) {
+    const config = parseTenantConfig(JSON.parse(fs.readFileSync(configFile(slug), 'utf8')), slug);
+    try {
+        const analytics = await withTenantDb(slug, (rows) => collectDashboardAnalytics(rows, days, { coins: config.modules.hidden }));
+        return { slug, name: config.brand.name, modules: config.modules, analytics };
+    } catch (err) {
+        return { slug, name: config.brand.name, modules: config.modules, analytics: null, error: (err as Error).message };
     }
 }
 
@@ -338,6 +358,21 @@ const server = http.createServer((req, res) => {
                 return;
             }
             sendJson(res, 200, await saveConfig(slug, raw as Record<string, unknown>));
+            return;
+        }
+        if (req.method === 'GET' && url.pathname === '/api/analytics') {
+            const days = parseAnalyticsRange(url.searchParams.get('days'));
+            // Nacheinander: 5 Mandanten a ~30 ms, kein Grund fuer 5 parallele Verbindungen
+            const out: Awaited<ReturnType<typeof tenantAnalytics>>[] = [];
+            for (const slug of tenantSlugs()) {
+                try { out.push(await tenantAnalytics(slug, days)); } catch { /* ungueltige tenant.json: steht schon in der Uebersicht */ }
+            }
+            sendJson(res, 200, out);
+            return;
+        }
+        const an = url.pathname.match(/^\/api\/tenants\/([^/]+)\/analytics$/);
+        if (req.method === 'GET' && an && tenantSlugs().includes(an[1])) {
+            sendJson(res, 200, await tenantAnalytics(an[1], parseAnalyticsRange(url.searchParams.get('days'))));
             return;
         }
         if (req.method === 'GET' && url.pathname === '/api/snapshots') {

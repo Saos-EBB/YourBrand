@@ -851,4 +851,63 @@ export interface Translations {
       text: string
     }
   }
+  analytics: {
+    title: string
+    range: string
+    liveSince: string
+    vsPrevious: string
+    isNew: string
+    kpiSignups: string
+    kpiActivity: string
+    kpiRevenue: string
+    kpiSubscriptions: string
+    growthTitle: string
+    growthSub: string
+    signupsTitle: string
+    perDay: string
+    perHour: string
+    activityTitle: string
+    activitySub: string
+    messages: string
+    contactRequests: string
+    coins: string
+    uploads: string
+    revenueTitle: string
+    revenueSub: string
+    funnelTitle: string
+    funnelSub: string
+    stageRegistered: string
+    stageVerified: string
+    stagePhoto: string
+    stageContacted: string
+    stageConversation: string
+    stagePremium: string
+    ofPrevious: string
+    ofTotal: string
+    heatmapTitle: string
+    heatmapSub: string
+    weekdays: string[]
+    less: string
+    more: string
+    plansTitle: string
+    plansSub: string
+    planMonthly: string
+    planYearly: string
+    planLifetime: string
+    interestsTitle: string
+    citiesTitle: string
+    membersUnit: string
+    showTable: string
+    showChart: string
+    total: string
+    time: string
+    count: string
+    share: string
+    stage: string
+    noData: string
+    totalUsers: string
+    activeUsers: string
+    bannedUsers: string
+    onlineNow: string
+  }
 }

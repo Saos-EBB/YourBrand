@@ -8,11 +8,13 @@
   :root {
     --bg: #f6f7f9; --card: #fff; --text: #1a1d23; --muted: #646b78; --line: #e2e5ea; --grid: #eef0f3;
     --ok: #1f9d55; --off: #9aa1ad; --bad: #c62828; --bad-bg: #fdecea; --series: #2a78d6;
+    --viz-1: #2a78d6; --viz-2: #eb6834; --viz-3: #1baf7a; --viz-4: #eda100; --viz-5: #e87ba4;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #12151b; --card: #1b1f27; --text: #e6e8ec; --muted: #9aa1ad; --line: #2b313c; --grid: #252a33;
       --ok: #4ade80; --off: #6b7280; --bad: #f87171; --bad-bg: #3b1d1d; --series: #3987e5;
+      --viz-1: #3987e5; --viz-2: #d95926; --viz-3: #199e70; --viz-4: #c98500; --viz-5: #d55181;
     }
   }
   * { box-sizing: border-box; }
@@ -96,6 +98,64 @@
   .drop { flex: 1; min-width: 200px; border: 2px dashed var(--line); border-radius: 8px; padding: 12px; text-align: center; color: var(--muted); cursor: pointer; }
   .drop.over { border-color: var(--series); color: var(--text); }
   .tooltip { position: absolute; pointer-events: none; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; white-space: nowrap; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  /* ── Analytics ── */
+  .an { display: grid; gap: 12px; transition: opacity .2s; }
+  .an.loading { opacity: .5; }
+  .an-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 24px 0 4px; }
+  .an-bar h2 { margin: 0; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--card); }
+  .seg button { border: 0; padding: 4px 10px; font-size: 12px; color: var(--muted); background: none; border-radius: 6px; }
+  .seg button[aria-checked="true"] { background: var(--bg); color: var(--text); font-weight: 600; }
+  .an-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; }
+  .kpi .label { font-size: 12px; color: var(--muted); }
+  .kpi .row2 { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+  .kpi .value { font-size: 28px; font-weight: 600; line-height: 1; }
+  .kpi .delta { font-size: 12px; color: var(--muted); }
+  .kpi .delta b { color: var(--text); }
+  .kpi .up { color: var(--ok); } .kpi .down { color: var(--bad); }
+  .an-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 12px; }
+  .an-grid .wide { grid-column: 1 / -1; }
+  .viz { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; position: relative; }
+  .viz header { padding: 0; display: flex; align-items: flex-start; gap: 12px; }
+  .viz h3 { margin: 0; font-size: 14px; }
+  .viz .sub { font-size: 12px; color: var(--muted); }
+  .viz .big { margin-left: auto; font-size: 20px; font-weight: 600; }
+  .viz .tbl { border: 0; background: none; padding: 0; font-size: 12px; color: var(--muted); text-decoration: underline; }
+  .viz .plot { position: relative; }
+  .viz svg { display: block; }
+  .viz svg text { fill: var(--muted); font-size: 10px; }
+  .viz svg text.strong { fill: var(--text); font-size: 12px; font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); list-style: none; margin: 0; padding: 0; }
+  .legend li { display: flex; align-items: center; gap: 6px; }
+  .legend b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .tip { position: absolute; pointer-events: none; z-index: 2; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.15); min-width: 140px; display: none; }
+  .tip .t { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+  .tip div.r { display: flex; align-items: center; gap: 6px; }
+  .tip div.r b { font-variant-numeric: tabular-nums; }
+  .tip .ln { width: 12px; height: 2px; border-radius: 2px; }
+  .funnel { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .funnel .fl { display: flex; gap: 8px; font-size: 12px; align-items: baseline; }
+  .funnel .fl span:first-child { flex: 1; color: var(--muted); }
+  .funnel .fl small { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .track { height: 18px; border-radius: 5px; background: var(--grid); overflow: hidden; }
+  .track > div { height: 100%; border-radius: 0 5px 5px 0; }
+  .bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .bars li { display: grid; grid-template-columns: minmax(0, 8rem) 1fr 4.5rem; gap: 10px; align-items: center; font-size: 12px; }
+  .bars li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .bars li b { text-align: right; font-variant-numeric: tabular-nums; }
+  .bars .track { height: 8px; border-radius: 4px; }
+  .bars .track > div { border-radius: 4px; }
+  .split { display: flex; gap: 2px; height: 12px; }
+  .split div:first-child { border-radius: 6px 0 0 6px; } .split div:last-child { border-radius: 0 6px 6px 0; }
+  table.data { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.data th { text-align: right; color: var(--muted); font-weight: 500; padding: 6px 8px; position: sticky; top: 0; background: var(--card); }
+  table.data td { text-align: right; padding: 4px 8px; border-top: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  table.data th:first-child, table.data td:first-child { text-align: left; }
+  .tblwrap { max-height: 300px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .heatlegend { display: flex; gap: 6px; align-items: center; justify-content: flex-end; font-size: 11px; color: var(--muted); }
+  .heatlegend span.c { width: 16px; height: 10px; border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -190,7 +250,7 @@ function renderOverview() {
   const totals = !batch.length ? '' : `
     <h2>Alle Mandanten · ${batch.length} von ${tenants.length} mit Stats</h2>
     <div class="tiles">${TOTALS.map((k) => tile(k, batch.reduce((sum, s) => sum + s.stats[k], 0))).join('')}</div>`;
-  return `${totals}<h2>Mandanten</h2><div class="grid">${tenants.map(card).join('')}</div>`;
+  return `${totals}<div id="an-root" class="an" data-key="*"></div><h2>Mandanten</h2><div class="grid">${tenants.map(card).join('')}</div>`;
 }
 
 function renderDetail(slug) {
@@ -200,13 +260,14 @@ function renderDetail(slug) {
   const last = latest(slug);
   const head = `<p class="actions"><a href="#/">← Übersicht</a><span class="spacer"></span><a href="#/t/${encodeURIComponent(slug)}/edit"><button>Bearbeiten</button></a></p>
     ${card(t).replace('<a class="card"', '<div class="card"').replace(/<\/a>\s*$/, '</div>')}`;
-  if (!last) return `${head}<p class="muted">Noch keine Stats — oben „Aktualisieren“.</p>`;
-  if (!last.stats) return `${head}<div class="error">Letzter Stand (${fmtTime(last.at)}): ${esc(last.error)}</div>`;
+  const an = `<div id="an-root" class="an" data-key="${esc(slug)}"></div>`;
+  if (!last) return `${head}${an}<p class="muted">Noch keine Snapshots — oben „Aktualisieren“.</p>`;
+  if (!last.stats) return `${head}${an}<div class="error">Letzter Stand (${fmtTime(last.at)}): ${esc(last.error)}</div>`;
   const prev = rows.at(-2)?.stats;
   const groups = GROUPS.map(([title, g]) => `<h2>${title}</h2><div class="tiles">${
     Object.keys(g).map((k) => tile(k, last.stats[k], prev?.[k], k === selected)).join('')
   }</div>`).join('');
-  return `${head}${groups}<h2>Verlauf: ${esc(LABELS[selected])}</h2>
+  return `${head}${an}<h2>Snapshots</h2>${groups}<h2>Verlauf: ${esc(LABELS[selected])}</h2>
     <div class="chart" id="chart"><svg></svg><div class="tooltip"></div></div>`;
 }
 
@@ -247,6 +308,396 @@ function drawChart(slug) {
   };
   svg.onmouseleave = () => { tip.style.display = 'none'; cross.setAttribute('visibility', 'hidden'); };
 }
+
+
+// ── Analytics ───────────────────────────────────────────────────────────
+// Gleiche Daten wie das Owner-Dashboard der App (dashboard-analytics.query.ts).
+// Regeln wie dort: duenne Marks, Hairline-Raster, Text nie in Datenfarbe,
+// jede Karte auch als Tabelle. Farbe folgt dem Mandanten (feste Reihenfolge).
+let range = 30;
+const anCache = {};           // `${key}:${days}` -> Antwort
+const anTables = new Set();   // Karten, die gerade als Tabelle stehen
+const plots = {};             // data-plot-ID -> Zeichenfunktion(el)
+const VIZ = [1, 2, 3, 4, 5].map((i) => `var(--viz-${i})`);
+const ACC = 'var(--series)';
+const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+const STAGES = { registered: 'Registriert', verified: 'E-Mail bestätigt', photo: 'Profilfoto', contacted: 'Kontakt aufgenommen', conversation: 'Im Gespräch', premium: 'Premium' };
+const PLANS = { monthly: 'Monatlich', yearly: 'Jährlich', lifetime: 'Lifetime' };
+
+const nf = (v) => v >= 10000
+  ? new Intl.NumberFormat('de-DE', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
+  : Math.round(v).toLocaleString('de-DE');
+const ef = (v, compact) => new Intl.NumberFormat('de-DE', {
+  style: 'currency', currency: 'EUR',
+  ...(compact ? { notation: 'compact', maximumFractionDigits: 1 } : { maximumFractionDigits: v >= 1000 ? 0 : 2 }),
+}).format(v);
+const sum = (a) => a.reduce((s, v) => s + v, 0);
+
+// Bucket "YYYY-MM-DDTHH:00" (Berliner Wandzeit, ohne Zone)
+function bp(b) {
+  const [date, time] = b.split('T');
+  const [y, m, d] = date.split('-').map(Number);
+  return { date, time, y, m, d, wd: (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7 };
+}
+function axisLabels(a) {
+  const hourly = a.range.bucket === 'hour';
+  const p = a.buckets.map(bp);
+  return {
+    hourly,
+    x: p.map((b) => (hourly ? `${WD[b.wd]} ${b.time}` : `${b.d}.${b.m}.`)),
+    tips: p.map((b) => `${WD[b.wd]}, ${b.d}.${b.m}.${b.y}${hourly ? ` · ${b.time}` : ''}`),
+  };
+}
+function niceTicks(max) {
+  if (max <= 0) return [0, 1];
+  const raw = max / 3, mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw);
+  const t = [0];
+  while (t.at(-1) < max) t.push(+(t.at(-1) + step).toFixed(6));
+  return t;
+}
+function activitySeries(a, modules) {
+  return [
+    ...(modules.chat ? [
+      { label: 'Nachrichten', color: VIZ[0], values: a.series.messages },
+      { label: 'Kontaktanfragen', color: VIZ[1], values: a.series.contactRequests },
+    ] : []),
+    { label: 'Uploads', color: VIZ[2], values: a.series.uploads },
+    ...(modules.hidden ? [{ label: 'Coin-Buchungen', color: VIZ[3], values: a.series.coins }] : []),
+  ];
+}
+
+// ── Bausteine (HTML) ──
+function vizCard({ id, title, sub = '', big = '', wide = false, body, table }) {
+  const asTable = anTables.has(id) && table;
+  return `<section class="viz${wide ? ' wide' : ''}">
+    <header><div><h3>${esc(title)}</h3>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</div>
+      ${big ? `<span class="big">${esc(big)}</span>` : '<span class="spacer"></span>'}
+      ${table ? `<button class="tbl" data-table="${id}">${asTable ? 'Diagramm' : 'Tabelle'}</button>` : ''}</header>
+    ${asTable ? dataTable(table) : body}
+  </section>`;
+}
+function dataTable({ head, rows }) {
+  return `<div class="tblwrap"><table class="data"><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const legend = (items) => `<ul class="legend">${items.map((i) =>
+  `<li><span class="sw" style="background:${i.color}"></span>${esc(i.label)}${i.value !== undefined ? ` <b>${esc(i.value)}</b>` : ''}</li>`).join('')}</ul>`;
+function plot(id, draw, height) {
+  plots[id] = draw;
+  return `<div class="plot" data-plot="${id}" style="height:${height}px"></div>`;
+}
+function kpi(label, value, cur, prev, spark) {
+  const delta = prev > 0 ? (cur - prev) / prev : null;
+  const d = delta === null
+    ? (cur > 0 ? '<b>neu</b> vs. Vorperiode' : '&nbsp;')
+    : `<span class="${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '▲' : '▼'}</span> <b>${delta >= 0 ? '+' : '−'}${Math.abs(Math.round(delta * 100))} %</b> vs. Vorperiode`;
+  return `<div class="kpi"><div class="label">${esc(label)}</div>
+    <div class="row2"><div class="value">${esc(value)}</div>${spark ? sparkline(spark) : ''}</div>
+    <div class="delta">${d}</div></div>`;
+}
+function sparkline(vals) {
+  const size = Math.max(1, Math.ceil(vals.length / 14));
+  const v = [];
+  for (let i = 0; i < vals.length; i += size) v.push(sum(vals.slice(i, i + size)));
+  if (v.length < 2) return '';
+  const W = 76, H = 28, P = 3, max = Math.max(...v, 1);
+  const pts = v.map((y, i) => [P + (i / (v.length - 1)) * (W - 2 * P), H - P - (y / max) * (H - 2 * P)]);
+  const d = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join('');
+  const [lx, ly] = pts.at(-1);
+  return `<svg width="${W}" height="${H}" aria-hidden="true"><path d="${d}L${lx},${H - P}L${P},${H - P}Z" fill="${ACC}" opacity=".1"/>
+    <path d="${d}" fill="none" stroke="${ACC}" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="${lx}" cy="${ly}" r="3" fill="${ACC}" stroke="var(--card)" stroke-width="2"/></svg>`;
+}
+function funnelHtml(stages) {
+  const first = Math.max(stages[0]?.count ?? 0, 1);
+  return `<ol class="funnel">${stages.map((s, i) => {
+    const prev = i ? stages[i - 1].count : s.count;
+    const pct = i === 0 ? '100 % aller Mitglieder' : `${prev ? Math.round((s.count / prev) * 100) : 0} % der vorigen Stufe`;
+    const strength = 45 + (55 * i) / Math.max(stages.length - 1, 1);
+    return `<li><div class="fl"><span>${esc(STAGES[s.key])}</span><b>${nf(s.count)}</b><small>${pct}</small></div>
+      <div class="track"><div style="width:${Math.max((s.count / first) * 100, s.count ? 1.5 : 0)}%;background:color-mix(in oklab, ${ACC} ${strength}%, var(--grid))"></div></div></li>`;
+  }).join('')}</ol>`;
+}
+function barsHtml(items, fmtV) {
+  const max = Math.max(...items.map((i) => i.count), 1);
+  return `<ol class="bars">${items.map((i) => `<li><span>${i.color ? `<span class="sw" style="background:${i.color}"></span>` : ''}${esc(i.name)}</span>
+    <div class="track"><div style="width:${(i.count / max) * 100}%;background:${i.color ?? ACC}"></div></div><b>${esc(fmtV(i.count))}</b></li>`).join('')}</ol>`;
+}
+function splitHtml(parts) {
+  const total = sum(parts.map((p) => p.count));
+  return `<div class="split" role="img" aria-label="${esc(parts.map((p) => `${p.label} ${p.count}`).join(', '))}">${parts.filter((p) => p.count)
+    .map((p) => `<div style="width:${(p.count / total) * 100}%;background:${p.color}"></div>`).join('')}</div>
+    ${legend(parts.map((p) => ({ label: p.label, color: p.color, value: `${nf(p.count)} · ${total ? Math.round((p.count / total) * 100) : 0} %` })))}`;
+}
+
+// ── Diagramme (SVG, Breite erst nach dem Einfuegen bekannt) ──
+const M = { t: 12, r: 12, b: 24, l: 44 };
+function frame(el, height) {
+  const W = el.clientWidth, H = height;
+  return { W, H, pw: Math.max(W - M.l - M.r, 1), ph: H - M.t - M.b };
+}
+function axes(W, H, ticks, y, xl, xPos, fmtV, plotW) {
+  const count = Math.max(2, Math.min(xl.length, Math.floor(plotW / 80)));
+  const idx = xl.length <= count ? xl.map((_, i) => i) : Array.from({ length: count }, (_, i) => Math.round((i * (xl.length - 1)) / (count - 1)));
+  return ticks.map((t) => `<line x1="${M.l}" x2="${W - M.r}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/>
+      <text x="${M.l - 6}" y="${y(t)}" dy=".32em" text-anchor="end">${esc(fmtV(t))}</text>`).join('')
+    + idx.map((i, k) => `<text x="${xPos(i)}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === idx.length - 1 ? 'end' : 'middle'}">${esc(xl[i])}</text>`).join('');
+}
+function showTip(el, x, y, title, rows) {
+  let tip = el.querySelector('.tip');
+  if (!tip) { tip = document.createElement('div'); tip.className = 'tip'; el.appendChild(tip); }
+  tip.replaceChildren();
+  const t = document.createElement('div'); t.className = 't'; t.textContent = title; tip.appendChild(t);
+  for (const r of rows) {
+    const row = document.createElement('div'); row.className = 'r';
+    if (r.color) { const k = document.createElement('span'); k.className = r.line ? 'ln' : 'sw'; k.style.background = r.color; row.appendChild(k); }
+    const b = document.createElement('b'); b.textContent = r.value; row.appendChild(b);
+    const l = document.createElement('span'); l.className = 'muted'; l.textContent = r.label; row.appendChild(l);
+    tip.appendChild(row);
+  }
+  tip.style.display = 'block';
+  tip.style.left = `${Math.min(Math.max(x + 12, 0), Math.max(el.clientWidth - tip.offsetWidth, 0))}px`;
+  tip.style.top = `${Math.max(y - 12, 0)}px`;
+}
+const hideTip = (el) => { const t = el.querySelector('.tip'); if (t) t.style.display = 'none'; };
+
+// Linien (eine oder mehrere Reihen, null = noch nicht gestartet); bei einer Reihe mit Flaeche
+function drawLines(el, { series, x: xl, tips, fmtV, height }) {
+  const { W, H, pw, ph } = frame(el, height);
+  const n = xl.length;
+  const ticks = niceTicks(Math.max(...series.flatMap((s) => s.values.filter((v) => v !== null)), 0));
+  const top = ticks.at(-1);
+  const x = (i) => M.l + (n > 1 ? (i / (n - 1)) * pw : pw / 2);
+  const y = (v) => M.t + ph - (v / top) * ph;
+  const paths = series.map((s) => {
+    const pts = s.values.map((v, i) => (v === null ? null : [x(i), y(v)])).filter(Boolean);
+    if (!pts.length) return '';
+    const d = pts.map(([px, py], i) => `${i ? 'L' : 'M'}${px.toFixed(1)},${py.toFixed(1)}`).join('');
+    const area = series.length === 1 ? `<path d="${d}L${pts.at(-1)[0]},${y(0)}L${pts[0][0]},${y(0)}Z" fill="${s.color}" opacity=".1"/>` : '';
+    const [ex, ey] = pts.at(-1);
+    return `${area}<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${ex}" cy="${ey}" r="4.5" fill="${s.color}" stroke="var(--card)" stroke-width="2"/>`;
+  }).join('');
+  const last = series.length === 1 ? `<text class="strong" x="${x(n - 1) - 8}" y="${y(series[0].values.at(-1)) - 10}" text-anchor="end">${esc(fmtV(series[0].values.at(-1)))}</text>` : '';
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="${esc(series.map((s) => s.label).join(', '))}">
+    ${axes(W, H, ticks, y, xl, x, fmtV, pw)}${paths}${last}
+    <line class="cross" y1="${M.t}" y2="${M.t + ph}" stroke="var(--muted)" opacity=".5" visibility="hidden"/>
+    <rect x="${M.l}" y="${M.t}" width="${pw}" height="${ph}" fill="transparent"/></svg>`;
+  const svg = el.querySelector('svg'), cross = svg.querySelector('.cross');
+  svg.querySelector('rect').onpointermove = (e) => {
+    const i = Math.min(Math.max(Math.round(((e.clientX - svg.getBoundingClientRect().left - M.l) / pw) * (n - 1)), 0), n - 1);
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+    const rows = series.filter((s) => s.values[i] !== null).map((s) => ({ label: s.label, value: fmtV(s.values[i]), color: s.color, line: true }));
+    showTip(el, x(i), M.t, tips[i], rows);
+  };
+  svg.querySelector('rect').onpointerleave = () => { cross.setAttribute('visibility', 'hidden'); hideTip(el); };
+}
+
+// Saeulen, gestapelt bei mehreren Reihen: oben 4px rund, 2px Abstand zwischen Segmenten
+function drawColumns(el, { series, x: xl, tips, fmtV, height }) {
+  const { W, H, pw, ph } = frame(el, height);
+  const n = xl.length;
+  const totals = xl.map((_, i) => sum(series.map((s) => s.values[i])));
+  const ticks = niceTicks(Math.max(...totals, 0));
+  const top = ticks.at(-1);
+  const slot = pw / Math.max(n, 1), bw = Math.max(Math.min(slot - 2, 24), 1), gap = bw >= 6 ? 2 : 0;
+  const x = (i) => M.l + slot * i + slot / 2;
+  const y = (v) => M.t + ph - (v / top) * ph;
+  const cols = xl.map((_, i) => {
+    let base = 0;
+    const vis = series.filter((s) => s.values[i] > 0);
+    return `<g data-i="${i}">${vis.map((s, k) => {
+      const v = s.values[i], y0 = y(base) - (k ? gap : 0), h = Math.max(y(base) - y(base + v) - (k ? gap : 0), 0.5);
+      base += v;
+      const r = k === vis.length - 1 ? Math.min(4, bw / 2, h) : 0, bx = x(i) - bw / 2, by = y0 - h;
+      return `<path d="M${bx},${by + h}V${by + r}Q${bx},${by} ${bx + r},${by}H${bx + bw - r}Q${bx + bw},${by} ${bx + bw},${by + r}V${by + h}Z" fill="${s.color}"/>`;
+    }).join('')}</g>`;
+  }).join('');
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="${esc(series.map((s) => s.label).join(', '))}">
+    ${axes(W, H, ticks, y, xl, x, fmtV, pw)}${cols}
+    ${xl.map((_, i) => `<rect data-i="${i}" x="${M.l + slot * i}" y="${M.t}" width="${slot}" height="${ph}" fill="transparent"/>`).join('')}</svg>`;
+  const svg = el.querySelector('svg');
+  svg.onpointerover = (e) => {
+    const i = e.target.dataset?.i;
+    if (i === undefined || e.target.tagName !== 'rect') return;
+    svg.querySelectorAll('g[data-i]').forEach((g) => g.setAttribute('opacity', g.dataset.i === i ? 1 : 0.55));
+    const rows = series.map((s) => ({ label: s.label, value: fmtV(s.values[i]), color: s.color }));
+    if (series.length > 1) rows.push({ label: 'Gesamt', value: fmtV(totals[i]) });
+    showTip(el, x(+i), y(totals[i]), tips[i], rows);
+  };
+  svg.onpointerleave = () => { svg.querySelectorAll('g[data-i]').forEach((g) => g.removeAttribute('opacity')); hideTip(el); };
+}
+
+// Wochentag × Stunde, Skala bis zum 95. Perzentil (ein Ausreisser faerbt sonst alles blass)
+function heatShade(min, max) {
+  return (v) => v === 0 ? 'var(--grid)'
+    : `color-mix(in oklab, ${ACC} ${Math.round(12 + 88 * (max > min ? Math.min((v - min) / (max - min), 1) : 1))}%, var(--grid))`;
+}
+function heatRange(grid) {
+  const nz = grid.flat().filter((v) => v > 0).sort((a, b) => a - b);
+  const max = Math.max(nz[Math.floor((nz.length - 1) * 0.95)] ?? 1, 1);
+  return [Math.min(nz[0] ?? max, max), max];
+}
+function drawHeat(el, { grid }) {
+  const W = el.clientWidth, LW = 26, cell = Math.max(Math.min((W - LW) / 24, 24), 6), H = cell * 7 + 18;
+  const [min, max] = heatRange(grid), shade = heatShade(min, max);
+  el.style.height = `${H}px`;
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="Aktivität nach Wochentag und Uhrzeit">
+    ${grid.map((row, d) => `<text x="0" y="${d * cell + cell / 2}" dy=".32em">${WD[d]}</text>${row.map((v, h) =>
+      `<rect data-d="${d}" data-h="${h}" x="${LW + h * cell + 1}" y="${d * cell + 1}" width="${cell - 2}" height="${cell - 2}" rx="${Math.min(3, cell / 4)}" fill="${shade(v)}"/>`).join('')}`).join('')}
+    ${[0, 6, 12, 18, 23].map((h) => `<text x="${LW + h * cell + cell / 2}" y="${7 * cell + 13}" text-anchor="middle">${String(h).padStart(2, '0')}</text>`).join('')}</svg>`;
+  const svg = el.querySelector('svg');
+  svg.onpointerover = (e) => {
+    const { d, h } = e.target.dataset ?? {};
+    if (d === undefined) return;
+    const hh = (k) => String(k).padStart(2, '0');
+    showTip(el, LW + h * cell, d * cell, `${WD[d]}, ${hh(+h)}:00–${hh(+h + 1)}:00`, [{ label: 'Aktivitäten', value: nf(grid[d][h]) }]);
+  };
+  svg.onpointerleave = () => hideTip(el);
+}
+function heatLegend(grid) {
+  const [min, max] = heatRange(grid), shade = heatShade(min, max);
+  return `<div class="heatlegend" aria-hidden="true">wenig ${[0, .25, .5, .75, 1].map((f) => `<span class="c" style="background:${shade(min + f * (max - min))}"></span>`).join('')} viel</div>`;
+}
+
+// ── Ansichten ──
+function rangeBar(title, extra = '') {
+  return `<div class="an-bar"><h2>${esc(title)}</h2>
+    <div class="seg" role="radiogroup" aria-label="Zeitraum">${[7, 30, 90].map((d) =>
+      `<button role="radio" data-days="${d}" aria-checked="${d === range}">${d} Tage</button>`).join('')}</div>
+    <span class="spacer"></span>${extra}</div>`;
+}
+
+function detailAnalytics(r) {
+  if (!r.analytics) return `${rangeBar('Analytics')}<div class="error">Analytics nicht abrufbar: ${esc(r.error ?? '')}</div>`;
+  const a = r.analytics, m = r.modules, L = axisLabels(a);
+  const per = L.hourly ? 'pro Stunde' : 'pro Tag';
+  let run = a.usersBefore;
+  const cum = a.series.signups.map((v) => (run += v));
+  const act = activitySeries(a, m);
+  const actTotal = a.buckets.map((_, i) => sum(act.map((s) => s.values[i])));
+  const funnel = a.funnel.filter((s) => m.payments || s.key !== 'premium');
+  const since = a.range.launchedAt ? `<span class="muted">● live seit ${new Date(a.range.launchedAt).toLocaleDateString('de-DE')}</span>` : '';
+  const k = a.kpis;
+  return `${rangeBar('Analytics', since)}
+    <div class="an-kpis">
+      ${kpi('Neue Mitglieder', nf(k.signups.current), k.signups.current, k.signups.previous, a.series.signups)}
+      ${kpi('Aktivitäten', nf(k.activity.current), k.activity.current, k.activity.previous, actTotal)}
+      ${m.payments ? kpi('Umsatz', ef(k.revenue.current), k.revenue.current, k.revenue.previous, a.series.revenue) : ''}
+      ${m.payments ? kpi('Aktive Abos', nf(k.activeSubscriptions.current), k.activeSubscriptions.current, k.activeSubscriptions.previous) : ''}
+    </div>
+    <div class="an-grid">
+      ${vizCard({ id: 'growth', wide: true, title: 'Mitgliederwachstum', sub: 'Mitglieder gesamt', big: nf(cum.at(-1) ?? 0),
+        body: plot('growth', (el) => drawLines(el, { series: [{ label: 'Mitglieder', color: ACC, values: cum }], x: L.x, tips: L.tips, fmtV: nf, height: 240 }), 240),
+        table: { head: ['Zeit', 'Mitglieder', 'Neu'], rows: L.tips.map((t, i) => [t, nf(cum[i]), nf(a.series.signups[i])]) } })}
+      ${vizCard({ id: 'activity', wide: true, title: 'Aktivität', sub: `Ereignisse nach Art · ${per}`,
+        body: legend(act.map((s) => ({ label: s.label, color: s.color, value: nf(sum(s.values)) })))
+          + plot('activity', (el) => drawColumns(el, { series: act, x: L.x, tips: L.tips, fmtV: nf, height: 240 }), 240),
+        table: { head: ['Zeit', ...act.map((s) => s.label), 'Gesamt'], rows: L.tips.map((t, i) => [t, ...act.map((s) => nf(s.values[i])), nf(actTotal[i])]) } })}
+      ${vizCard({ id: 'signups', title: 'Neuanmeldungen', sub: per,
+        body: plot('signups', (el) => drawColumns(el, { series: [{ label: 'Neuanmeldungen', color: ACC, values: a.series.signups }], x: L.x, tips: L.tips, fmtV: nf, height: 200 }), 200),
+        table: { head: ['Zeit', 'Anzahl'], rows: L.tips.map((t, i) => [t, nf(a.series.signups[i])]) } })}
+      ${m.payments ? vizCard({ id: 'revenue', title: 'Umsatz', sub: `Erfolgreiche Zahlungen · ${per}`, big: ef(k.revenue.current),
+        body: plot('revenue', (el) => drawColumns(el, { series: [{ label: 'Umsatz', color: ACC, values: a.series.revenue }], x: L.x, tips: L.tips, fmtV: (v) => ef(v, true), height: 200 }), 200),
+        table: { head: ['Zeit', 'Umsatz'], rows: L.tips.map((t, i) => [t, ef(a.series.revenue[i])]) } }) : ''}
+      ${vizCard({ id: 'funnel', title: 'Conversion-Funnel', sub: 'Vom Konto zum Premium-Mitglied', body: funnelHtml(funnel),
+        table: { head: ['Stufe', 'Anzahl', 'Anteil'], rows: funnel.map((s) => [STAGES[s.key], nf(s.count), `${Math.round((s.count / Math.max(funnel[0].count, 1)) * 100)} %`]) } })}
+      ${vizCard({ id: 'heat', title: 'Wann ist was los?', sub: 'Aktivitäten nach Wochentag und Uhrzeit',
+        body: plot('heat', (el) => drawHeat(el, { grid: a.heatmap }), 180) + heatLegend(a.heatmap),
+        table: { head: ['Uhrzeit', ...WD], rows: Array.from({ length: 24 }, (_, h) => [`${String(h).padStart(2, '0')}:00`, ...a.heatmap.map((row) => nf(row[h]))]) } })}
+      ${m.payments ? vizCard({ id: 'plans', title: 'Abo-Mix', sub: 'Aktive Abos nach Laufzeit', big: nf(sum(a.plans.map((p) => p.count))),
+        body: splitHtml(a.plans.map((p, i) => ({ label: PLANS[p.plan], count: p.count, color: VIZ[i] }))),
+        table: { head: ['Laufzeit', 'Abos'], rows: a.plans.map((p) => [PLANS[p.plan], nf(p.count)]) } }) : ''}
+      ${vizCard({ id: 'interests', title: 'Top-Interessen', body: barsHtml(a.topInterests, nf),
+        table: { head: ['Interesse', 'Mitglieder'], rows: a.topInterests.map((i) => [i.name, nf(i.count)]) } })}
+    </div>`;
+}
+
+// Alle Mandanten: Farbe pro Mandant fest nach Reihenfolge in tenants/
+function compareAnalytics(list) {
+  const ok = list.filter((r) => r.analytics);
+  if (!ok.length) return `${rangeBar('Vergleich')}<p class="muted">Keine Mandanten-DB erreichbar.</p>`;
+  const color = Object.fromEntries(list.map((r, i) => [r.slug, VIZ[i % VIZ.length]]));
+  // Gemeinsame Tagesachse; ein Mandant beginnt erst an seinem ersten Tag
+  const today = new Date();
+  const days = Array.from({ length: range + 1 }, (_, i) => {
+    const d = new Date(today); d.setDate(d.getDate() - range + i);
+    return d.toLocaleDateString('sv-SE');
+  });
+  const cumBy = ok.map((r) => {
+    const a = r.analytics, byDate = {};
+    let run = a.usersBefore;
+    a.buckets.forEach((b, i) => { run += a.series.signups[i]; byDate[b.slice(0, 10)] = run; });
+    let last = null;
+    return { label: r.name, color: color[r.slug], values: days.map((d) => (d in byDate ? (last = byDate[d]) : last)) };
+  });
+  const x = days.map((d) => { const [, m, dd] = d.split('-').map(Number); return `${dd}.${m}.`; });
+  const tips = days.map((d) => { const p = bp(`${d}T00:00`); return `${WD[p.wd]}, ${p.d}.${p.m}.${p.y}`; });
+  const members = ok.map((r) => ({ name: r.name, color: color[r.slug], count: r.analytics.usersBefore + sum(r.analytics.series.signups) }));
+  const activity = ok.map((r) => ({ name: r.name, color: color[r.slug], count: r.analytics.kpis.activity.current }));
+  const revenue = ok.filter((r) => r.modules.payments).map((r) => ({ name: r.name, color: color[r.slug], count: r.analytics.kpis.revenue.current }));
+  const byCount = (a, b) => b.count - a.count;
+  const K = (key) => ({ cur: sum(ok.map((r) => r.analytics.kpis[key].current)), prev: sum(ok.map((r) => r.analytics.kpis[key].previous)) });
+  const s = K('signups'), act = K('activity'), rev = K('revenue');
+  const allSignups = days.map((d) => sum(ok.map((r) => sum(r.analytics.buckets.map((b, i) => (b.startsWith(d) ? r.analytics.series.signups[i] : 0))))));
+  return `${rangeBar('Vergleich aller Mandanten')}
+    <div class="an-kpis">
+      ${kpi('Mitglieder gesamt', nf(sum(members.map((m) => m.count))), 0, 0)}
+      ${kpi('Neue Mitglieder', nf(s.cur), s.cur, s.prev, allSignups)}
+      ${kpi('Aktivitäten', nf(act.cur), act.cur, act.prev)}
+      ${kpi('Umsatz', ef(rev.cur), rev.cur, rev.prev)}
+    </div>
+    <div class="an-grid">
+      ${vizCard({ id: 'cmp-growth', wide: true, title: 'Mitgliederwachstum je Mandant', sub: 'Mitglieder gesamt, ab Start des Mandanten',
+        body: legend(cumBy.map((c) => ({ label: c.label, color: c.color, value: nf(c.values.at(-1) ?? 0) })))
+          + plot('cmp-growth', (el) => drawLines(el, { series: cumBy, x, tips, fmtV: nf, height: 260 }), 260),
+        table: { head: ['Tag', ...cumBy.map((c) => c.label)], rows: tips.map((t, i) => [t, ...cumBy.map((c) => (c.values[i] === null ? '–' : nf(c.values[i])))]) } })}
+      ${vizCard({ id: 'cmp-members', title: 'Mitglieder', sub: 'gesamt', body: barsHtml([...members].sort(byCount), nf),
+        table: { head: ['Mandant', 'Mitglieder'], rows: members.map((m) => [m.name, nf(m.count)]) } })}
+      ${vizCard({ id: 'cmp-activity', title: 'Aktivitäten', sub: `letzte ${range} Tage`, body: barsHtml([...activity].sort(byCount), nf),
+        table: { head: ['Mandant', 'Aktivitäten'], rows: activity.map((m) => [m.name, nf(m.count)]) } })}
+      ${revenue.length ? vizCard({ id: 'cmp-revenue', title: 'Umsatz', sub: `letzte ${range} Tage`, body: barsHtml([...revenue].sort(byCount), (v) => ef(v)),
+        table: { head: ['Mandant', 'Umsatz'], rows: revenue.map((m) => [m.name, ef(m.count)]) } }) : ''}
+    </div>`;
+}
+
+// Fuellt #an-root (Uebersicht: alle, Detail: ein Mandant). Beim Nachladen
+// bleibt der alte Stand blass stehen statt zu springen.
+async function mountAnalytics(fetchFresh = false) {
+  const root = document.getElementById('an-root');
+  if (!root) return;
+  const key = root.dataset.key, cacheKey = `${key}:${range}`;
+  if (!anCache[cacheKey] || fetchFresh) {
+    root.classList.add('loading');
+    const url = key === '*' ? `/api/analytics?days=${range}` : `/api/tenants/${encodeURIComponent(key)}/analytics?days=${range}`;
+    try {
+      anCache[cacheKey] = await fetch(url).then((r) => r.json());
+    } catch (err) {
+      root.classList.remove('loading');
+      root.innerHTML = `<div class="error">Analytics nicht abrufbar: ${esc(err.message)}</div>`;
+      return;
+    }
+    if (document.getElementById('an-root') !== root || `${root.dataset.key}:${range}` !== cacheKey) return;
+  }
+  for (const id of Object.keys(plots)) delete plots[id];
+  root.innerHTML = key === '*' ? compareAnalytics(anCache[cacheKey]) : detailAnalytics(anCache[cacheKey]);
+  root.classList.remove('loading');
+  drawPlots();
+}
+function drawPlots() {
+  document.querySelectorAll('[data-plot]').forEach((el) => plots[el.dataset.plot]?.(el));
+}
+document.getElementById('view').addEventListener('click', (e) => {
+  const d = e.target.closest('.seg button[data-days]');
+  if (d) { range = +d.dataset.days; mountAnalytics(); return; }
+  const t = e.target.closest('button[data-table]');
+  if (t) {
+    const id = t.dataset.table;
+    anTables.has(id) ? anTables.delete(id) : anTables.add(id);
+    mountAnalytics();
+  }
+});
 
 
 // ── Editor ──────────────────────────────────────────────────────────────
@@ -498,6 +949,7 @@ function render() {
   view.innerHTML = edit ? renderEditor(decodeURIComponent(edit[1]))
     : m ? renderDetail(decodeURIComponent(m[1])) : renderOverview();
   if (m) drawChart(decodeURIComponent(m[1]));
+  mountAnalytics();
   const up = tenants.filter((t) => t.running).length;
   document.getElementById('summary').textContent = `${tenants.length} Mandanten · ${up} laufen`;
   const lastAt = snapshots.at(-1)?.at;
@@ -517,6 +969,7 @@ document.getElementById('refresh').addEventListener('click', async (e) => {
   e.target.disabled = true;
   try {
     await fetch('/api/snapshots', { method: 'POST' });
+    for (const k of Object.keys(anCache)) delete anCache[k];
     await load();
   } finally {
     e.target.disabled = false;
@@ -545,7 +998,7 @@ view.addEventListener('drop', (e) => {
 });
 
 window.addEventListener('hashchange', render);
-window.addEventListener('resize', () => { const m = location.hash.match(/^#\/t\/([^/]+)$/); if (m) drawChart(decodeURIComponent(m[1])); });
+window.addEventListener('resize', () => { const m = location.hash.match(/^#\/t\/([^/]+)$/); if (m) drawChart(decodeURIComponent(m[1])); drawPlots(); });
 load();
 </script>
 </body>

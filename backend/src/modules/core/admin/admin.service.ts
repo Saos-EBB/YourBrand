@@ -32,6 +32,8 @@ import { AddProfanityWordDto } from './dto/add-profanity-word.dto';
 import { SetVulnerableFlagDto } from './dto/set-vulnerable-flag.dto';
 import { AdminDashboardStatsDto } from './dto/admin-dashboard-stats.dto';
 import { collectDashboardStats } from './dashboard-stats.query';
+import { isModuleEnabled } from '../../../common/tenant/tenant-config.loader';
+import { collectDashboardAnalytics, type AnalyticsRange, type DashboardAnalytics } from './dashboard-analytics.query';
 import { UserDashboardStatsDto } from './dto/user-dashboard-stats.dto';
 import { AdminStatsDto } from './dto/admin-stats.dto';
 import { ConversationsService } from '../chat/conversations.service';
@@ -673,6 +675,12 @@ export class AdminService {
 
     getDashboardStats(): Promise<AdminDashboardStatsDto> {
         return collectDashboardStats((sql) => this.dataSource.query(sql));
+    }
+
+    getDashboardAnalytics(days: AnalyticsRange): Promise<DashboardAnalytics> {
+        return collectDashboardAnalytics((sql, params) => this.dataSource.query(sql, params), days, {
+            coins: isModuleEnabled('hidden'),
+        });
     }
 
     // ── User dashboard stats (any authenticated user) ──────────────────────────

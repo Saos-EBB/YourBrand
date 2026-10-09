@@ -12,6 +12,7 @@ import { useNotificationStore } from '@/lib/store/notificationStore'
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount'
 import { useTranslation } from '@/lib/i18n'
 import { useTenant } from '@/components/TenantProvider'
+import { AnalyticsSection } from '@/components/analytics/AnalyticsSection'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -360,52 +361,19 @@ export default function DashboardPage() {
       {isOwner && (
         <section>
           <SectionHeading label={t.dashboard.platformOverview} icon={<Crown className="h-3.5 w-3.5" />} />
-          {ownerStatsLoading ? (
-            <div className="space-y-2">
+          <div className="space-y-3">
+            {ownerStatsLoading ? (
               <StatRowSkeleton cols={4} />
-              <StatRowSkeleton cols={4} />
-              <StatRowSkeleton cols={3} />
-              <StatRowSkeleton cols={4} />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {/* Row 1 — Users */}
+            ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <StatCard label={t.dashboard.totalUsers}  value={ownerStats?.totalUsers} />
                 <StatCard label={t.dashboard.activeUsers} value={ownerStats?.activeUsers} />
                 <StatCard label={t.dashboard.bannedUsers} value={ownerStats?.bannedUsers} />
-                <StatCard label={t.dashboard.newToday}    value={ownerStats?.newUsersToday} />
+                <StatCard label={t.dashboard.onlineNow}   value={ownerStats?.onlineUsers} />
               </div>
-
-              {/* Row 2 — Activity */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <StatCard label={t.dashboard.onlineNow}      value={ownerStats?.onlineUsers} />
-                <StatCard label={t.dashboard.messagesToday}  value={ownerStats?.messagesToday} />
-                <StatCard label={t.dashboard.requestsToday}  value={ownerStats?.contactRequestsToday} />
-                <StatCard label={t.dashboard.newThisWeek}    value={ownerStats?.newUsersThisWeek} />
-              </div>
-
-              {/* Row 3 — Business */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <StatCard label={t.dashboard.activeSubscriptions} value={ownerStats?.activeSubscriptions} />
-                <StatCard
-                  label={t.dashboard.totalRevenue}
-                  value={ownerStats?.totalRevenue != null
-                    ? ownerStats.totalRevenue.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                    : undefined}
-                />
-                <StatCard label={t.dashboard.newSubscriptionsThisWeek} value={ownerStats?.newUsersThisWeek} />
-              </div>
-
-              {/* Row 4 — Moderation */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <StatCard label={t.dashboard.openReports}     value={ownerStats?.openReports}     alert />
-                <StatCard label={t.dashboard.strikesThisWeek} value={ownerStats?.strikesThisWeek} />
-                <StatCard label={t.dashboard.openTickets}     value={ownerStats?.openTickets}     alert />
-                <StatCard label={t.dashboard.unverifiedMedia} value={ownerStats?.pendingMedia}    alert />
-              </div>
-            </div>
-          )}
+            )}
+            <AnalyticsSection />
+          </div>
         </section>
       )}
 
