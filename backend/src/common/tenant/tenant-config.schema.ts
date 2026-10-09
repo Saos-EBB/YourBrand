@@ -83,6 +83,7 @@ class ModulesSchema {
     @IsOptional() @IsBoolean() board?: boolean;
     @IsOptional() @IsBoolean() caretaker?: boolean;
     @IsOptional() @IsBoolean() orgs?: boolean;
+    @IsOptional() @IsBoolean() shop?: boolean;
 }
 
 class LegalSchema {
@@ -94,6 +95,13 @@ class LegalSchema {
 
     @IsEmail()
     email!: string;
+
+    // USt-IdNr. (DE + 9 Ziffern) bzw. Steuernummer — eins davon braucht der Shop
+    @IsOptional() @Matches(/^DE\d{9}$/)
+    vatId?: string;
+
+    @IsOptional() @IsString() @Length(5, 30)
+    taxNumber?: string;
 }
 
 export class TenantConfigSchema {

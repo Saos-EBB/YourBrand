@@ -32,6 +32,7 @@ export const leetspeak = {
     board: 'N071C3 B04RD',
     care: 'C4R3',
     org: '0R64N154710N',
+    shop: '5H0P',
   },
   status: {
     label: 'Ch4n63 0n11n3 5747u5',

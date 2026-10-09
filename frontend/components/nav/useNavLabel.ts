@@ -26,6 +26,7 @@ export function useNavLabel(): (key: NavKey) => string {
     board: t.nav.board,
     care: t.nav.care,
     org: t.nav.org,
+    shop: t.nav.shop,
   }
   return (key) => navLabel(layout, key, lang, defaults[key])
 }

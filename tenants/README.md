@@ -41,8 +41,8 @@ den Einstellungen „Klassische Farben“ wählen, dann gelten die Standardfarbe
 | `theme.layout.labels` | nein | eigene Menünamen: `{ "dashboard": "Kiez" }` für alle Sprachen oder `{ "board": { "de": "Brett", "en": "Board" } }`. Menüpunkte: `dashboard`, `notifications`, `discover`, `matches`, `chat`, `requests`, `profile`, `settings`, `admin`, `beef`, `board`, `care`, `org`; höchstens 24 Zeichen |
 | `locale.default` / `locale.available` | ja | Sprachen aus `frontend/lib/i18n` |
 | `tier` | ja | `core`, `connect` oder `premium` — setzt die Modul-Defaults |
-| `modules` | nein | überschreibt einzelne Module: `chat`, `matching`, `payments`, `hidden`, `board`, `caretaker`, `orgs` |
-| `legal` | ja | Impressum-Angaben (`name`, `address`, `email`) |
+| `modules` | nein | überschreibt einzelne Module: `chat`, `matching`, `payments`, `hidden`, `board`, `caretaker`, `orgs`, `shop` |
+| `legal` | ja | Impressum-Angaben (`name`, `address`, `email`), für den Shop zusätzlich `vatId` (USt-IdNr., `DE` + 9 Ziffern) oder `taxNumber` |
 | `seed` | nein | Demo-Datensatz aus `tenants/<seed>/seed/` (siehe unten), wird nicht öffentlich ausgegeben |
 | `seedAgeDays` | nein | Demo: so viele Tage „läuft“ der Mandant schon (siehe unten), wird nicht öffentlich ausgegeben |
 
@@ -57,12 +57,14 @@ Tier-Defaults (`backend/src/common/tenant/tenant.types.ts`):
 | board | – | – | – |
 | caretaker | – | – | – |
 | orgs | – | – | – |
+| shop | – | – | – |
 
-`board`, `caretaker` und `orgs` sind in keinem Tier Standard, ein Mandant schaltet sie bewusst ein.
+`board`, `caretaker`, `orgs` und `shop` sind in keinem Tier Standard, ein Mandant schaltet sie bewusst ein.
 
 Abgeschaltete Module werden im Backend gar nicht geladen (Routen → 404). Ausnahme `chat`: das
 Modul bleibt wegen Notifications geladen, Routen und Chat-Events sind aber gesperrt.
-Regeln: `matching` und `board` erfordern `chat`, `orgs` erfordert `caretaker`.
+Regeln: `matching` und `board` erfordern `chat`, `orgs` erfordert `caretaker`, `shop` erfordert
+`payments` und `legal.vatId` oder `legal.taxNumber`.
 
 ### Die neuen Module
 
@@ -80,6 +82,9 @@ Regeln: `matching` und `board` erfordern `chat`, `orgs` erfordert `caretaker`.
 - **`orgs` — Organisation** (`/org`): ein Träger mit Team (`organizations`, `org_members`);
   Betreuungen tragen die `org_id`, die Organisation sieht alle auf einen Blick. Anlegen dürfen
   Plattform-Admin/Owner.
+- **`shop` — Shop** (`/shop`, im Aufbau): der Mandant verkauft digitale Artikel (bis ~1000) mit
+  Filtern nach Preis, Bewertung, Kategorie. Bezahlung über Stripe Checkout, danach geht automatisch
+  eine Rechnung (§ 14 UStG, regelbesteuert) als PDF per Mail raus. Bewerten dürfen nur Käufer.
 
 Schema: `backend/migrations/006_board_and_care.sql` (Mandanten-DBs bekommen es automatisch über
 `tenant-init`, die Haupt-DB nur bei neuem Volume). Demo-Daten: `seed-board-care.ts`.

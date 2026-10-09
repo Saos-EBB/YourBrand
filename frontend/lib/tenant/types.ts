@@ -2,7 +2,7 @@ import type { UiLang } from '@/lib/store/languageStore'
 
 // Spiegel von PublicTenantConfig (backend/src/common/tenant/tenant.types.ts),
 // geliefert von GET /api/v1/tenant.
-export type TenantModule = 'chat' | 'matching' | 'payments' | 'hidden' | 'board' | 'caretaker' | 'orgs'
+export type TenantModule = 'chat' | 'matching' | 'payments' | 'hidden' | 'board' | 'caretaker' | 'orgs' | 'shop'
 
 // Spiegel von TenantLayout im Backend (theme.layout)
 export type LayoutNav = 'sidebar' | 'topbar' | 'line-map' | 'wide-sidebar'
@@ -10,7 +10,7 @@ export type LayoutFont = 'jakarta' | 'bricolage' | 'archivo' | 'atkinson' | 'big
 export type LayoutRadius = 'xs' | 'sm' | 'md' | 'lg'
 export type NavKey =
   | 'dashboard' | 'notifications' | 'discover' | 'matches' | 'chat' | 'requests'
-  | 'profile' | 'settings' | 'admin' | 'beef' | 'board' | 'care' | 'org'
+  | 'profile' | 'settings' | 'admin' | 'beef' | 'board' | 'care' | 'org' | 'shop'
 
 export interface TenantLayout {
   nav: LayoutNav
@@ -38,7 +38,7 @@ export interface TenantConfig {
   locale: { default: UiLang; available: UiLang[] }
   tier: 'core' | 'connect' | 'premium'
   modules: Record<TenantModule, boolean>
-  legal: { name: string; address: string; email: string }
+  legal: { name: string; address: string; email: string; vatId?: string; taxNumber?: string }
 }
 
 // Nur falls das Backend beim Rendern nicht erreichbar ist — entspricht dem
@@ -50,7 +50,7 @@ export const FALLBACK_TENANT: TenantConfig = {
   theme: { default: 'dark', tokens: {}, dark: {}, light: {}, layout: DEFAULT_LAYOUT },
   locale: { default: 'de', available: ['de', 'en', 'fr', 'es', 'it', 'ru', 'ja', 'de_easy', 'leet'] },
   tier: 'premium',
-  modules: { chat: true, matching: true, payments: true, hidden: true, board: false, caretaker: false, orgs: false },
+  modules: { chat: true, matching: true, payments: true, hidden: true, board: false, caretaker: false, orgs: false, shop: false },
   legal: { name: '<NAME>', address: '<ANSCHRIFT>', email: '<EMAIL>' },
 }
 
@@ -65,6 +65,7 @@ export const ROUTE_MODULES: { prefix: string; module: TenantModule }[] = [
   { prefix: '/board', module: 'board' },
   { prefix: '/care', module: 'caretaker' },
   { prefix: '/org', module: 'orgs' },
+  { prefix: '/shop', module: 'shop' },
 ]
 
 export function moduleForPath(href: string): TenantModule | null {

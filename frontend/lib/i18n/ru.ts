@@ -35,6 +35,7 @@ export const ru = {
     board: 'Доска объявлений',
     care: 'Опека',
     org: 'Организация',
+    shop: 'Магазин',
   },
 
   status: {

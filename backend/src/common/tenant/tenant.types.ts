@@ -3,7 +3,7 @@
 // Moderation, Admin, DSGVO, Media, Notifications, Support) ist Basis und
 // immer an. Das Abschalten selbst (Module gar nicht registrieren) kommt mit
 // dem Feature-Gating, hier ist nur die Config-Seite.
-export const TENANT_MODULES = ['chat', 'matching', 'payments', 'hidden', 'board', 'caretaker', 'orgs'] as const;
+export const TENANT_MODULES = ['chat', 'matching', 'payments', 'hidden', 'board', 'caretaker', 'orgs', 'shop'] as const;
 export type TenantModule = (typeof TENANT_MODULES)[number];
 
 export const TENANT_TIERS = ['core', 'connect', 'premium'] as const;
@@ -11,12 +11,12 @@ export type TenantTier = (typeof TENANT_TIERS)[number];
 
 // Defaults pro Tier, einzelne Module koennen in tenant.json per "modules"
 // explizit ueberschrieben werden. board (Schwarzes Brett), caretaker
-// (Betreuung) und orgs (Organisationen) sind in keinem Tier Default — ein
-// Mandant schaltet sie bewusst ein.
+// (Betreuung), orgs (Organisationen) und shop sind in keinem Tier Default —
+// ein Mandant schaltet sie bewusst ein.
 export const TIER_MODULES: Record<TenantTier, Record<TenantModule, boolean>> = {
-    core:    { chat: true, matching: false, payments: true, hidden: false, board: false, caretaker: false, orgs: false },
-    connect: { chat: true, matching: false, payments: true, hidden: false, board: false, caretaker: false, orgs: false },
-    premium: { chat: true, matching: true,  payments: true, hidden: true,  board: false, caretaker: false, orgs: false },
+    core:    { chat: true, matching: false, payments: true, hidden: false, board: false, caretaker: false, orgs: false, shop: false },
+    connect: { chat: true, matching: false, payments: true, hidden: false, board: false, caretaker: false, orgs: false, shop: false },
+    premium: { chat: true, matching: true,  payments: true, hidden: true,  board: false, caretaker: false, orgs: false, shop: false },
 };
 
 // Layout pro Mandant (theme.layout). Alles optional, ohne Angabe sieht die
@@ -30,7 +30,7 @@ export type LayoutRadius = (typeof LAYOUT_RADII)[number];
 // Menuepunkte, die einen eigenen Namen bekommen koennen (layout.labels)
 export const NAV_KEYS = [
     'dashboard', 'notifications', 'discover', 'matches', 'chat', 'requests',
-    'profile', 'settings', 'admin', 'beef', 'board', 'care', 'org',
+    'profile', 'settings', 'admin', 'beef', 'board', 'care', 'org', 'shop',
 ] as const;
 export type NavKey = (typeof NAV_KEYS)[number];
 
@@ -64,7 +64,8 @@ export interface TenantConfig {
     tier: TenantTier;
     // Aufgeloest: Tier-Defaults + Overrides, immer vollstaendig.
     modules: Record<TenantModule, boolean>;
-    legal: { name: string; address: string; email: string };
+    // vatId / taxNumber: Pflichtangabe auf Shop-Rechnungen (§ 14 UStG)
+    legal: { name: string; address: string; email: string; vatId?: string; taxNumber?: string };
     seed?: string;
     seedAgeDays?: number;
 }

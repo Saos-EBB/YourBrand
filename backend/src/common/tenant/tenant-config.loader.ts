@@ -80,6 +80,15 @@ export function parseTenantConfig(raw: unknown, expectedSlug: string): TenantCon
         throw new Error(`Ungueltige Tenant-Config "${expectedSlug}":\n  - modules.matching erfordert modules.chat`);
     }
 
+    // Bezahlt wird ueber den Stripe-Webhook im PaymentModule
+    if (modules.shop && !modules.payments) {
+        throw new Error(`Ungueltige Tenant-Config "${expectedSlug}":\n  - modules.shop erfordert modules.payments`);
+    }
+    // Rechnungen brauchen USt-IdNr. oder Steuernummer des Mandanten (§ 14 UStG)
+    if (modules.shop && !schema.legal.vatId && !schema.legal.taxNumber) {
+        throw new Error(`Ungueltige Tenant-Config "${expectedSlug}":\n  - modules.shop erfordert legal.vatId oder legal.taxNumber`);
+    }
+
     return {
         slug: schema.slug,
         brand: { ...schema.brand },

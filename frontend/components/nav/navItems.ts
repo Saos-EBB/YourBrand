@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  LayoutDashboard, Bell, Compass, Heart, MessageCircle, Users, Shield, Swords, User, StickyNote, HeartHandshake, Building2,
+  LayoutDashboard, Bell, Compass, Heart, MessageCircle, Users, Shield, Swords, User, StickyNote, HeartHandshake, Building2, ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuthStore, selectUserRole } from '@/lib/store/authStore'
@@ -32,6 +32,7 @@ export function useNavItems(placement: 'main' | 'bottom'): NavItem[] {
     { key: 'dashboard', href: '/dashboard', label: label('dashboard'), Icon: LayoutDashboard },
     { key: 'notifications', href: '/notifications', label: label('notifications'), Icon: Bell },
     { key: 'board', href: '/board', label: label('board'), Icon: StickyNote },
+    { key: 'shop', href: '/shop', label: label('shop'), Icon: ShoppingBag },
     { key: 'discover', href: '/discover', label: label('discover'), Icon: Compass },
     { key: 'matches', href: '/matches', label: label('matches'), Icon: Heart },
     { key: 'chat', href: '/chat', label: label('chat'), Icon: MessageCircle },
