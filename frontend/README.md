@@ -1,6 +1,6 @@
 # XXX — Frontend
 
-Next.js app (App Router) for the XXX platform. Connects to the XXX NestJS backend at `http://localhost:3000`.
+Next.js app (App Router) for the XXX platform. Connects to the XXX NestJS backend at `http://localhost:3000` and takes its branding, theme, languages and feature set from the backend's tenant config.
 
 ---
 
@@ -10,6 +10,9 @@ Next.js app (App Router) for the XXX platform. Connects to the XXX NestJS backen
 - [Setup](#setup)
 - [Environment Variables](#environment-variables)
 - [Key Features](#key-features)
+  - [Tenant Awareness](#tenant-awareness)
+  - [Analytics](#analytics)
+  - [Demo & Offline](#demo--offline)
   - [Auth & Onboarding](#auth--onboarding)
   - [Discover](#discover)
   - [Real-time Chat](#real-time-chat)
@@ -41,7 +44,6 @@ Next.js app (App Router) for the XXX platform. Connects to the XXX NestJS backen
   - [BanModal](#banmodal--componentsuibanmodaltsx)
   - [ContactSupportModal](#contactsupportmodal--componentsuicontactsupportmodaltsx)
   - [BanScreen](#banscreen--componentsuibanscreentsx)
-  - [ErrorCard](#errorcard--componentsuierrorcardtsx)
 - [Config](#config)
   - [`config/public.config.ts`](#configpublicconfigts)
   - [`useConnectionAction`](#useconnectionaction--hooksuseconnectionactionts)
@@ -63,6 +65,7 @@ Next.js app (App Router) for the XXX platform. Connects to the XXX NestJS backen
 | Real-time | socket.io-client |
 | Payments | `@stripe/react-stripe-js` + `@stripe/stripe-js` (Embedded Checkout) |
 | Icons | lucide-react |
+| Charts | Own SVG components (`components/analytics/charts.tsx`), no chart library |
 | Image processing | Sharp (WebP conversion via Next.js image pipeline) |
 | Profanity filter | leo-profanity |
 | HTTP client | `lib/api.ts` (`fetchApi` wrapper — handles 401 refresh rotation, 204 responses) |
@@ -71,7 +74,7 @@ Next.js app (App Router) for the XXX platform. Connects to the XXX NestJS backen
 
 ## Setup
 
-Via Docker (backend + frontend + Postgres together) — see [`../docker-compose.yml`](../docker-compose.yml) and the [root README](../README.md#running-locally). This is the recommended path.
+Via Docker — see [`../docker-compose.yml`](../docker-compose.yml) and the [root README](../README.md#running-locally). This is the recommended path; every tenant gets its own frontend container pointed at its own backend.
 
 Without Docker:
 
@@ -84,7 +87,7 @@ App runs on `http://localhost:3001`. The backend must be running on `http://loca
 
 Copy `.env.example` to `.env` and fill in the values.
 
-`next.config.ts` proxies `/uploads/:path*` → `${BACKEND_INTERNAL_URL}/uploads/:path*` (`NEXT_PUBLIC_*` vars are baked into the client bundle; `BACKEND_INTERNAL_URL` is server-to-server only, defaulting to `http://localhost:3000` and overridden to `http://nestjs:3000` inside docker-compose) so profile photos and audio files load without CORS issues.
+`next.config.ts` rewrites three paths to `${BACKEND_INTERNAL_URL}` so they always hit the backend of the own tenant: `/uploads/:path*`, `/api/v1/media/file/:path*` (the backend's media proxy) and `/api/v1/tenant/asset/:name` (logo/favicon). `NEXT_PUBLIC_*` vars are baked into the client bundle; `BACKEND_INTERNAL_URL` is server-to-server only, defaulting to `http://localhost:3000` and set per container in docker-compose (`http://nestjs:3000`, or `http://yb-<slug>-backend:3000` for a tenant).
 
 ---
 
@@ -93,25 +96,55 @@ Copy `.env.example` to `.env` and fill in the values.
 | Variable | Description |
 |---|---|
 | `NEXT_PUBLIC_API_URL` | Backend API base URL (e.g. `http://localhost:3000/api/v1`) |
-| `NEXT_PUBLIC_SOCKET_URL` | Backend Socket.io base URL (e.g. `http://localhost:3000`) |
-| `BACKEND_INTERNAL_URL` | Server-to-server only (not in the client bundle) — used by the `/uploads` rewrite in `next.config.ts`. `http://localhost:3000` outside Docker, `http://nestjs:3000` inside docker-compose |
+| `NEXT_PUBLIC_WS_URL` | Backend Socket.io base URL (e.g. `http://localhost:3000`) — was `NEXT_PUBLIC_SOCKET_URL` |
+| `BACKEND_INTERNAL_URL` | Server-to-server only (not in the client bundle) — used to fetch `GET /tenant` in the root layout and by the rewrites in `next.config.ts` |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key for Embedded Checkout |
 | `NEXT_PUBLIC_BAN_SCREEN_TEXT` | Text shown on the ban overlay (falls back to `config/public.config.ts` default) |
-| `NEXT_PUBLIC_COMPANY_NAME` | Company name used in Impressum and Datenschutz pages |
-| `NEXT_PUBLIC_COMPANY_*` | Address/contact fields for legal pages |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | Contact address on the offline fallback |
+| `NEXT_PUBLIC_DEMO_VIDEO_URL` | Demo video link on the offline fallback |
+| `NEXT_PUBLIC_CONTACT_FORM_ENDPOINT` | Optional — when set, the offline fallback shows a small form that POSTs there instead of a `mailto` link |
 | `NEXT_PUBLIC_CONTACT_*` | WhatsApp, Instagram, email, phone for the B2B contact section |
 | `NEXT_PUBLIC_COPYRIGHT_YEAR` | Year shown in the auth layout footer copyright line |
-| `NEXT_PUBLIC_BRAND_NAME` | Brand name shown in the auth layout footer |
+
+Brand name and legal details (Impressum/Datenschutz/AGB) no longer come from env vars — they come from the tenant (`brand.name`, `legal`).
 
 ---
 
 ## Key Features
+
+### Tenant Awareness
+The same build serves every tenant; everything brand-specific comes from the backend's `GET /tenant`.
+
+- `app/layout.tsx` fetches the tenant on the server (`lib/tenant/server.ts`, falls back to `FALLBACK_TENANT` if the backend is down), so title, `<html lang>`, default theme, color tokens and favicon are right in the first HTML
+- `TenantProvider` / `useTenant()` expose the config to client code (`brand`, `theme`, `locale`, `modules`, `legal`)
+- Navigation, dashboard, profile actions, settings and background chat fetches follow the enabled `modules`; routes of disabled modules render the 404 page
+- Without the `hidden` module the Hidden Zone stays dormant (logo clicks do nothing)
+- The language picker only offers the tenant's `locale.available`
+- Logo (in the logo button before the name) and favicon load via `/api/v1/tenant/asset/<file>`
+- Impressum, Datenschutz and AGB use the tenant's `legal` block
+
+### Analytics
+Owner-only section on `/dashboard` (`components/analytics/AnalyticsSection.tsx`), data from `GET /admin/dashboard/analytics?days=7|30|90`:
+
+- KPI tiles with sparklines and the change against the previous period
+- Member growth, activity by type, sign-ups and revenue
+- Funnel: registered → verified → photo → contact → conversation → premium
+- Heatmap by weekday × hour, subscription mix, top interests and cities
+- Every chart can be switched to a table; series follow the tenant's modules (no coins without Hidden Zone, no revenue without payments)
+- Chart components in `components/analytics/charts.tsx` (own SVG, colors from the theme tokens), texts in all 9 languages
+
+### Demo & Offline
+- `DemoBanner` — sticky banner on every page (also when the backend is offline); dismissal is stored in `localStorage`
+- `BackendHealthGate` + `useBackendHealth` — polls `<api origin>/health` every 30 s (4 s timeout); when the backend is down, `OfflineFallback` replaces the page: status text, a weekday schedule, a contact action (mailto or form, see env vars) and a demo-video link
+- Register page shows a hint under the email field: no real address needed, no mail verification, data is wiped on restart
 
 ### Auth & Onboarding
 - JWT access token (15 min) in Zustand; refresh token in HttpOnly cookie rotated automatically by `fetchApi` on 401
 - `AuthProvider` fetches `/profile/me` on mount, populates user store, establishes global WebSocket, and applies accessibility settings
 - Multi-step onboarding wizard required before profile can be published
 - Consent flow (`/consent`) after registration
+- `/forgot-password` — email form with a generic success message (no account enumeration)
+- No server-side route gate: the old `proxy.ts` cookie check was removed (it broke split-domain logins). Protection is client-side — `fetchApi` refreshes on 401 and logs out on failure
 
 ### Discover
 - 2-col (mobile) / 3-col (desktop) profile grid with skeleton loading
@@ -223,9 +256,8 @@ Accordion layout — one section open at a time with CSS `grid-rows` height tran
 - Connect/disconnect, block, and report actions
 
 ### i18n
-- UI language selector in Settings (Deutsch / English) — structure in place, currently local state only
-- German ("Leichte Sprache") toggle persisted via `PUT /profile/me`
-- All user-facing strings in German by default; English label set present
+- 9 languages in `lib/i18n/`: `de`, `de_easy` (Leichte Sprache), `en`, `es`, `fr`, `it`, `ja`, `ru`, `leet` — typed against `types.ts`
+- The language picker in Settings offers only the languages the tenant allows; the tenant's `locale.default` is the starting language
 
 ### Runtime Configuration (`config/public.config.ts`)
 - `PUBLIC_CONFIG` exported object for settings that need to be configurable without a rebuild
@@ -238,10 +270,11 @@ Accordion layout — one section open at a time with CSS `grid-rows` height tran
 
 ### Auth — `(auth)`
 
-The auth layout (`app/(auth)/layout.tsx`) wraps all auth routes with a sticky footer showing the copyright year (`NEXT_PUBLIC_COPYRIGHT_YEAR`), brand name (`NEXT_PUBLIC_BRAND_NAME`), and Impressum / Datenschutz links.
+The auth layout (`app/(auth)/layout.tsx`) wraps all auth routes with a sticky footer showing the copyright year (`NEXT_PUBLIC_COPYRIGHT_YEAR`), the tenant's brand name, and Impressum / Datenschutz / AGB links.
 
 | Route | Description |
 |---|---|
+| `/forgot-password` | Request a password reset email. Always shows the same success message. |
 | `/login` | Email or nickname + password login. Stores JWT access token in Zustand. Shows a success banner when redirected from `/setup?setup=done`. "Support kontaktieren" button opens `ContactSupportModal`. |
 | `/register` | Registration form. Sends verification email via backend. |
 | `/setup` | One-time owner bootstrap wizard. Checks `GET /setup/status` on load; redirects to `/login` if setup is already complete. Form creates the first owner account via `POST /setup`. |
@@ -253,10 +286,11 @@ The auth layout (`app/(auth)/layout.tsx`) wraps all auth routes with a sticky fo
 All app routes are protected. Unauthenticated users are redirected to `/login`.
 
 #### `/dashboard`
-Home screen after login. Shows role badge (Crown/Shield) in the welcome heading for owner/admin users, then three stat sections:
+Home screen after login. Shows role badge (Crown/Shield) in the welcome heading for owner/admin users, then stat sections (cards for disabled modules are hidden):
 - **Mein Überblick** (all users): pending contact requests, active conversation count, subscription status — via `GET /admin/dashboard/user-stats`
 - **Moderations-Überblick** (admin + owner): open reports, open tickets, pending media, strikes this week — via `GET /admin/dashboard/admin-stats`
 - **Plattform-Übersicht** (owner only): full platform metrics grid (users, activity, revenue, moderation) — via `GET /admin/dashboard/stats`
+- **Analytics** (owner only): charts, funnel and heatmap — see [Analytics](#analytics)
 
 Followed by quick-access cards (Discover, Chat, Requests) and recent notifications.
 
@@ -342,7 +376,7 @@ Accordion layout — single section open at a time, CSS `grid-rows` height trans
 
 **D) Konto:**
 - Subscription info sourced from `GET /profile/me` (`subscription` field) — shows plan badge, status label, and expiry date; displays "Kein aktives Abonnement" when `null`.
-- **Daten exportieren (PDF)** — calls `GET /gdpr/export`; downloads the response as a PDF blob (`paarship-daten-export.pdf`). Rate-limit (403) shows cooldown message in amber; other errors show red message. DSGVO hint ("max. 1× pro 30 Tage") shown below the button. Spinner while loading.
+- **Daten exportieren (PDF)** — calls `GET /gdpr/export` and still expects a PDF blob (`paarship-daten-export.pdf`); the backend now mails the PDF and returns JSON instead, see [Known gaps](#known-gaps). Rate-limit (403) shows cooldown message in amber; other errors show red message. DSGVO hint ("max. 1× pro 30 Tage") shown below the button. Spinner while loading.
 - **Passwort ändern** (nested sub-accordion within Konto) — current password + new password + confirmation; show/hide toggles; calls `PATCH /auth/change-password`; success state clears fields.
 - **E-Mail ändern** (nested sub-accordion within Konto) — current password + new email address; calls `PATCH /auth/change-email`; success state clears fields.
 - **Konto löschen** — focus-trapped confirmation dialog; calls `DELETE /auth/account`, clears auth store and redirects to `/login` on success; shows inline error on failure with spinner during the request.
@@ -387,9 +421,11 @@ Eight tabs (`owner` sees all; `admin` does not see **Verwaltung**):
 | Route | Description |
 |---|---|
 | `/profile/[nickname]` | Public profile page. Visibility flags respected. Connect, block, and report actions. |
-| `/impressum` | Impressum (§ 5 TMG/ECG). Company details from `NEXT_PUBLIC_COMPANY_*` env vars. |
-| `/datenschutz` | Full Datenschutzerklärung (7 sections). |
-| `/agb` | AGB. |
+| `/impressum` | Impressum (§ 5 TMG/ECG). Operator details from the tenant's `legal` block. |
+| `/datenschutz` | Datenschutzerklärung, checked against the backend code (encryption, RLS scope, storage duration, demo reset, Stripe test mode, data-subject rights). |
+| `/agb` | AGB with real content. |
+
+All three show `LegalPageNotice` (demo note + "not legal advice").
 | `/b2b` | B2B landing page. Contact section from `NEXT_PUBLIC_CONTACT_*` env vars. |
 
 ### Beef — `beef/` (Hidden Zone)
@@ -634,30 +670,6 @@ Full-screen overlay rendered by `AuthProvider` when `isBanned` is `true` in the 
 
 ---
 
-### `ErrorCard` — `components/ui/ErrorCard.tsx`
-
-Compact inline error card for when a section fails to load. Named export.
-
-```tsx
-<ErrorCard
-  title="Daten konnten nicht geladen werden"
-  message="Bitte versuche es erneut."
-  onRetry={loadData}
-  retryLabel="Erneut versuchen"
-/>
-```
-
-| Prop | Type | Description |
-|---|---|---|
-| `title` | `string` | Bold error heading |
-| `message` | `string` | Descriptive subtext |
-| `onRetry` | `() => void` | Optional — renders a retry button when provided |
-| `retryLabel` | `string` | Button label (default: `'Erneut versuchen'`) |
-
-Styled with `bg-surface-container / border-outline-variant / rounded-2xl` to blend into any surface.
-
----
-
 ## Config
 
 ### `config/public.config.ts`
@@ -741,11 +753,40 @@ Posts to `POST /hidden/beef/dev/quick-fight` (backend returns 404 in production)
 | `chat/[id]` header | Generic user icon — partner photo not loaded |
 | `BottomNav` | No unread badge on Chat or Requests tabs |
 | `chat/[id]` | `read_at` exists on messages but read receipts not rendered |
-| `settings` → Einstellungen | UI language selector (de/en) — local state only, not persisted |
+| `settings` → Konto | GDPR export still downloads a blob, but `GET /gdpr/export` now returns JSON and mails the PDF — the button saves a broken file |
+| `/forgot-password` | The reset mail links to `/auth/reset-password`, which doesn't exist (backend `mail.service.ts`); there is no reset page yet |
 
 ---
 
 ## Changelog
+
+### 2026-10-09 — Analytics
+- feat(analytics): owner analytics on `/dashboard` — KPI tiles with sparklines, growth, activity, sign-ups, revenue, funnel, heatmap, plan mix, top interests/cities; table view for every chart; texts in all 9 languages
+
+### 2026-10-07 — Tenant Logo & Favicon
+- feat(tenant): logo in the logo button, favicon in the tab, both via `/api/v1/tenant/asset/<file>`; default favicon moved to `public/`
+
+### 2026-10-06 — Multitenant
+- feat(tenant): root layout fetches `GET /tenant` on the server — title, `lang`, theme and color tokens in the first HTML; `TenantProvider` for client code
+- feat(tenant): brand name, legal pages and footer from the tenant; navigation, dashboard, settings and routes follow the enabled modules (disabled → 404); language picker limited to the tenant's locales
+- fix(media): `next.config.ts` rewrites `/api/v1/media/file/*` to the tenant's backend
+
+### 2026-10-05 — Docker Only
+- chore(deploy): removed the ngrok header from fetch/socket calls; Docker is the only way to run the stack
+
+### 2026-09-15 – 09-17 — Demo Hardening
+- feat(offline): fullscreen offline fallback when `/health` is unreachable
+- feat(demo): sticky demo banner on every page; demo hint on the register email field
+- feat(auth): `/forgot-password` page
+- feat(legal): Impressum/Datenschutz/AGB rewritten and checked against the code, `LegalPageNotice`
+- fix(auth): removed the cookie-based route gate (`proxy.ts`) that bounced split-domain logins back to `/login`
+- fix(login, verify): `useSearchParams` wrapped in a Suspense boundary
+- fix(admin): media images/audio not showing in the MediaTab
+- chore(api): `NEXT_PUBLIC_SOCKET_URL` renamed to `NEXT_PUBLIC_WS_URL`
+- chore(branding): display name YourBrand → YourDemo (the Hidden Zone password stays `YourBrand`)
+
+### 2026-09-12 — Cleanup
+- delete: unused `ErrorCard` component
 
 ### 2026-07-23 — Onboarding: Fix Admin/Dashboard Redirect Loop
 - fix(onboarding): `/onboarding` force-redirected any `admin`/`owner` role straight to `/dashboard`, while `useBootstrap` force-redirects any account with `onboardingCompleted: false` back to `/onboarding` — an admin account with incomplete onboarding (e.g. the `saos43` demo/test account) bounced between the two routes on every render, tripping the global rate limiter (429s on dashboard/admin endpoints); removed the role-based redirect — onboarding completion is now the only gate for leaving `/onboarding`

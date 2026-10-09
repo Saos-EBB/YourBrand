@@ -43,9 +43,12 @@ Live public "beef" battle system (15min–48h), coin economy with Stripe coin pa
 
 ## Tech Stack
 
-- **Backend** — NestJS, TypeORM, EventEmitter2
+- **Backend** — NestJS, TypeORM, EventEmitter2, BullMQ worker process
 - **Frontend** — Next.js 16, React, Tailwind
 - **Database** — PostgreSQL 16 + PostGIS 3.4
+- **Cache & queues** — Redis (rate limits, caches, BullMQ)
+- **Object storage** — S3-compatible, MinIO locally
+- **Multi-tenant** — silo model: one stack, database, bucket and Redis prefix per tenant
 - **Real-time** — Socket.io WebSockets
 - **Payments** — Stripe (subscriptions + webhooks)
 - **Security** — AES-256-CBC, bcrypt, JWT + HttpOnly refresh tokens, SHA-256+salt email hashing
@@ -63,12 +66,14 @@ Monorepo combining frontend and backend in subfolders, with the full commit hist
 ├── backend/    # NestJS API + WebSocket gateway (+ tenant console in src/console/)
 ├── tenants/    # one tenant.json (+ logo/favicon) per branded tenant
 ├── scripts/    # demo.sh / tenant.sh
+├── showcase/   # Playwright screenshots + videos of every tenant
 └── docs/       # design notes, findings, handoffs
 ```
 
 For environment variables and architecture details, see:
 - [`frontend/README.md`](./frontend/README.md)
 - [`backend/README.md`](./backend/README.md)
+- [`tenants/README.md`](./tenants/README.md) (German)
 
 ---
 
@@ -103,11 +108,11 @@ cp frontend/.env.example frontend/.env
 docker compose up --build
 ```
 
-Starts four containers: Postgres+PostGIS (`XXX_db`, port 5432), pgAdmin (port 5050), the NestJS API (`XXX_backend`, port 3000) and the Next.js app (`XXX_frontend`, port 3001) — both app containers run in dev mode with hot-reload via bind mounts, so source changes on the host are picked up immediately.
+Starts Postgres+PostGIS (`XXX_db`, port 5432), Redis, MinIO (port 9000, plus a one-shot bucket init), pgAdmin (port 5050), the NestJS API (`XXX_backend`, port 3000), the background worker (`XXX_worker`) and the Next.js app (`XXX_frontend`, port 3001). The app containers run in dev mode with hot-reload via bind mounts, so source changes on the host are picked up immediately.
 
 `.env` (root) and `backend/.env` both define `DB_NAME`/`DB_USER`/`DB_PASSWORD`/`JWT_SECRET` — keep them in sync, the root copy is what `docker-compose.yml` substitutes into the Postgres/pgAdmin/backend service definitions.
 
-The database starts empty. Run the `backend/migrations/*.sql` files in order, starting from `001_baseline.sql` (a consolidated schema snapshot), to get the fully up-to-date schema.
+On a fresh volume the DB image applies the schema (`backend/migrations/001_baseline.sql` + the numbered migrations after it) by itself. On every backend start the demo is reset to its curated state and seeded: 45 demo users, owner login `owner@demo.example.com` / `Demo1234!`.
 
 ### Multiple tenants, by hand
 

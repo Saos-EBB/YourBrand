@@ -18,7 +18,10 @@ NestJS REST API + WebSocket gateway for the XXX platform.
   - [Moderation & Profanity](#moderation--profanity)
   - [System Settings](#system-settings)
   - [Owner Role](#owner-role)
-  - [Multi-tenant / Licensing](#multi-tenant--licensing)
+  - [Multi-tenant](#multi-tenant)
+  - [Background Jobs (Worker)](#background-jobs-worker)
+  - [Object Storage](#object-storage)
+  - [Analytics](#analytics)
 - [Security](#security)
 - [API Reference](#api-reference)
   - [Auth — `/auth`](#auth--auth)
@@ -35,10 +38,13 @@ NestJS REST API + WebSocket gateway for the XXX platform.
   - [Support — `/support`](#support--support)
   - [GDPR — `/gdpr`](#gdpr--gdpr)
   - [Hidden Zone — `/hidden`](#hidden-zone---hidden)
+  - [Tenant — `/tenant`](#tenant--tenant)
+  - [Health](#health)
 - [WebSocket Events](#websocket-events)
 - [Frontend](#frontend)
 - [Environment](#environment)
 - [Running Locally](#running-locally)
+- [Tenant Console](#tenant-console)
 - [Load Testing](#load-testing)
 - [Changelog](#changelog)
 
@@ -52,13 +58,16 @@ NestJS REST API + WebSocket gateway for the XXX platform.
 | Framework | NestJS |
 | ORM | TypeORM |
 | Database | PostgreSQL 16 + PostGIS |
-| Auth | JWT (access + refresh), bcrypt |
+| Cache / shared state | Redis (ioredis) — rate limits, JWT user-exists cache, system settings cache, beef game state |
+| Job queue | BullMQ (`@nestjs/bullmq`) + a separate worker process |
+| Object storage | S3-compatible (`@aws-sdk/client-s3`) — MinIO locally |
+| Auth | JWT (access + refresh), bcrypt in a piscina worker-thread pool |
 | Encryption | AES-256-CBC (field-level), SHA-256 (hashing) |
 | Email | Resend |
 | Payments | Stripe (Embedded Checkout + webhooks) |
 | Real-time | WebSockets via socket.io (`@nestjs/platform-socket.io`) |
 | Events | `@nestjs/event-emitter` (internal cross-module bus) |
-| File processing | sharp (image resize + WebP conversion) |
+| File processing | sharp (image resize + WebP conversion, runs in the worker) |
 | PDF generation | pdfkit |
 | Profanity | leo-profanity + custom DB word list |
 
@@ -83,6 +92,9 @@ NestJS REST API + WebSocket gateway for the XXX platform.
 | `CitiesModule` | `src/modules/core/cities` | City autocomplete search backed by seeded `cities` table |
 | `MatchingModule` | `src/modules/core/matching` | Swipe deck (interest + distance scoring), swipe action (mutual like → match + conversation), matches list (`GET /discover/matches`) |
 | `CommonModule` | `src/common` | `PremiumGuard`, `@RequiresPremium()`, `HttpExceptionFilter`, RLS helpers |
+| `TenantModule` | `src/common/tenant` | Loads and validates `tenants/<slug>/tenant.json` at boot, exposes `TENANT_CONFIG` globally, `GET /tenant`, `FeatureGuard` + `@RequiresModule()` |
+| `RedisModule` / `QueueModule` | `src/common/redis`, `src/common/queue` | Shared ioredis client (`REDIS_CLIENT`) and BullMQ connection, both prefixed per tenant |
+| `WorkerModule` | `src/worker.module.ts` | Second process (`src/worker.ts`) — no HTTP, runs only the BullMQ processors |
 | `BeefModule` | `src/modules/hidden/beef` | Hidden zone: beef challenges, voting, comments, coin pot; real-time game system (RPS/RPSLS, TicTacToe, Mastermind, Reaction) via `BeefGameService` + typed handlers; `HiddenBeefGateway` (`/hidden-beef` WS namespace) |
 | `CoinModule` | `src/modules/hidden/coin` | Hidden zone: coin balance ledger and transactions |
 | `TeethModule` | `src/modules/hidden/teeth` | Hidden zone: tooth collection and tooth-chain crafting |
@@ -94,10 +106,11 @@ NestJS REST API + WebSocket gateway for the XXX platform.
 
 ### Authentication & Security
 - JWT access token (15 min) + single-use refresh token (30 days) rotated via HttpOnly cookie
-- Passwords hashed with bcrypt cost 12
+- Passwords hashed with bcrypt cost 12 — all API-side hashing runs in a piscina worker-thread pool (`common/bcrypt/bcrypt-pool.helper.ts`), so it doesn't block the main libuv threadpool (~3× login throughput in the load test)
 - Email stored AES-256-CBC encrypted, looked up via SHA-256 hash (no plaintext in DB)
 - Sensitive data (disability type) stored AES-256-CBC encrypted
-- Rate limiting: global 100 req/60 s; login 5/60 s; password reset 3/60 s
+- Rate limiting: global 100 req/60 s; login 5/60 s; password reset 3/60 s — stored in Redis, so the limit holds across instances
+- `JwtGuard` checks that the user still exists; the check is cached in Redis and `last_active_at` writes are batched
 - Soft deletes (`deleted_at`); account reactivation within 30 days on re-login
 - Refresh tokens bulk-revoked on account delete
 
@@ -121,8 +134,8 @@ NestJS REST API + WebSocket gateway for the XXX platform.
 - `@RequiresPremium()` decorator enforces active subscription on guarded routes
 
 ### GDPR
-- `GET /gdpr/export` streams a PDF with 14 data sections (Art. 15 DSGVO)
-- Rate-limited to once every 30 days per user
+- `GET /gdpr/export` queues an export job and returns right away; the worker builds the PDF (14 data sections, Art. 15 DSGVO) and mails it as an attachment
+- Rate-limited to once every 30 days per user — the window is only used up once the mail was sent
 - All encrypted fields decrypted before inclusion; third-party UUIDs never exposed
 - `DELETE /auth/account` soft-deletes (Art. 17); `admin/:id/export` for admin-side export
 
@@ -143,7 +156,7 @@ NestJS REST API + WebSocket gateway for the XXX platform.
 
 ### System Settings
 - `system_settings` table — owner-editable key/value pairs
-- `SystemSettingsService.getNumber(key, fallback)` and `getString(key, fallback)` with 60 s in-memory cache
+- `SystemSettingsService.getNumber(key, fallback)` and `getString(key, fallback)` with a 60 s cache in Redis (misses are cached too)
 - Owner-only admin endpoints: `GET /admin/settings`, `PATCH /admin/settings/:key`
 - Subscription prices stored as `subscription_price_monthly`, `subscription_price_yearly`, `subscription_price_lifetime` keys; seeded via migration `020_subscription_prices.sql`
 - Public endpoint: `GET /system-settings/prices` — returns `{ monthly, yearly, lifetime }` (no auth required)
@@ -156,10 +169,36 @@ NestJS REST API + WebSocket gateway for the XXX platform.
 - `RolesGuard` updated: `owner` inherits all `admin` permissions (no separate decoration needed)
 - Owner-only admin endpoints: `POST /admin/users/create`, `PATCH /admin/users/:id/role`, `GET /admin/admins`, `GET /admin/settings`, `PATCH /admin/settings/:key`
 
-### Multi-tenant / Licensing
-- `role` column on `users`: `user | admin | org | owner`
-- `managed_accounts` table present; `org` role reserved for licensed operators
-- `caretaker_access` RLS policy placeholder on `profile_sensitive_data`
+### Multi-tenant
+One codebase, one process per tenant (silo model). The backend loads exactly one tenant at boot — `TENANT=<slug>`, config from `TENANT_DIR` (Docker: `/tenants`, local: `../tenants`). Details and all config fields: [`../tenants/README.md`](../tenants/README.md), design: [`../docs/multitenant.md`](../docs/multitenant.md).
+
+- **Config** — `tenant.json` is validated strictly (`tenant-config.schema.ts`): unknown keys, slug/folder mismatch, unsafe color tokens or asset paths abort startup, with every error listed at once
+- **Feature modules** — `tier` (`core` / `connect` / `premium`) sets defaults for `chat`, `matching`, `payments`, `hidden`; `modules` overrides single ones. Disabled modules are not imported at all (no routes, gateways or cron jobs). `ChatModule` stays loaded because `ChatGateway` also delivers notifications and bans — its routes and socket events are blocked instead. `@RequiresModule()` + the global `FeatureGuard` answer 404, before auth
+- **Isolation** — per tenant on the shared infra (`tenant-infra.helper.ts`): database `yb_<slug>`, bucket `<slug>-media`, Redis key prefix `<slug>:`, BullMQ prefix `<slug>:bull`. An explicit `DB_NAME` / `S3_BUCKET` only applies to `default`
+- **Secrets** — every tenant gets its own `.env` (own `JWT_SECRET`, `EMAIL_SALT`, `APP_ENCRYPTION_KEY`), mounted over `backend/.env` in its containers
+- **Init** — `src/database/tenant-init.ts` checks config and secrets, creates DB and bucket and applies `migrations/*.sql` (tracked in `tenant_schema_migrations`) before backend and worker start
+- **Branding** — `GET /tenant` returns the public config (everything except `seed` / `seedAgeDays`), `GET /tenant/asset/:name` serves logo and favicon
+- The `org` role and `managed_accounts` table exist, but the Connect features (orgs, caretakers) aren't built yet — `connect` currently behaves like `core`
+
+### Background Jobs (Worker)
+`src/worker.ts` boots its own `WorkerModule` (not `AppModule`), so processors never run inside the API. Same image, started as the `worker` service in Docker (`npm run start:worker` / `start:worker:dev`). Queues share `DEFAULT_JOB_OPTIONS` (3 attempts, exponential backoff).
+
+| Job | What it does |
+|---|---|
+| Media processing | Downloads the raw upload, resizes, watermarks and converts to WebP, overwrites the same key (URL stays stable) |
+| Media ticket | Creates the moderation `admin_tickets` row for an upload |
+| Auto-suspend | Idempotent `checkAutoSuspend` after a report |
+| GDPR export | Builds the Art. 15 PDF and mails it as an attachment |
+
+### Object Storage
+- Profile photos and audio live in S3-compatible storage (`common/storage/object-storage.helper.ts`, plain functions so seed scripts can use them too) — MinIO locally, one bucket per tenant
+- MinIO is never public: `GET /api/v1/media/file/*` streams objects through the backend, and `S3_PUBLIC_URL_BASE` points there
+- Uploads return right away; processing happens in the worker (see above)
+- Photos are only delivered when `moderation_status = 'approved'` — same hard gate on every path (public profile, search, user lookup, block list)
+
+### Analytics
+- `GET /admin/dashboard/analytics?days=7|30|90` (owner) — time series (sign-ups, messages, contact requests, coins, uploads, revenue), KPIs against the previous period, funnel (registered → verified → photo → contacted → conversation → premium), weekday × hour heatmap, subscription mix, top interests and cities
+- The queries live in plain functions (`dashboard-stats.query.ts`, `dashboard-analytics.query.ts`) so the [tenant console](#tenant-console) can run the same SQL against every tenant DB
 
 ---
 
@@ -210,7 +249,8 @@ All protected routes require `Authorization: Bearer <accessToken>`.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/media/upload/profile-photo` | JWT | Upload a profile photo. Accepts `multipart/form-data` with field `file` (JPEG, PNG, WebP, max 5 MB). Resizes to max 800×800 and converts to WebP via sharp. Saves to `uploads/profiles/`, stores a `MediaUpload` record, updates `profile.photo_id`. Creates an `admin_tickets` row (type `image`) for moderation review. Returns `{ file_url, id }`. |
+| POST | `/media/upload/profile-photo` | JWT | Upload a profile photo. Accepts `multipart/form-data` with field `file` (JPEG, PNG, WebP, max 5 MB). Stores the raw file in object storage, saves a `MediaUpload` record, updates `profile.photo_id` and returns `{ file_url, id }` right away. Resize/WebP conversion and the moderation ticket (`admin_tickets`, type `image`) happen in the worker. |
+| GET | `/media/file/*` | — | Streams an object from storage (MinIO is not public). Not rate-limited. |
 
 ---
 
@@ -288,10 +328,10 @@ All notification routes require JWT.
 |---|---|---|---|
 | GET | `/moderation/wordlist` | — | Returns the active profanity word list: `{ words: string[] }`. |
 | POST | `/moderation/reports` | JWT | Submit a report against a user or content. After saving, counts distinct reporters against the target; if ≥ 10 unique reporters have open/reviewed reports the user is auto-banned (`ban_reason = 'Auto-Ban: 10 unabhängige Meldungen'`) and receives a system notification. |
-| GET | `/moderation/reports` | JWT (admin) | List all reports. |
+| GET | `/moderation/reports` | JWT (admin) | List all reports (platform-wide). |
 | GET | `/moderation/reports/:id` | JWT (admin) | Get a single report. |
 | POST | `/moderation/strikes` | JWT (admin) | Issue a strike. |
-| GET | `/moderation/strikes` | JWT (admin) | List own strikes. |
+| GET | `/moderation/strikes` | JWT (admin) | List all strikes (platform-wide). |
 | PATCH | `/moderation/reports/:id/review` | JWT (admin) | Review/close a report. |
 | GET | `/moderation/admin/media/queue` | JWT (admin) | Returns all `media_uploads` with `needs_review = true`, ordered by upload time. Includes `id`, `file_url`, `uploaded_at`, `uploaded_by`, owner `nickname`. |
 | PATCH | `/moderation/admin/media/:id/approve` | JWT (admin) | Approve a photo: sets `needs_review = false`, records reviewer + timestamp, deletes the open `admin_ticket`, sends owner notification *"Dein Profilbild wurde genehmigt"*. |
@@ -395,12 +435,15 @@ All admin routes require JWT with `role: admin`.
 | GET | `/admin/dashboard/user-stats` | JWT. Returns `{ pendingRequests, activeConversations, subscription: { plan, status, expires_at } \| null }` for the calling user. Used by the frontend dashboard "Mein Überblick" section. |
 | GET | `/admin/dashboard/admin-stats` | JWT (admin). Returns `{ openReports, openTickets, strikesThisWeek, pendingMedia }`. Used by the frontend dashboard "Moderations-Überblick" section. |
 | GET | `/admin/dashboard/stats` | JWT (owner). Full platform metrics: `{ totalUsers, activeUsers, bannedUsers, newUsersToday, newUsersThisWeek, activeSubscriptions, totalRevenue, onlineUsers, messagesToday, messagesThisWeek, contactRequestsToday, contactRequestsThisWeek, openReports, strikesThisWeek, openTickets, pendingMedia }`. |
+| GET | `/admin/dashboard/analytics?days=` | JWT (owner). Analytics for the last 7, 30 or 90 days — see [Analytics](#analytics). |
 
 **Admin management (owner only)**
 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/admin/admins` | **Owner only.** Paginated list of admin accounts with profile info. Query: `page`, `limit`. |
+| GET | `/admin/owner/coin-transactions` | **Owner only.** Coin transactions with nickname. |
+| GET | `/admin/owner/cash-transactions` | **Owner only.** Cash payments with nickname. |
 
 **Conversations**
 
@@ -470,7 +513,7 @@ All GDPR routes require JWT.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/gdpr/export` | Generate and download a PDF containing all personal data stored for the authenticated user (Art. 15 DSGVO). Rate-limited to once every 30 days via `last_gdpr_export_at` on the `users` table. Returns a streamed `application/pdf` with 14 data sections: account, profile, sensitive data, consent logs, interests, media uploads, subscriptions, payment history, sent messages (max 500), notification settings, contact requests (sent + received), blockings, submitted reports, strikes. Sensitive fields (email, disability type) are AES-256-CBC decrypted before inclusion. `blocked_id` and third-party UUIDs are never exposed. |
+| GET | `/gdpr/export` | Request a PDF with all personal data stored for the authenticated user (Art. 15 DSGVO). Returns `{ message }` immediately; the worker builds the PDF and mails it as an attachment. Rate-limited to once every 30 days via `last_gdpr_export_at` (set only after the mail was sent, 403 otherwise). 14 data sections: account, profile, sensitive data, consent logs, interests, media uploads, subscriptions, payment history, sent messages (max 500), notification settings, contact requests (sent + received), blockings, submitted reports, strikes. Sensitive fields (email, disability type) are AES-256-CBC decrypted before inclusion. `blocked_id` and third-party UUIDs are never exposed. |
 
 ---
 
@@ -551,6 +594,28 @@ All hidden zone routes require JWT. Zone access is enforced client-side only (no
 
 ---
 
+### Tenant — `/tenant`
+
+Public, not rate-limited.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/tenant` | Public part of the tenant config: slug, brand, theme, locale, tier, resolved modules, legal. Used by the frontend before login. |
+| GET | `/tenant/asset/:name` | Logo or favicon of the tenant. Only the two file names from `tenant.json` are served, never other files from the folder. |
+
+Routes of disabled modules answer 404 (`FeatureGuard`).
+
+---
+
+### Health
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1` | Status route. |
+| GET | `/health` | Not prefixed — plain process alive check, polled by the frontend's offline fallback. Not rate-limited. |
+
+---
+
 ## WebSocket Events
 
 Gateway runs on the same port as HTTP. Auth via `auth.token` in socket handshake.
@@ -594,7 +659,7 @@ Separate Socket.io namespace. JWT verified on connect (`auth.token` or `query.to
 
 The XXX frontend (`xxx-frontend`) runs on port 3001.
 
-- **CORS:** configured for `http://localhost:3001` with `credentials: true` on all HTTP routes and the WebSocket gateway.
+- **CORS:** `CORS_ORIGIN` is a comma-separated list, read by `getCorsOrigins()` for REST and both WebSocket gateways, with `credentials: true`.
 - **WebSocket Gateway:** runs on the same port as the HTTP server (3000). Uses socket.io with JWT auth (`auth.token` from the handshake).
 
 ---
@@ -612,25 +677,46 @@ Copy `.env.example` to `.env` and fill in all values.
 | `DB_USER` | Database user |
 | `DB_PASSWORD` | Database password |
 | `DB_POOL_MAX` | Postgres connection pool size (default `10`, node-postgres' own default) — the loadtest stack sets it higher in `docker-compose.loadtest.yml` |
+| `REDIS_HOST` / `REDIS_PORT` | Redis (rate limits, caches, BullMQ) |
+| `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | S3-compatible storage (MinIO locally) |
+| `S3_BUCKET` | Bucket name — only used by tenant `default`, others get `<slug>-media` |
+| `S3_PUBLIC_URL_BASE` | Base for `media_uploads.file_url` — must point at `<backend>/api/v1/media/file`, not at MinIO |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | MinIO credentials (also the S3 keys locally) |
+| `TENANT` / `TENANT_DIR` | Which tenant to load and where `tenants/` is (default `default`, `../tenants`) |
 | `JWT_SECRET` | Secret for signing JWTs |
 | `APP_ENCRYPTION_KEY` | 32-byte hex key for AES-256-CBC (email, sensitive data) |
 | `EMAIL_SALT` | Salt for email search hash (SHA-256) |
 | `APP_URL` | Base URL used in verification email links |
-| `BACKEND_URL` | Base URL for file URLs stored in media records (default `http://localhost:3000`) |
-| `CORS_ORIGIN` | Allowed CORS origin (e.g. `http://localhost:3001`) — **required** |
+| `BACKEND_URL` | The backend's own origin, base for `S3_PUBLIC_URL_BASE` (default `http://localhost:3000`) |
+| `CORS_ORIGIN` | Allowed CORS origins, comma-separated (e.g. `http://localhost:3001`) — **required** |
 | `RESEND_API_KEY` | Resend API key for transactional email |
 | `STRIPE_SECRET_KEY` | Stripe secret API key |
 | `STRIPE_PUBLISHABLE_KEY` | Stripe publishable API key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `STRIPE_RETURN_URL` | URL Stripe redirects to after Embedded Checkout completes (e.g. `http://localhost:3001/settings`) |
+| `COOKIE_SAMESITE` | Refresh-token cookie policy — `lax` (default, same site) or `none` (different domains, https only) |
+| `NODE_ENV` | `production` enables secure cookies and turns off TypeORM logging |
+| `DEMO_MEDIA_PATH` | Where `demoPfp/` and `demoAudio/` live for the demo seed (`/app` in Docker) |
+| `SEED_RESET` | Rebuild the load-volume seed data (`seed-extra-users` etc.) on start |
+| `LOADTEST_MODE` | Only for the load-test stack — mounts the Stripe-free coin test purchase |
+
+Tenants other than `default` don't use `backend/.env` — `scripts/tenant.sh` generates `tenants/<slug>/.env` with their own secrets.
 
 ---
 
 ## Running Locally
 
-Via Docker (backend + frontend + Postgres together) — see [`../docker-compose.yml`](../docker-compose.yml) and the [root README](../README.md#running-locally). This is the recommended path.
+Via Docker — see [`../docker-compose.yml`](../docker-compose.yml) and the [root README](../README.md#running-locally). This is the recommended path: `scripts/demo.sh up` starts the default stack, all tenants and the console. The `default` stack runs Postgres+PostGIS, Redis, MinIO (+ a one-shot bucket init), pgAdmin, the API (`XXX_backend`), the worker (`XXX_worker`) and the frontend.
 
-Without Docker:
+On every container start `docker-entrypoint.sh` runs, in order:
+
+1. `demo-full-reset.ts` — deletes every user not in `demo-users.yaml` (incl. their files), so each restart lands on the curated demo state
+2. `demo-seed.ts`, `demo-relations-seed.ts` — the 45 curated demo users and their relations (idempotent)
+3. `seed-extra-users.ts`, `seed-coin-transactions.ts`, `seed-subscriptions-payments.ts`, `seed-media.ts` — load-volume data, no-op unless `SEED_USERS` etc. are set
+4. `seed-cities.ts`, `backfill-profile-locations.ts`
+5. `seed-backdate.ts` — spreads timestamps over the tenant's `seedAgeDays` (no-op without it)
+
+Without Docker (you need Postgres+PostGIS, Redis and an S3 endpoint yourself):
 
 ```bash
 npm install
@@ -644,9 +730,31 @@ npm run start:dev
 
 # production
 npm run start:prod
+
+# background jobs (second process)
+npm run start:worker:dev   # or start:worker after build
 ```
 
-Migrations are plain SQL files in `migrations/`, starting from `001_baseline.sql` — a consolidated schema snapshot. Run any migrations after it in order against your PostgreSQL database before starting the server. Older per-change migrations (pre-baseline) live in `migrations/_archive/` for history only.
+Migrations are plain SQL files in `migrations/`, starting from `001_baseline.sql` — a consolidated schema snapshot, followed by `002`–`005`. In Docker they are applied automatically: the `default` DB image (`db/Dockerfile`) bakes them in and runs them on a fresh volume, other tenants get them from `tenant-init.ts`. Without Docker, run them in order yourself before starting the server. Older per-change migrations (pre-baseline) live in `migrations/_archive/` for history only.
+
+---
+
+## Tenant Console
+
+`src/console/` — a small operator dashboard over all tenants, plain Node `http` + one HTML file, bound to `127.0.0.1:3099`. It runs on the host (needs git and docker), not in a container.
+
+```bash
+cd backend && npm ci && npm run console   # http://localhost:3099
+# or: scripts/demo.sh up — starts it in the background (PID/log in .console/)
+```
+
+- Overview of every tenant with status, ports and stats snapshots (totals + history)
+- `tenant.json` editor with validation (same schema as the backend), diff and auto-commit as `chore(tenant/<slug>): …`
+- Color token editor with live preview and WCAG contrast check
+- Logo upload with generated favicon, then an offer to restart the tenant
+- Analytics per tenant (same queries as `/admin/dashboard/analytics`) and a side-by-side comparison of all tenants
+
+Handoff notes: [`../docs/console-uebergabe.md`](../docs/console-uebergabe.md).
 
 ---
 
@@ -677,6 +785,47 @@ The dashboard (`dashboard/`, plain Node `http`, zero dependencies, no build step
 ---
 
 ## Changelog
+
+### 2026-10-09 — Analytics, Demo Age
+- feat(analytics): `GET /admin/dashboard/analytics` (owner) — time series, KPIs vs. previous period, funnel, heatmap, plan mix, top interests and cities; same queries used by the tenant console
+- feat(seed): `seed-backdate.ts` spreads demo timestamps over `seedAgeDays` from `tenant.json`, last step of `docker-entrypoint.sh`
+
+### 2026-10-07 — Tenant Console, Logo & Favicon
+- feat(console): tenant console on port 3099 — overview, stats snapshots, `tenant.json` editor with auto-commit, color token editor with contrast check, logo upload with generated favicon, tenant restart
+- feat(tenant): `GET /tenant/asset/:name` serves the tenant's logo and favicon
+- refactor(admin): dashboard stats queries extracted into a plain function so the console can reuse them
+
+### 2026-10-06 — Multitenant
+- feat(tenant): `tenant.json` config with strict schema validation and `GET /tenant`
+- feat(tenant): feature modules gated per tenant (`@RequiresModule()`, `FeatureGuard`, 404 for disabled modules)
+- feat(tenant): database, bucket, Redis and BullMQ prefix isolated per tenant
+- feat(tenant): each tenant as its own Compose stack with its own `.env` and generated secrets; `tenant-init.ts` creates DB/bucket and applies migrations
+- feat(tenant): per-tenant demo data (`seed`), four showcase tenants and a smoke test
+
+### 2026-10-05 — Docker Only
+- chore(deploy): removed Railway, ngrok, Vercel and Render setups — Docker Compose is the only way to run the stack
+
+### 2026-09-15 – 09-17 — Demo Hardening
+- feat(demo): `demo-full-reset.ts` resets to the curated demo state on every start
+- fix(media): `GET /media/file/*` proxies MinIO through the backend, `S3_PUBLIC_URL_BASE` points there
+- feat(cors): `CORS_ORIGIN` accepts a comma-separated list (REST + both gateways)
+- feat(health): unprefixed `GET /health`
+
+### 2026-09-12 — Cleanup
+- feat(profile): photos only delivered when approved, on every delivery path
+- fix(moderation): removed the DB trigger for ban expiry — app code is the only source of truth
+- fix(db): removed a duplicate CHECK constraint on `beefs.status`
+- refactor: one `UserRole` enum, shared `ConversationsService.getOrCreate()` for swipe/chat/admin
+- chore(db): post-baseline migrations baked into `db/Dockerfile`; dead TypeORM migration and debug script removed
+
+### 2026-09-10 — Scaling: Redis, Object Storage, Queue, Worker
+- feat(redis): Redis infra; rate limits, beef reaction state, JWT user-exists cache and system settings cache moved to Redis
+- feat(media): uploads moved to S3-compatible storage (MinIO locally)
+- feat(queue): BullMQ + separate worker process; media processing, auto-suspend, media tickets and GDPR export run as jobs
+- feat(gdpr): export is now async and mailed as a PDF attachment — `GET /gdpr/export` returns JSON instead of a PDF
+- feat(bcrypt): bcrypt in a piscina worker-thread pool (~20 → ~70 logins/s at 100 % success)
+- fix: indexes on beef/coin/teeth/badge tables, race condition in `teeth.transform()`, `/moderation/reports` and `/moderation/strikes` return platform-wide data instead of only the calling admin's own
+- refactor(auth): one shared `JwtModule.registerAsync`
 
 ### 2026-08-05 — Load Test: Seed Batching, Token Reuse, Mode 3
 - fix(seeds): `seed-extra-users.ts` built one unbatched bulk INSERT for the whole `SEED_USERS` delta — Postgres caps bound parameters at 65535/statement (≈9360 users at 7 params/row), so a large `SEED_USERS` value threw and, since seeding runs under `set -e` in `docker-entrypoint.sh` before `npm run start:dev`, could take the whole backend container down. Now batched (1000 rows/insert) inside one transaction; verified `SEED_USERS=100000` end-to-end against the real stack.

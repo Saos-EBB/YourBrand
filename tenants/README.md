@@ -1,11 +1,12 @@
 # Mandanten (Tenants)
 
-Ein Ordner pro Mandant, darin `tenant.json` (+ später Logo/Favicon). Das Backend lädt beim Boot
+Ein Ordner pro Mandant, darin `tenant.json` und optional Logo/Favicon (alle fünf Mandanten haben ein eigenes Favicon). Das Backend lädt beim Boot
 genau einen Mandanten: `TENANT=<slug>` (Default `default`), Ordner aus `TENANT_DIR`
 (Docker: `/tenants`, lokal: `../tenants` relativ zu `backend/`). Ungültige Config → Backend
 startet nicht und nennt alle Fehler auf einmal.
 
-Neuer Mandant: `_template/` kopieren, Ordner = `slug`, Werte anpassen.
+Neuer Mandant: `_template/` kopieren, Ordner = `slug`, Werte anpassen, dann `scripts/tenant.sh up <slug>`.
+Bestehende Mandanten am bequemsten über die [Mandanten-Console](#mandanten-console) ändern.
 
 ## Die Showcase-Mandanten
 
@@ -92,7 +93,9 @@ Ohne `seedAgeDays` und im Lasttest (`LOADTEST_MODE`) passiert nichts.
 ## Docker
 
 Der Mandant `default` ist der Haupt-Stack (`docker compose up`, Ports 3000/3001). Alle anderen
-laufen als eigene Compose-Projekte (`docker-compose.tenant.yml`) auf der geteilten Infra:
+laufen als eigene Compose-Projekte (`docker-compose.tenant.yml`, Container `yb-<slug>-*`) auf der
+geteilten Infra. Am einfachsten startet `scripts/demo.sh up` alles auf einmal (Default + alle
+Mandanten + Console). Einzeln:
 
 ```bash
 scripts/tenant.sh up <slug>|all    # Infra sicherstellen, Mandant(en) bauen + starten
@@ -121,8 +124,18 @@ Plan: [`docs/multitenant.md`](../docs/multitenant.md).
 
 ## Mandanten-Console
 
-Lokales Dashboard ueber allen Mandanten: `cd backend && npm ci && npm run console` → http://localhost:3099
-(braucht laufendes `XXX_db` fuer die Stats). Uebersicht + Stats-Snapshots (Button „Aktualisieren“),
-Editor fuer `tenant.json` mit Farb-Preview und Logo-Upload; jede Aenderung wird sofort als
-`chore(tenant/<slug>): …` committet. Details: `backend/docs/architecture.md`, offene Punkte:
-`docs/findings.md`.
+Lokales Dashboard ueber allen Mandanten auf http://localhost:3099 (nur `127.0.0.1`). Startet mit
+`scripts/demo.sh up` automatisch im Hintergrund (PID/Log in `.console/`), von Hand:
+`cd backend && npm ci && npm run console`. Laeuft auf dem Host, nicht im Container (braucht git und
+docker) und liest die Stats direkt aus `XXX_db`.
+
+- Uebersicht aller Mandanten mit Status, Ports und Stats-Snapshots (Button „Aktualisieren“, Verlauf pro Mandant)
+- Editor fuer `tenant.json` mit Validierung (gleiches Schema wie das Backend) und Diff
+- Farb-Tokens mit Live-Preview und WCAG-Kontrastpruefung
+- Logo-Upload, das Favicon wird daraus erzeugt; danach bietet die Console einen Neustart des Mandanten an
+- Analytics pro Mandant (7/30/90 Tage: KPIs, Wachstum, Aktivitaet, Funnel, Heatmap, Abo-Mix, Top-Interessen/-Staedte) und ein Vergleich aller Mandanten nebeneinander
+
+Jede Aenderung wird sofort als `chore(tenant/<slug>): …` committet. Aenderungen an `tenant.json`
+greifen erst nach einem Neustart des Mandanten (Config wird beim Boot geladen).
+Details: [`docs/console-uebergabe.md`](../docs/console-uebergabe.md), `backend/docs/architecture.md`,
+offene Punkte: [`docs/findings.md`](../docs/findings.md).
