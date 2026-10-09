@@ -1,6 +1,6 @@
 {
   "slug": "default",
-  "brand": { "name": "YourBrand" },
+  "brand": { "name": "YourBrand", "favicon": "favicon.png" },
   "theme": { "default": "dark", "tokens": {} },
   "locale": { "default": "de", "available": ["de", "en", "fr", "es", "it", "ru", "ja", "de_easy", "leet"] },
   "tier": "premium",

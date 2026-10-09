@@ -1,7 +1,8 @@
 {
   "slug": "miteinander",
   "brand": {
-    "name": "Miteinander"
+    "name": "Miteinander",
+    "favicon": "favicon.png"
   },
   "theme": {
     "default": "light",

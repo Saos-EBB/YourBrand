@@ -1,7 +1,8 @@
 {
   "slug": "underground",
   "brand": {
-    "name": "Underground"
+    "name": "Underground",
+    "favicon": "favicon.png"
   },
   "theme": {
     "default": "dark",

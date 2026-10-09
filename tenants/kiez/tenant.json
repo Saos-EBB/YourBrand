@@ -1,7 +1,8 @@
 {
   "slug": "kiez",
   "brand": {
-    "name": "KiezConnect"
+    "name": "KiezConnect",
+    "favicon": "favicon.png"
   },
   "theme": {
     "default": "light",
