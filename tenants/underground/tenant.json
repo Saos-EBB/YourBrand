@@ -2,15 +2,85 @@
   "slug": "underground",
   "brand": {
     "name": "Underground",
+    "logo": "logo.svg",
     "favicon": "favicon.png"
   },
   "theme": {
     "default": "dark",
-    "tokens": {
-      "--color-primary-fixed-dim": "#22D3EE",
-      "--color-on-primary-container": "#00262C",
-      "--color-nav-badge-glow": "#22D3EE",
-      "--color-tertiary-fixed-dim": "#A3E635"
+    "tokens": {},
+    "dark": {
+      "--color-background": "#0F1013",
+      "--color-surface-container-lowest": "#0A0B0D",
+      "--color-surface-container-low": "#15171B",
+      "--color-surface-container": "#1A1C21",
+      "--color-surface-container-high": "#24272E",
+      "--color-surface-container-highest": "#2E323A",
+      "--color-on-surface": "#ECEDEF",
+      "--color-on-surface-variant": "#9A9EA8",
+      "--color-primary-fixed-dim": "#FFC400",
+      "--color-primary-container": "#4A3A00",
+      "--color-on-primary-container": "#1A1400",
+      "--color-secondary-container": "#24272E",
+      "--color-tertiary-fixed-dim": "#22D3EE",
+      "--color-outline": "#6B707A",
+      "--color-outline-variant": "#2E323A",
+      "--color-nav-badge-glow": "#FFC400",
+      "--color-logout": "#22D3EE",
+      "--color-viz-1": "#be8800",
+      "--color-viz-2": "#0098b7",
+      "--color-viz-3": "#dd3858",
+      "--color-viz-4": "#8b5dce"
+    },
+    "light": {
+      "--color-background": "#F1F1EE",
+      "--color-surface-container-lowest": "#FFFFFF",
+      "--color-surface-container-low": "#F7F7F5",
+      "--color-surface-container": "#FFFFFF",
+      "--color-surface-container-high": "#E4E4DF",
+      "--color-surface-container-highest": "#D6D6D0",
+      "--color-on-surface": "#15161A",
+      "--color-on-surface-variant": "#4F535B",
+      "--color-primary-fixed-dim": "#8A6400",
+      "--color-primary-container": "#FFE9A8",
+      "--color-on-primary-container": "#FFFFFF",
+      "--color-secondary-container": "#E4E4DF",
+      "--color-tertiary-fixed-dim": "#0E7490",
+      "--color-outline": "#7A7E86",
+      "--color-outline-variant": "#CFCFC8",
+      "--color-nav-badge-glow": "#8A6400",
+      "--color-logout": "#0E7490",
+      "--color-viz-1": "#a97600",
+      "--color-viz-2": "#7a4aba",
+      "--color-viz-3": "#0085a0",
+      "--color-viz-4": "#cb234a"
+    },
+    "layout": {
+      "nav": "line-map",
+      "font": "bigshoulders",
+      "radius": "xs",
+      "labels": {
+        "dashboard": {
+          "de": "Leitstand",
+          "en": "Control",
+          "leet": "L31TST4ND"
+        },
+        "notifications": {
+          "de": "Durchsagen",
+          "en": "Announcements",
+          "leet": "DURCHS4G3N"
+        },
+        "discover": "Crew",
+        "admin": {
+          "de": "Stellwerk",
+          "en": "Signal box",
+          "leet": "ST3LLW3RK"
+        },
+        "profile": {
+          "de": "Ich",
+          "en": "Me",
+          "leet": "1CH"
+        }
+      }
     }
   },
   "locale": {

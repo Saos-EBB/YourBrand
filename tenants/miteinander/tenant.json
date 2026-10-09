@@ -2,15 +2,73 @@
   "slug": "miteinander",
   "brand": {
     "name": "Miteinander",
+    "logo": "logo.svg",
     "favicon": "favicon.png"
   },
   "theme": {
     "default": "light",
-    "tokens": {
-      "--color-primary-fixed-dim": "#1F5FC4",
+    "tokens": {},
+    "dark": {
+      "--color-background": "#0D1626",
+      "--color-surface-container-lowest": "#08101C",
+      "--color-surface-container-low": "#121D31",
+      "--color-surface-container": "#17243B",
+      "--color-surface-container-high": "#213150",
+      "--color-surface-container-highest": "#2B3D61",
+      "--color-on-surface": "#F2F6FC",
+      "--color-on-surface-variant": "#C3CEDF",
+      "--color-primary-fixed-dim": "#8DB4FF",
+      "--color-primary-container": "#1B3566",
+      "--color-on-primary-container": "#0A1F4A",
+      "--color-secondary-container": "#213150",
+      "--color-tertiary-fixed-dim": "#5DD3AE",
+      "--color-outline": "#8D9CB4",
+      "--color-outline-variant": "#4A5B78",
+      "--color-nav-badge-glow": "#8DB4FF",
+      "--color-logout": "#8DB4FF",
+      "--color-viz-1": "#437dde",
+      "--color-viz-2": "#109d7b",
+      "--color-viz-3": "#dc631e",
+      "--color-viz-4": "#a75fb7"
+    },
+    "light": {
+      "--color-background": "#FFFFFF",
+      "--color-surface-container-lowest": "#FFFFFF",
+      "--color-surface-container-low": "#F6F9FE",
+      "--color-surface-container": "#EEF3FB",
+      "--color-surface-container-high": "#DCE6F6",
+      "--color-surface-container-highest": "#C9D7EF",
+      "--color-on-surface": "#0E1A2E",
+      "--color-on-surface-variant": "#3A475A",
+      "--color-primary-fixed-dim": "#1C4FB0",
+      "--color-primary-container": "#DCE6F6",
       "--color-on-primary-container": "#FFFFFF",
-      "--color-nav-badge-glow": "#1F5FC4",
-      "--color-tertiary-fixed-dim": "#0F7B5F"
+      "--color-secondary-container": "#DCE6F6",
+      "--color-tertiary-fixed-dim": "#0F7B5F",
+      "--color-outline": "#5B6B82",
+      "--color-outline-variant": "#8F9DB3",
+      "--color-nav-badge-glow": "#1C4FB0",
+      "--color-logout": "#1C4FB0",
+      "--color-viz-1": "#1f5dc2",
+      "--color-viz-2": "#008668",
+      "--color-viz-3": "#cf5604",
+      "--color-viz-4": "#874197"
+    },
+    "layout": {
+      "nav": "wide-sidebar",
+      "font": "atkinson",
+      "radius": "md",
+      "textScale": 1.125,
+      "labels": {
+        "dashboard": "Start",
+        "chat": "Nachrichten",
+        "requests": "Anfragen",
+        "notifications": "Neuigkeiten",
+        "profile": "Ich",
+        "settings": "Einstellungen",
+        "care": "Betreuung"
+      },
+      "assist": true
     }
   },
   "locale": {
@@ -22,7 +80,9 @@
   },
   "tier": "connect",
   "modules": {
-    "payments": false
+    "payments": false,
+    "caretaker": true,
+    "orgs": true
   },
   "legal": {
     "name": "Miteinander gGmbH (Demo)",

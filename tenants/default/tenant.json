@@ -1,9 +1,79 @@
 {
   "slug": "default",
-  "brand": { "name": "YourBrand", "favicon": "favicon.png" },
-  "theme": { "default": "dark", "tokens": {} },
-  "locale": { "default": "de", "available": ["de", "en", "fr", "es", "it", "ru", "ja", "de_easy", "leet"] },
+  "brand": {
+    "name": "YourBrand",
+    "logo": "logo.svg",
+    "favicon": "favicon.png"
+  },
+  "theme": {
+    "default": "dark",
+    "tokens": {},
+    "dark": {
+      "--color-background": "#141218",
+      "--color-surface-container-lowest": "#0F0D13",
+      "--color-surface-container-low": "#1A1720",
+      "--color-surface-container": "#1F1C24",
+      "--color-surface-container-high": "#2B2731",
+      "--color-surface-container-highest": "#36313D",
+      "--color-on-surface": "#F3EBF6",
+      "--color-on-surface-variant": "#B4A8BF",
+      "--color-primary-fixed-dim": "#FF5FC8",
+      "--color-primary-container": "#4A1D45",
+      "--color-on-primary-container": "#2A0020",
+      "--color-secondary-container": "#3A3442",
+      "--color-tertiary-fixed-dim": "#8FE3F5",
+      "--color-outline": "#8A7F94",
+      "--color-outline-variant": "#38333F",
+      "--color-nav-badge-glow": "#FF5FC8",
+      "--color-logout": "#A77BFF",
+      "--color-viz-1": "#e63f9f",
+      "--color-viz-2": "#8a66d9",
+      "--color-viz-3": "#00a4c0",
+      "--color-viz-4": "#4f9b3e"
+    },
+    "light": {
+      "--color-background": "#FBF7FC",
+      "--color-surface-container-lowest": "#FFFFFF",
+      "--color-surface-container-low": "#F5EEF7",
+      "--color-surface-container": "#EFE6F2",
+      "--color-surface-container-high": "#E6DAEA",
+      "--color-surface-container-highest": "#DACBE0",
+      "--color-on-surface": "#1E1724",
+      "--color-on-surface-variant": "#5E5068",
+      "--color-primary-fixed-dim": "#C2188E",
+      "--color-primary-container": "#FFD8F0",
+      "--color-on-primary-container": "#FFFFFF",
+      "--color-secondary-container": "#E6DAEA",
+      "--color-tertiary-fixed-dim": "#0E7C93",
+      "--color-outline": "#7E7286",
+      "--color-outline-variant": "#D5C8DB",
+      "--color-nav-badge-glow": "#C2188E",
+      "--color-logout": "#6D44D9",
+      "--color-viz-1": "#c32e85",
+      "--color-viz-2": "#734ac3",
+      "--color-viz-3": "#00849c",
+      "--color-viz-4": "#b37000"
+    }
+  },
+  "locale": {
+    "default": "de",
+    "available": [
+      "de",
+      "en",
+      "fr",
+      "es",
+      "it",
+      "ru",
+      "ja",
+      "de_easy",
+      "leet"
+    ]
+  },
   "tier": "premium",
-  "legal": { "name": "<NAME>", "address": "<ANSCHRIFT>", "email": "kontakt@example.com" },
+  "legal": {
+    "name": "<NAME>",
+    "address": "<ANSCHRIFT>",
+    "email": "kontakt@example.com"
+  },
   "seedAgeDays": 120
 }

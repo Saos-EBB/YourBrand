@@ -2,15 +2,85 @@
   "slug": "kiez",
   "brand": {
     "name": "KiezConnect",
+    "logo": "logo.svg",
     "favicon": "favicon.png"
   },
   "theme": {
     "default": "light",
-    "tokens": {
-      "--color-primary-fixed-dim": "#E4572E",
-      "--color-on-primary-container": "#2A0A00",
-      "--color-nav-badge-glow": "#E4572E",
-      "--color-tertiary-fixed-dim": "#F2A541"
+    "tokens": {},
+    "dark": {
+      "--color-background": "#16191C",
+      "--color-surface-container-lowest": "#101214",
+      "--color-surface-container-low": "#1C2024",
+      "--color-surface-container": "#22272B",
+      "--color-surface-container-high": "#2C3237",
+      "--color-surface-container-highest": "#373E44",
+      "--color-on-surface": "#ECEEEA",
+      "--color-on-surface-variant": "#A9B0A8",
+      "--color-primary-fixed-dim": "#F0743F",
+      "--color-primary-container": "#4A2414",
+      "--color-on-primary-container": "#1E0A00",
+      "--color-secondary-container": "#2C3237",
+      "--color-tertiary-fixed-dim": "#FFD23F",
+      "--color-outline": "#7F877F",
+      "--color-outline-variant": "#343A3F",
+      "--color-nav-badge-glow": "#F0743F",
+      "--color-logout": "#F0743F",
+      "--color-viz-1": "#d95737",
+      "--color-viz-2": "#4682cc",
+      "--color-viz-3": "#47a34e",
+      "--color-viz-4": "#a355b4"
+    },
+    "light": {
+      "--color-background": "#EEF0EC",
+      "--color-surface-container-lowest": "#FFFFFF",
+      "--color-surface-container-low": "#F6F7F4",
+      "--color-surface-container": "#FFFFFF",
+      "--color-surface-container-high": "#E2E5DF",
+      "--color-surface-container-highest": "#D5D9D1",
+      "--color-on-surface": "#1E2226",
+      "--color-on-surface-variant": "#575E66",
+      "--color-primary-fixed-dim": "#C2410C",
+      "--color-primary-container": "#FFE1D2",
+      "--color-on-primary-container": "#FFFFFF",
+      "--color-secondary-container": "#E2E5DF",
+      "--color-tertiary-fixed-dim": "#A16207",
+      "--color-outline": "#7A8078",
+      "--color-outline-variant": "#CDD1CA",
+      "--color-nav-badge-glow": "#C2410C",
+      "--color-logout": "#C2410C",
+      "--color-viz-1": "#d64c29",
+      "--color-viz-2": "#2063b0",
+      "--color-viz-3": "#409d48",
+      "--color-viz-4": "#9043a1"
+    },
+    "layout": {
+      "nav": "topbar",
+      "font": "archivo",
+      "radius": "sm",
+      "labels": {
+        "dashboard": "Kiez",
+        "board": {
+          "de": "Brett",
+          "de_easy": "Brett",
+          "en": "Board"
+        },
+        "requests": {
+          "de": "Anfragen",
+          "de_easy": "Anfragen",
+          "en": "Requests"
+        },
+        "notifications": {
+          "de": "Neuigkeiten",
+          "de_easy": "Neuigkeiten",
+          "en": "News"
+        },
+        "profile": {
+          "de": "Ich",
+          "de_easy": "Ich",
+          "en": "Me"
+        }
+      }
     }
   },
   "locale": {
@@ -27,5 +97,8 @@
     "address": "Wrangelstraße 7, 10997 Berlin",
     "email": "hallo@kiez.demo"
   },
-  "seedAgeDays": 2
+  "seedAgeDays": 2,
+  "modules": {
+    "board": true
+  }
 }

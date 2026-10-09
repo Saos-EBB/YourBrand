@@ -105,7 +105,7 @@
   .an-bar h2 { margin: 0; }
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--card); }
   .seg button { border: 0; padding: 4px 10px; font-size: 12px; color: var(--muted); background: none; border-radius: 6px; }
-  .seg button[aria-checked="true"] { background: var(--bg); color: var(--text); font-weight: 600; }
+  .seg button[aria-checked="true"], .seg button[aria-pressed="true"] { background: var(--bg); color: var(--text); font-weight: 600; }
   .an-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
   .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; }
   .kpi .label { font-size: 12px; color: var(--muted); }
@@ -199,7 +199,8 @@ function statusLabel(t) {
 
 function card(t) {
   const c = t.config;
-  const tokens = c.theme?.tokens ?? {};
+  // Farben im Standard-Modus des Mandanten: gemeinsame + Modus-Tokens
+  const tokens = { ...(c.theme?.tokens ?? {}), ...(c.theme?.[c.theme?.default] ?? {}) };
   const primary = tokens['--color-primary-fixed-dim'] ?? meta.baseTokens.dark['--color-primary-fixed-dim'];
   const swatches = Object.entries(tokens)
     .map(([k, v]) => `<span class="swatch" style="background:${esc(v)}" title="${esc(k)}: ${esc(v)}"></span>`)
@@ -707,6 +708,7 @@ let assetVersion = Date.now();
 const assetUrl = (slug, name) => `/api/tenants/${encodeURIComponent(slug)}/asset/${encodeURIComponent(name)}?v=${assetVersion}`;
 let draft = null;      // Arbeitskopie der rohen tenant.json
 let draftSlug = null;
+let colorScope = null; // 'tokens' (beide Modi) | 'dark' | 'light' — welcher Satz im Farb-Editor bearbeitet wird
 let checked = null;    // Ergebnis von /preview fuer genau diesen Draft
 
 function getPath(obj, p) { return p.split('.').reduce((o, k) => o?.[k], obj); }
@@ -752,9 +754,18 @@ const toColorInput = (v) => {
   return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
 };
 
+// Wie im Frontend: Basis, dann theme.tokens (beide Modi), dann theme.dark/light
 function effectiveTokens(mode) {
-  const own = Object.fromEntries(Object.entries(draft.theme?.tokens ?? {}).filter(([, v]) => isHex(v)));
-  return { ...meta.baseTokens[mode], ...own };
+  const hex = (o) => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => isHex(v)));
+  return { ...meta.baseTokens[mode], ...hex(draft.theme?.tokens), ...hex(draft.theme?.[mode]) };
+}
+
+function scope() {
+  if (!colorScope) {
+    const mode = draft.theme?.default === 'light' ? 'light' : 'dark';
+    colorScope = Object.keys(draft.theme?.[mode] ?? {}).length ? mode : 'tokens';
+  }
+  return colorScope;
 }
 
 function previewPane(mode) {
@@ -781,7 +792,7 @@ function renderPreviews() {
 }
 
 function colorFieldset() {
-  const own = draft.theme?.tokens ?? {};
+  const own = draft.theme?.[scope()] ?? {};
   const rows = Object.keys(meta.baseTokens.dark).map((k) => {
     const set = k in own;
     const v = set ? own[k] : '';
@@ -792,21 +803,25 @@ function colorFieldset() {
         ${set ? `<button type="button" data-token-reset="${k}">↺</button>` : ''}
       </div>`;
   }).join('');
-  return `<fieldset><legend>Farben — gelten in dark und light, leer = Standard</legend>
+  const scopes = [['tokens', 'beide Modi'], ['dark', 'nur dark'], ['light', 'nur light']]
+    .map(([v, l]) => `<button type="button" data-color-scope="${v}"${scope() === v ? ' class="active" aria-pressed="true"' : ' aria-pressed="false"'}>${l}</button>`).join('');
+  return `<fieldset><legend>Farben — leer = Standard. „nur dark/light“ schlägt „beide Modi“</legend>
+      <div class="seg">${scopes}</div>
       <div class="tokens">${rows}</div>
       <div class="previews" id="previews">${renderPreviews()}</div>
     </fieldset>`;
 }
 
 function setToken(key, value) {
-  draft.theme.tokens ??= {};
-  if (value) draft.theme.tokens[key] = value; else delete draft.theme.tokens[key];
+  const field = scope();
+  draft.theme[field] ??= {};
+  if (value) draft.theme[field][key] = value; else delete draft.theme[field][key];
 }
 
 function renderEditor(slug) {
   const t = tenants.find((x) => x.slug === slug);
   if (!t) return `<p>Mandant „${esc(slug)}“ nicht gefunden. <a href="#/">Zurück</a></p>`;
-  if (draftSlug !== slug) { draft = structuredClone(t.config); draftSlug = slug; checked = null; }
+  if (draftSlug !== slug) { draft = structuredClone(t.config); draftSlug = slug; checked = null; colorScope = null; }
   const tierDefaults = meta.tierModules[draft.tier] ?? {};
   const modules = meta.modules.map((m) => {
     const v = draft.modules?.[m];
@@ -923,6 +938,7 @@ async function onEditorClick(e) {
   }
   if (id === 'reset') { draftSlug = null; render(); }
   if (e.target.dataset.tokenReset) { setToken(e.target.dataset.tokenReset, ''); checked = null; render(); }
+  if (e.target.dataset.colorScope) { colorScope = e.target.dataset.colorScope; render(); }
   if (id === 'save') {
     const slug = draftSlug;
     const res = await post(`/api/tenants/${slug}/save`, draft);

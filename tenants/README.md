@@ -1,6 +1,6 @@
 # Mandanten (Tenants)
 
-Ein Ordner pro Mandant, darin `tenant.json` und optional Logo/Favicon (alle fünf Mandanten haben ein eigenes Favicon). Das Backend lädt beim Boot
+Ein Ordner pro Mandant, darin `tenant.json` und optional Logo/Favicon (alle fünf Mandanten haben `logo.svg` und ein daraus erzeugtes `favicon.png`). Das Backend lädt beim Boot
 genau einen Mandanten: `TENANT=<slug>` (Default `default`), Ordner aus `TENANT_DIR`
 (Docker: `/tenants`, lokal: `../tenants` relativ zu `backend/`). Ungültige Config → Backend
 startet nicht und nennt alle Fehler auf einmal.
@@ -10,16 +10,20 @@ Bestehende Mandanten am bequemsten über die [Mandanten-Console](#mandanten-cons
 
 ## Die Showcase-Mandanten
 
-| Mandant | Tier | Module | Look | Sprachen |
-|---|---|---|---|---|
-| `default` (YourBrand) | premium | alle | dunkel, Standardfarben | alle 9 |
-| `kiez` (KiezConnect) | core | chat, payments | hell, Orange | de, en, de_easy |
-| `campus-match` (Campus Match) | premium | chat, matching, payments (ohne hidden) | dunkel, Pink | de, en |
-| `miteinander` (Miteinander) | connect | chat (ohne payments) | hell, kräftiges Blau | de_easy (Standard), de |
-| `underground` (Underground) | premium | alle inkl. Hidden Zone | dunkel, Cyan | de, en, leet |
+| Mandant | Tier | Module | Look | Navigation | Sprachen |
+|---|---|---|---|---|---|
+| `default` (YourBrand) | premium | alle | dunkel, Candy (Pink/Lila/Hellblau), Plus Jakarta Sans | Sidebar | alle 9 |
+| `kiez` (KiezConnect) | core | chat, payments, **board** | hell, Ziegelrot, Archivo, Aushänge mit Abreißzetteln | Leiste oben | de, en, de_easy |
+| `campus-match` (Campus Match) | premium | chat, matching, payments (ohne hidden) | dunkel, Pink/Flieder, Bricolage + DM Sans | Leiste oben | de, en |
+| `miteinander` (Miteinander) | connect | chat, **caretaker**, **orgs** (ohne payments) | hell, Blau/Grün, Atkinson Hyperlegible, 18 px, Assistenz | breite Sidebar | de_easy (Standard), de |
+| `underground` (Underground) | premium | alle inkl. Hidden Zone | dunkel, Signalgelb, Big Shoulders + Barlow, Abfahrtstafel | Linienplan | de, en, leet |
 
-Farb-Tokens gelten im hellen und dunklen Modus — deshalb setzen die Mandanten nur Akzentfarben
-(Primärfarbe, Text darauf, Glow, Tertiär), keine Hintergründe.
+Die Entwürfe dazu: [`docs/mockups/mandanten-designs.html`](../docs/mockups/mandanten-designs.html).
+
+Farben: `theme.tokens` gilt in beiden Modi, `theme.dark` / `theme.light` nur im jeweiligen Modus
+(überschreiben `tokens`). Alle fünf Mandanten setzen einen vollständigen Satz pro Modus, inklusive
+Diagrammfarben `--color-viz-1` … `--color-viz-4` (für Farbfehlsichtigkeit geprüft). Nutzer können in
+den Einstellungen „Klassische Farben“ wählen, dann gelten die Standardfarben (Mint) aus `globals.css`.
 
 | Feld | Pflicht | Bedeutung |
 |---|---|---|
@@ -27,10 +31,17 @@ Farb-Tokens gelten im hellen und dunklen Modus — deshalb setzen die Mandanten 
 | `brand.name` | ja | Anzeigename |
 | `brand.logo` / `brand.favicon` | nein | Dateiname im selben Ordner, keine Pfade. Logo steht im Logo-Button vor dem Namen, Favicon im Browser-Tab (`GET /api/v1/tenant/asset/<datei>`). Am einfachsten per Mandanten-Console (unten) — die erzeugt das Favicon mit |
 | `theme.default` | ja | `dark` oder `light` |
-| `theme.tokens` | nein | überschreibt Farb-Tokens aus `frontend/app/globals.css`, nur `--color-*` mit Hex-Wert |
+| `theme.tokens` | nein | überschreibt Farb-Tokens aus `frontend/app/globals.css`, nur `--color-*` mit Hex-Wert, beide Modi |
+| `theme.dark` / `theme.light` | nein | wie `tokens`, aber nur im dunklen bzw. hellen Modus |
+| `theme.layout.nav` | nein | `sidebar` (Standard), `topbar` (Leiste oben), `line-map` (Sidebar als Linienplan), `wide-sidebar` (breite Sidebar mit großen Feldern) |
+| `theme.layout.font` | nein | `jakarta` (Standard), `bricolage`, `archivo`, `atkinson`, `bigshoulders` — feste Liste, Schriften liegen in `frontend/app/layout.tsx` |
+| `theme.layout.radius` | nein | `xs` (4 px) … `lg` (18 px); ohne Angabe: rund am Handy, eckig am Desktop wie bisher |
+| `theme.layout.textScale` | nein | 1 bis 1,5, Grundschrift (Miteinander: 1,125 = 18 px) |
+| `theme.layout.assist` | nein | Vorlesen, fertige Antworten im Chat, Hilfe-Knopf immer sichtbar |
+| `theme.layout.labels` | nein | eigene Menünamen: `{ "dashboard": "Kiez" }` für alle Sprachen oder `{ "board": { "de": "Brett", "en": "Board" } }`. Menüpunkte: `dashboard`, `notifications`, `discover`, `matches`, `chat`, `requests`, `profile`, `settings`, `admin`, `beef`, `board`, `care`, `org`; höchstens 24 Zeichen |
 | `locale.default` / `locale.available` | ja | Sprachen aus `frontend/lib/i18n` |
 | `tier` | ja | `core`, `connect` oder `premium` — setzt die Modul-Defaults |
-| `modules` | nein | überschreibt einzelne Module: `chat`, `matching`, `payments`, `hidden` |
+| `modules` | nein | überschreibt einzelne Module: `chat`, `matching`, `payments`, `hidden`, `board`, `caretaker`, `orgs` |
 | `legal` | ja | Impressum-Angaben (`name`, `address`, `email`) |
 | `seed` | nein | Demo-Datensatz aus `tenants/<seed>/seed/` (siehe unten), wird nicht öffentlich ausgegeben |
 | `seedAgeDays` | nein | Demo: so viele Tage „läuft“ der Mandant schon (siehe unten), wird nicht öffentlich ausgegeben |
@@ -43,10 +54,35 @@ Tier-Defaults (`backend/src/common/tenant/tenant.types.ts`):
 | payments | ✅ | ✅ | ✅ |
 | matching | – | – | ✅ |
 | hidden | – | – | ✅ |
+| board | – | – | – |
+| caretaker | – | – | – |
+| orgs | – | – | – |
+
+`board`, `caretaker` und `orgs` sind in keinem Tier Standard, ein Mandant schaltet sie bewusst ein.
 
 Abgeschaltete Module werden im Backend gar nicht geladen (Routen → 404). Ausnahme `chat`: das
 Modul bleibt wegen Notifications geladen, Routen und Chat-Events sind aber gesperrt.
-Regel: `matching` erfordert `chat`.
+Regeln: `matching` und `board` erfordern `chat`, `orgs` erfordert `caretaker`.
+
+### Die neuen Module
+
+- **`board` — Schwarzes Brett** (`/board`): Aushänge (Suche, Biete, Verschenke, Treffen) mit
+  Sichtbarkeit Straße (150 m) / 500 m / 1 km / Kiez (3 km) / Alle. Umkreis ab dem Ort im Profil.
+  „Alle“ ist öffentlich, auch ohne Login (`GET /board/public`, Vorschau auf der Login-Seite), nur
+  mit einmaliger Zustimmung (`board_public_consents`) und nie mit Schutz-Markierung
+  (`vulnerable_flag`). Aushänge laufen nach 14 Tagen ab. „Zettel abreißen“ schickt eine
+  Kontaktanfrage. Die Rechtstexte (AGB § 7, Datenschutz 4.3) erscheinen mit dem Modul auf `/agb` und
+  `/datenschutz`, sind aber ungeprüfte Entwürfe.
+- **`caretaker` — Betreuung** (`/care`): ein Konto betreut ein oder wenige andere, wie ein
+  Eltern-Konto (`managed_accounts`). Die betreute Person stimmt zu und kann Rechte ändern oder die
+  Betreuung beenden. Rechte: Nachrichten lesen (nur lesen), Schutz einstellen. Hat die Person
+  `vulnerable_flag`, wartet ein angenommener Kontakt auf die Freigabe der Betreuung.
+- **`orgs` — Organisation** (`/org`): ein Träger mit Team (`organizations`, `org_members`);
+  Betreuungen tragen die `org_id`, die Organisation sieht alle auf einen Blick. Anlegen dürfen
+  Plattform-Admin/Owner.
+
+Schema: `backend/migrations/006_board_and_care.sql` (Mandanten-DBs bekommen es automatisch über
+`tenant-init`, die Haupt-DB nur bei neuem Volume). Demo-Daten: `seed-board-care.ts`.
 
 ## Isolation
 

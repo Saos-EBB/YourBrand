@@ -2,15 +2,77 @@
   "slug": "campus-match",
   "brand": {
     "name": "Campus Match",
+    "logo": "logo.svg",
     "favicon": "favicon.png"
   },
   "theme": {
     "default": "dark",
-    "tokens": {
+    "tokens": {},
+    "dark": {
+      "--color-background": "#15122B",
+      "--color-surface-container-lowest": "#0F0C22",
+      "--color-surface-container-low": "#1A1634",
+      "--color-surface-container": "#211C40",
+      "--color-surface-container-high": "#2E2858",
+      "--color-surface-container-highest": "#3A3368",
+      "--color-on-surface": "#F4EFFF",
+      "--color-on-surface-variant": "#ABA3CF",
       "--color-primary-fixed-dim": "#F0568C",
+      "--color-primary-container": "#5A1F3A",
       "--color-on-primary-container": "#2B0012",
+      "--color-secondary-container": "#2E2858",
+      "--color-tertiary-fixed-dim": "#B794F6",
+      "--color-outline": "#7E76A8",
+      "--color-outline-variant": "#363063",
       "--color-nav-badge-glow": "#F0568C",
-      "--color-tertiary-fixed-dim": "#B794F6"
+      "--color-logout": "#B794F6",
+      "--color-viz-1": "#e24d87",
+      "--color-viz-2": "#2784d5",
+      "--color-viz-3": "#c78200",
+      "--color-viz-4": "#8557c8"
+    },
+    "light": {
+      "--color-background": "#FBF8FF",
+      "--color-surface-container-lowest": "#FFFFFF",
+      "--color-surface-container-low": "#F4EEFF",
+      "--color-surface-container": "#EEE6FF",
+      "--color-surface-container-high": "#E2D8F7",
+      "--color-surface-container-highest": "#D6CBEF",
+      "--color-on-surface": "#1D1636",
+      "--color-on-surface-variant": "#5B5378",
+      "--color-primary-fixed-dim": "#C2255C",
+      "--color-primary-container": "#FFD9E6",
+      "--color-on-primary-container": "#FFFFFF",
+      "--color-secondary-container": "#E2D8F7",
+      "--color-tertiary-fixed-dim": "#6B46C1",
+      "--color-outline": "#7A7296",
+      "--color-outline-variant": "#D5CCEA",
+      "--color-nav-badge-glow": "#C2255C",
+      "--color-logout": "#6B46C1",
+      "--color-viz-1": "#cd3976",
+      "--color-viz-2": "#006bbb",
+      "--color-viz-3": "#b37000",
+      "--color-viz-4": "#7444b4"
+    },
+    "layout": {
+      "nav": "topbar",
+      "font": "bricolage",
+      "radius": "lg",
+      "labels": {
+        "discover": {
+          "de": "Entdecken",
+          "en": "Discover"
+        },
+        "matches": "Matches",
+        "requests": {
+          "de": "Anfragen",
+          "en": "Requests"
+        },
+        "profile": {
+          "de": "Ich",
+          "en": "Me"
+        }
+      }
     }
   },
   "locale": {
