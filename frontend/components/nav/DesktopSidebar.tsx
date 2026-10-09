@@ -3,19 +3,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import {
-  LayoutDashboard, Compass, Heart, MessageCircle, Users, Shield, Swords, Settings, User, Bell, Palette, ChevronDown,
-} from 'lucide-react'
+import { Settings, User, Palette, ChevronDown } from 'lucide-react'
 import { useAuthStore, selectUserRole } from '@/lib/store/authStore'
 import { useHiddenStore } from '@/lib/store/hiddenStore'
 import { useNotificationStore } from '@/lib/store/notificationStore'
-import { useTranslation } from '@/lib/i18n'
 import { HiddenLogoButton, HiddenZoneControls } from './HiddenShortcut'
 import { StatusPicker } from './StatusPicker'
 import { AdminBadge } from './AdminBadge'
 import { ColorPalettePanel } from '@/components/DevColorPalette'
 import { useTenant } from '@/components/TenantProvider'
-import { isRouteEnabled } from '@/lib/tenant/types'
+import { useNavItems } from './navItems'
+import { useNavLabel } from './useNavLabel'
+import { HelpButton } from '@/components/assist/HelpButton'
 
 const ROUTE_TYPES: Record<string, string[]> = {
   '/chat':          ['message'],
@@ -25,13 +24,15 @@ const ROUTE_TYPES: Record<string, string[]> = {
 
 export function DesktopSidebar() {
   const pathname      = usePathname()
-  const { t }         = useTranslation()
+  const label         = useNavLabel()
   const role          = useAuthStore(selectUserRole)
   const isAdmin       = role === 'admin' || role === 'owner'
   const isHidden          = useHiddenStore((s) => s.isHidden)
   const hasEverBeenHidden = useHiddenStore((s) => s.hasEverBeenHidden)
   const notifications = useNotificationStore((s) => s.notifications)
-  const { modules }   = useTenant()
+  const { modules, theme } = useTenant()
+  const nav           = theme.layout.nav
+  const mainLinks     = useNavItems('main')
 
   const [colorsOpen, setColorsOpen] = useState(false)
 
@@ -41,26 +42,18 @@ export function DesktopSidebar() {
     return notifications.filter((n) => !n.is_read && types.includes(n.type)).length
   }
 
-  const mainLinks = [
-    { href: '/dashboard',     label: t.nav.home,          Icon: LayoutDashboard },
-    { href: '/notifications', label: t.nav.notifications, Icon: Bell },
-    { href: '/discover',      label: t.nav.discover,      Icon: Compass },
-    { href: '/matches',       label: t.nav.matches,       Icon: Heart },
-    { href: '/chat',          label: t.nav.chat,          Icon: MessageCircle },
-    ...(isAdmin
-      ? [{ href: '/admin',    label: t.nav.admin,          Icon: Shield }]
-      : [{ href: '/requests', label: t.nav.requests,       Icon: Users }]
-    ),
-    ...(isHidden ? [{ href: '/beef', label: 'Beef', Icon: Swords }] : []),
-  ].filter((l) => isRouteEnabled(l.href, modules))
-
   const bottomLinks = [
-    { href: '/settings', label: t.nav.settings, Icon: Settings },
-    { href: '/profile',  label: t.nav.profile,  Icon: User },
+    { href: '/settings', label: label('settings'), Icon: Settings },
+    { href: '/profile',  label: label('profile'),  Icon: User },
   ]
 
+  // topbar: Navigation steht oben in TopNav, keine Sidebar
+  if (nav === 'topbar') return null
+  const lineMap = nav === 'line-map'
+  const wide    = nav === 'wide-sidebar'
+
   return (
-    <aside className="hidden md:flex flex-col w-56 shrink-0 h-screen sticky top-0 border-r border-outline-variant"
+    <aside className={`hidden md:flex flex-col ${wide ? 'w-72 border-r-2 border-on-surface' : 'w-56 border-r border-outline-variant'} shrink-0 h-screen sticky top-0`}
       style={{ background: 'var(--color-surface-container-lowest)' }}
     >
       {/* Logo row */}
@@ -75,7 +68,10 @@ export function DesktopSidebar() {
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 py-3 flex flex-col gap-0.5 overflow-y-auto" aria-label="Desktop navigation">
+      <nav
+        className={`flex-1 py-3 flex flex-col overflow-y-auto ${wide ? 'gap-2' : 'gap-0.5'} ${lineMap ? 'line-map' : ''}`}
+        aria-label="Desktop navigation"
+      >
         <div className="px-3 mb-1">
           <p className="text-[10px] uppercase tracking-widest font-semibold px-2 pb-1"
             style={{ color: 'var(--color-on-surface-variant)', opacity: 0.5 }}>
@@ -86,16 +82,18 @@ export function DesktopSidebar() {
           const active = pathname === href || pathname.startsWith(href + '/')
           const count  = badgeCount(href)
           return (
-            <div key={href} className="px-3">
+            <div key={href} className={lineMap ? 'line-map-stop px-3' : 'px-3'} data-active={active || undefined}>
               <Link
                 href={href}
-                className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors w-full relative ${
-                  active
-                    ? 'text-primary-fixed-dim'
-                    : 'text-on-surface-variant hover:text-on-surface'
+                className={`flex items-center gap-3 transition-colors w-full relative ${
+                  wide ? 'px-4 py-3.5 text-base font-bold rounded-xl' : 'px-3 py-2.5 text-sm font-medium'
+                } ${
+                  wide
+                    ? active ? 'bg-primary-fixed-dim text-on-primary-container' : 'text-on-surface hover:bg-surface-container-high'
+                    : active ? 'text-primary-fixed-dim' : 'text-on-surface-variant hover:text-on-surface'
                 }`}
                 style={{
-                  ...(active ? {
+                  ...(active && !wide && !lineMap ? {
                     background: 'var(--color-surface-container)',
                     borderLeft: '2px solid var(--color-primary-fixed-dim)',
                     paddingLeft: '10px',
@@ -106,7 +104,7 @@ export function DesktopSidebar() {
                 }}
                 aria-current={active ? 'page' : undefined}
               >
-                <Icon size={17} aria-hidden strokeWidth={active ? 2.5 : 2} />
+                {!lineMap && <Icon size={wide ? 24 : 17} aria-hidden strokeWidth={active ? 2.5 : 2} />}
                 <span className="flex-1">{label}</span>
                 {count > 0 && (
                   <span
@@ -156,6 +154,10 @@ export function DesktopSidebar() {
               </div>
             )}
           </div>
+        )}
+
+        {theme.layout.assist && (
+          <div className="px-3 pt-3"><HelpButton className="w-full py-3 text-base" /></div>
         )}
 
         {/* Settings + Profile */}

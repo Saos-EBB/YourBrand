@@ -7,7 +7,7 @@ import { LegalPageDemoNotice, LegalPageDisclaimer } from '@/components/LegalPage
 export default function AgbPage() {
   const router = useRouter()
   // Impressum-Angaben pro Mandant (tenants/<slug>/tenant.json "legal").
-  const { legal, brand } = useTenant()
+  const { legal, brand, modules } = useTenant()
 
   return (
     <main className="min-h-screen bg-background pb-8">
@@ -75,6 +75,19 @@ export default function AgbPage() {
             einzugeben.
           </p>
         </section>
+
+        {/* Nur mit Modul "board" — die Zustimmung zu oeffentlichen Aushaengen verweist hierher */}
+        {modules.board && (
+          <section id="board" className="space-y-2 scroll-mt-6">
+            <h2 className="text-sm font-semibold text-on-surface">§ 7 Schwarzes Brett</h2>
+            <ol className="list-decimal pl-5 space-y-1.5 text-sm text-on-surface-variant leading-relaxed">
+              <li>Mitglieder können Aushänge auf dem Schwarzen Brett veröffentlichen und selbst wählen, wer sie sieht: Mitglieder im Umkreis von 150 m, 500 m, 1 km oder 3 km um den Ort im eigenen Profil, oder alle.</li>
+              <li>Ein Aushang mit der Sichtbarkeit „Alle“ ist öffentlich. Er kann ohne Anmeldung aufgerufen werden, auch auf der Startseite. Sichtbar sind Spitzname, Straße (ohne Hausnummer), Art, Titel, Text und Ablaufdatum.</li>
+              <li>Für den Inhalt ist das Mitglied verantwortlich. Nicht erlaubt sind Angaben über andere Personen ohne deren Zustimmung, gewerbliche Werbung und Inhalte, die gegen Gesetze oder diese Bedingungen verstoßen.</li>
+              <li>Aushänge laufen nach 14 Tagen ab. Das Mitglied kann sie vorher abnehmen. {brand.name} kann Aushänge entfernen, die gegen diese Regeln verstoßen.</li>
+            </ol>
+          </section>
+        )}
 
         <LegalPageDisclaimer />
       </div>

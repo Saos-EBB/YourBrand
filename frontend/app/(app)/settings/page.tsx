@@ -11,6 +11,7 @@ import { useAuthStore } from '@/lib/store/authStore'
 import { useThemeStore } from '@/lib/store/themeStore'
 import { useLanguageStore, type UiLang } from '@/lib/store/languageStore'
 import { useTenant } from '@/components/TenantProvider'
+import { hasTenantColors } from '@/lib/tenant/types'
 import { useTranslation } from '@/lib/i18n'
 import StripeCheckoutModal from '@/components/ui/StripeCheckoutModal'
 import ReportModal from '@/components/ui/ReportModal'
@@ -218,7 +219,8 @@ export default function SettingsPage() {
 
   const [openSection, setOpenSection] = useState<AccordionSection | null>(null)
 
-  const { theme, toggleTheme } = useThemeStore()
+  const { theme, toggleTheme, classicPalette, setClassicPalette } = useThemeStore()
+  const tenantTheme = useTenant().theme
 
   const userRole = useAuthStore((s) => s.user?.role ?? 'user')
 
@@ -677,6 +679,16 @@ export default function SettingsPage() {
             checked={theme === 'light'}
             onChange={() => toggleTheme()}
           />
+
+          {hasTenantColors(tenantTheme) && (
+            <ToggleRow
+              id="classic-palette"
+              label={t.settings.classicPalette}
+              description={t.settings.classicPaletteDesc}
+              checked={classicPalette}
+              onChange={(v) => setClassicPalette(v)}
+            />
+          )}
 
           <ToggleRow
             id="profanity-filter"

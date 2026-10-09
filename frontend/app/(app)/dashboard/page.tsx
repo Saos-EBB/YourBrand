@@ -13,6 +13,8 @@ import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount'
 import { useTranslation } from '@/lib/i18n'
 import { useTenant } from '@/components/TenantProvider'
 import { AnalyticsSection } from '@/components/analytics/AnalyticsSection'
+import { TenantHighlights } from '@/components/dashboard/TenantHighlights'
+import { DepartureBoard } from '@/components/dashboard/DepartureBoard'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -282,6 +284,9 @@ export default function DashboardPage() {
           )}
         </div>
       </section>
+
+      <DepartureBoard />
+      <TenantHighlights />
 
       {/* ── Mein Überblick (user only) ──────────────────────────────────────── */}
       {!isAdmin && <section>

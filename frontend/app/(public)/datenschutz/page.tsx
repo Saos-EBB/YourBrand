@@ -7,7 +7,7 @@ import { LegalPageDemoNotice, LegalPageDisclaimer } from '@/components/LegalPage
 export default function DatenschutzPage() {
   const router = useRouter()
   // Impressum-Angaben pro Mandant (tenants/<slug>/tenant.json "legal").
-  const { legal } = useTenant()
+  const { legal, modules } = useTenant()
 
   return (
     <main className="min-h-screen bg-background pb-8">
@@ -112,6 +112,20 @@ export default function DatenschutzPage() {
             mit Test-Zugangsdaten konfiguriert — es finden keine echten Abbuchungen statt.
           </p>
         </section>
+
+        {/* Nur mit Modul "board" (Schwarzes Brett) */}
+        {modules.board && (
+          <section id="board" className="space-y-2 scroll-mt-6">
+            <h2 className="text-sm font-semibold text-on-surface">4.3 Schwarzes Brett</h2>
+            <ul className="list-disc pl-5 space-y-1.5 text-sm text-on-surface-variant leading-relaxed">
+              <li><b>Was verarbeitet wird:</b> Inhalt des Aushangs, gewählte Sichtbarkeit, Spitzname und Straße, ein Ortspunkt aus dem Profil (Stadt, nicht die Adresse) für die Umkreissuche, Zeitpunkt und abgerissene Zettel.</li>
+              <li><b>Rechtsgrundlage:</b> für Aushänge an Mitglieder Art. 6 Abs. 1 lit. b DSGVO (Nutzungsvertrag). Für öffentliche Aushänge zusätzlich die Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO beim ersten öffentlichen Aushang. Widerruf jederzeit, indem der Aushang abgenommen wird.</li>
+              <li><b>Wer es sieht:</b> je nach Sichtbarkeit nur Mitglieder im gewählten Umkreis oder alle Besucher. Eine Kopie durch Dritte lässt sich bei öffentlichen Aushängen nicht ausschließen.</li>
+              <li><b>Speicherdauer:</b> bis zum Ablauf nach 14 Tagen oder bis zum Abnehmen.</li>
+              <li><b>Schutzbedürftige Mitglieder</b> (Schutz-Markierung) können keine öffentlichen Aushänge erstellen, nur im Umkreis.</li>
+            </ul>
+          </section>
+        )}
 
         <section className="space-y-1">
           <h2 className="text-sm font-semibold text-on-surface">Rechte der betroffenen Person</h2>

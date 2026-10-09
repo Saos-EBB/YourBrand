@@ -14,6 +14,8 @@ interface ContactRequest {
   status: 'pending' | 'accepted' | 'declined'
   message_preview: string | null
   created_at: string
+  // Modul caretaker: schon Ja gesagt, wartet auf die Betreuung
+  awaiting_caretaker?: boolean
 }
 
 type RequestsEnvelope = ContactRequest[] | { data: ContactRequest[] }
@@ -38,7 +40,7 @@ function relativeTime(dateStr: string): string {
 
 // ─── Incoming card ────────────────────────────────────────────────────────────
 
-type ActionState = 'idle' | 'accepting' | 'declining' | 'accepted'
+type ActionState = 'idle' | 'accepting' | 'declining' | 'accepted' | 'held'
 
 function IncomingCard({
   request,
@@ -49,7 +51,8 @@ function IncomingCard({
   nickname: string
   onDecline: (id: string) => void
 }) {
-  const [state, setState] = useState<ActionState>('idle')
+  const { t } = useTranslation()
+  const [state, setState] = useState<ActionState>(request.awaiting_caretaker ? 'held' : 'idle')
   const [error, setError] = useState('')
   const busy = state === 'accepting' || state === 'declining'
 
@@ -57,8 +60,8 @@ function IncomingCard({
     setState('accepting')
     setError('')
     try {
-      await fetchApi<unknown>(`/chat/requests/${request.id}/accept`, { method: 'PATCH' })
-      setState('accepted')
+      const res = await fetchApi<{ pendingCaretaker?: boolean }>(`/chat/requests/${request.id}/accept`, { method: 'PATCH' })
+      setState(res?.pendingCaretaker ? 'held' : 'accepted')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Anfrage fehlgeschlagen')
       setState('idle')
@@ -104,7 +107,12 @@ function IncomingCard({
         )}
 
         <div className="mt-3 space-y-2">
-          {state === 'accepted' ? (
+          {state === 'held' ? (
+            <div className="flex items-center gap-1.5 text-on-surface-variant text-xs font-semibold" role="status" aria-live="polite">
+              <Clock className="h-4 w-4" aria-hidden="true" />
+              {t.care.awaitingCaretaker}
+            </div>
+          ) : state === 'accepted' ? (
             <div
               className="flex items-center gap-1.5 text-primary-fixed-dim text-xs font-semibold"
               role="status"

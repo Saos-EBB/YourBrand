@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound, usePathname } from 'next/navigation'
 import { useAccessibilityStore } from '@/lib/store/accessibilityStore'
 import TopNav from '@/components/nav/TopNav'
+import { KiezBar } from '@/components/tenant/KiezBar'
 import BottomNav from '@/components/nav/BottomNav'
 import { DesktopSidebar } from '@/components/nav/DesktopSidebar'
 import AuthProvider from '@/components/AuthProvider'
@@ -29,8 +30,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className={`${fontSizeClass}${highContrast ? ' high-contrast' : ''} flex min-h-screen`}>
         <DesktopSidebar />
         <div className="flex-1 flex flex-col min-w-0">
+          <KiezBar />
           <TopNav />
-          <main className="flex-1 pb-20 md:pb-0">{children}</main>
+          <main className={`flex-1 md:pb-0 ${tenant.theme.layout.nav === 'wide-sidebar' ? 'pb-24' : 'pb-20'}`}>{children}</main>
           <footer className="mb-16 md:mb-0 border-t border-outline-variant py-4 text-center text-xs text-on-surface-variant">
             © {process.env.NEXT_PUBLIC_COPYRIGHT_YEAR} {tenant.brand.name}{' '}
             <span aria-hidden="true">·</span>{' '}

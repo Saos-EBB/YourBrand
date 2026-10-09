@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BrandName } from '@/components/TenantProvider'
+import { BrandName, BrandLogo } from '@/components/TenantProvider'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,9 +9,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="mb-10 text-center">
             <Link
               href="/"
-              className="text-3xl font-bold text-on-surface tracking-tight"
+              className="inline-flex items-center gap-3 text-3xl font-bold text-on-surface tracking-tight font-display"
               aria-label="Startseite"
             >
+              <BrandLogo className="h-11 w-11" />
               <BrandName />
             </Link>
           </div>

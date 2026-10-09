@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/lib/store/authStore'
 import { fetchApi } from '@/lib/api'
 import ContactSupportModal from '@/components/ui/ContactSupportModal'
+import { PublicBoardPreview } from '@/components/board/PublicBoardPreview'
 import { useTranslation } from '@/lib/i18n'
 
 interface LoginResponse {
@@ -162,6 +163,8 @@ export default function LoginPage() {
       {showSupportModal && (
         <ContactSupportModal onClose={() => setShowSupportModal(false)} />
       )}
+
+      <PublicBoardPreview />
     </>
   )
 }

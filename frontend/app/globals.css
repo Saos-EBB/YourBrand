@@ -140,15 +140,16 @@
 }
 
 /* ── Desktop: angular design ─────────────────────────────────────────────── */
-/* Mobile stays rounded; desktop gets sharp edges as visual contrast          */
+/* Mobile stays rounded; desktop gets sharp edges as visual contrast.         */
+/* Nur ohne Mandanten-Rundung (theme.layout.radius), sonst gilt die unten.   */
 @media (min-width: 768px) {
-  .rounded-sm  { border-radius: 2px !important; }
-  .rounded     { border-radius: 2px !important; }
-  .rounded-md  { border-radius: 3px !important; }
-  .rounded-lg  { border-radius: 4px !important; }
-  .rounded-xl  { border-radius: 5px !important; }
-  .rounded-2xl { border-radius: 6px !important; }
-  .rounded-3xl { border-radius: 8px !important; }
+  html:not([data-radius]) .rounded-sm  { border-radius: 2px !important; }
+  html:not([data-radius]) .rounded     { border-radius: 2px !important; }
+  html:not([data-radius]) .rounded-md  { border-radius: 3px !important; }
+  html:not([data-radius]) .rounded-lg  { border-radius: 4px !important; }
+  html:not([data-radius]) .rounded-xl  { border-radius: 5px !important; }
+  html:not([data-radius]) .rounded-2xl { border-radius: 6px !important; }
+  html:not([data-radius]) .rounded-3xl { border-radius: 8px !important; }
   /* rounded-full intentionally left circular (avatars, status dots) */
 }
 
@@ -189,15 +190,56 @@ html, body {
    Kategorische Reihen, Reihenfolge fest (farbfehlsichtig geprueft gegen
    surface-container, dark + light). Einzelreihen nutzen die Mandanten-
    Primaerfarbe, nicht diese Palette. */
+/* Mandanten koennen eigene, ebenso gepruefte Farben als --color-viz-N
+   (theme.dark/light in tenant.json) setzen. */
 :root {
-  --viz-1: #3987e5;
-  --viz-2: #d95926;
-  --viz-3: #199e70;
-  --viz-4: #c98500;
+  --viz-1: var(--color-viz-1, #3987e5);
+  --viz-2: var(--color-viz-2, #d95926);
+  --viz-3: var(--color-viz-3, #199e70);
+  --viz-4: var(--color-viz-4, #c98500);
 }
 html.light {
-  --viz-1: #2a78d6;
-  --viz-2: #eb6834;
-  --viz-3: #1baf7a;
-  --viz-4: #eda100;
+  --viz-1: var(--color-viz-1, #2a78d6);
+  --viz-2: var(--color-viz-2, #eb6834);
+  --viz-3: var(--color-viz-3, #1baf7a);
+  --viz-4: var(--color-viz-4, #eda100);
 }
+
+/* ── Mandanten-Layout (tenant.json theme.layout) ───────────────────────────
+   data-font / data-radius / data-nav setzt das Root-Layout auf <html>.
+   --font-display gilt fuer Ueberschriften, --font-sans fuer alles andere. */
+:root { --font-display: var(--font-sans); }
+h1, h2, h3, .font-display { font-family: var(--font-display); }
+
+html[data-font="bricolage"] { --font-sans: var(--font-dm-sans), system-ui, sans-serif; --font-display: var(--font-bricolage), system-ui, sans-serif; }
+html[data-font="bricolage"] :is(h1, h2, h3) { letter-spacing: -0.02em; font-weight: 800; }
+html[data-font="archivo"] { --font-sans: var(--font-archivo), system-ui, sans-serif; --font-display: var(--font-archivo), system-ui, sans-serif; }
+html[data-font="archivo"] :is(h1, h2) { font-stretch: 75%; font-weight: 800; text-transform: uppercase; letter-spacing: 0.01em; }
+html[data-font="atkinson"] { --font-sans: var(--font-atkinson), system-ui, sans-serif; --font-display: var(--font-atkinson), system-ui, sans-serif; }
+html[data-font="atkinson"] body { line-height: 1.6; }
+html[data-font="bigshoulders"] { --font-sans: var(--font-barlow), system-ui, sans-serif; --font-display: var(--font-big-shoulders), Impact, sans-serif; --font-mono: var(--font-jetbrains), ui-monospace, monospace; }
+html[data-font="bigshoulders"] :is(h1, h2, h3) { text-transform: uppercase; font-weight: 900; letter-spacing: 0.01em; }
+html[data-font="bigshoulders"] .tabular-nums { font-family: var(--font-mono); }
+
+/* Rundungen: xs fast eckig (Underground) … lg weich (Campus Match) */
+html[data-radius="xs"] { --radius-sm: 2px; --radius-md: 2px; --radius-lg: 3px; --radius-xl: 4px; --radius-2xl: 4px; --radius-3xl: 6px; }
+html[data-radius="sm"] { --radius-sm: 3px; --radius-md: 4px; --radius-lg: 5px; --radius-xl: 6px; --radius-2xl: 6px; --radius-3xl: 8px; }
+html[data-radius="md"] { --radius-sm: 6px; --radius-md: 8px; --radius-lg: 10px; --radius-xl: 14px; --radius-2xl: 16px; --radius-3xl: 20px; }
+html[data-radius="lg"] { --radius-sm: 8px; --radius-md: 10px; --radius-lg: 12px; --radius-xl: 18px; --radius-2xl: 22px; --radius-3xl: 28px; }
+html[data-radius] .rounded { border-radius: var(--radius-sm); }
+
+/* Linienplan (Underground): Menuepunkte als Stationen an einer Linie */
+.line-map .line-map-stop { position: relative; padding-left: 2.5rem; }
+.line-map .line-map-stop::before {
+  content: ""; position: absolute; left: 1.4rem; top: 0; bottom: 0; width: 4px;
+  background: var(--color-primary-fixed-dim);
+}
+.line-map .line-map-stop:nth-child(2)::before { top: 50%; }
+.line-map .line-map-stop:last-child::before { bottom: 50%; }
+.line-map .line-map-stop::after {
+  content: ""; position: absolute; left: calc(1.4rem - 5px); top: 50%; width: 14px; height: 14px;
+  transform: translateY(-50%); border-radius: 50%;
+  background: var(--color-background); box-shadow: inset 0 0 0 3px var(--color-on-surface);
+}
+.line-map .line-map-stop[data-active]::after { background: var(--color-primary-fixed-dim); }
+.line-map .line-map-stop a { font-weight: 600; }

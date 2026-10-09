@@ -12,6 +12,9 @@ import { connect, getSocket } from '@/lib/socket'
 import { useConversationStore, type Message } from '@/lib/store/conversationStore'
 import { OnlineIndicator } from '@/components/ui/OnlineIndicator'
 import ReportModal from '@/components/ui/ReportModal'
+import { useTenant } from '@/components/TenantProvider'
+import { ReadAloud } from '@/components/assist/ReadAloud'
+import { QuickReplies } from '@/components/assist/QuickReplies'
 import { useTranslation } from '@/lib/i18n'
 import { useHiddenStore } from '@/lib/store/hiddenStore'
 
@@ -135,6 +138,7 @@ function MessageBubble({
         >
           {!isOwn && profanityFilter ? blurText(msg.content) : msg.content}
         </div>
+        {!isOwn && msg.content && <ReadAloud text={msg.content} size="sm" />}
 
         <div className={`flex items-center gap-1.5 px-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
           <time className="text-[10px] text-on-surface-variant" dateTime={msg.sent_at}>
@@ -159,6 +163,10 @@ export default function ConversationPage() {
   const conversationId = params.id
   const router = useRouter()
   const { t } = useTranslation()
+  // Assistenz-Mandanten: Schnellantworten ueber dem Eingabefeld, groessere Tabs unten
+  const { layout } = useTenant().theme
+  const assist = layout.assist
+  const largeNav = layout.nav === 'wide-sidebar'
 
   const currentUserId   = useAuthStore(selectUserId)
   const accessToken     = useAuthStore((s) => s.accessToken)
@@ -372,8 +380,8 @@ export default function ConversationPage() {
 
   // ── Send message ───────────────────────────────────────────────────────────
 
-  function handleSend() {
-    const content = input.trim()
+  function handleSend(preset?: string) {
+    const content = (preset ?? input).trim()
     if (!content || sending) return
 
     const sock = getSocket()
@@ -393,7 +401,7 @@ export default function ConversationPage() {
     }
 
     setMessages((prev) => [...prev, optimistic])
-    setInput('')
+    if (preset === undefined) setInput('')
     setSending(true)
     sock.emit('send_message', { conversationId, content, type: 'text' })
     setSending(false)
@@ -542,8 +550,9 @@ export default function ConversationPage() {
   return (
     <div className="min-h-screen bg-background">
 
-      {/* Conversation header — sticky below TopNav on mobile, at top on desktop (TopNav is md:hidden) */}
-      <div className="sticky top-16 md:top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-outline-variant px-4 py-3 flex items-center gap-3">
+      {/* Conversation header — sticky below TopNav on mobile, at top on desktop (TopNav is md:hidden,
+          ausser bei Mandanten mit Leiste oben: dann auch am Desktop unter der Leiste) */}
+      <div className={`sticky top-16 ${layout.nav === 'topbar' ? 'md:top-16' : 'md:top-0'} z-10 bg-background/95 backdrop-blur-sm border-b border-outline-variant px-4 py-3 flex items-center gap-3`}>
         <Link
           href="/chat"
           className="flex items-center justify-center h-9 w-9 rounded-full hover:bg-surface-container transition-colors flex-shrink-0"
@@ -650,7 +659,7 @@ export default function ConversationPage() {
 
       {/* Messages area */}
       <div
-        className="px-4 py-4 space-y-3 pb-32 md:pb-24"
+        className={`px-4 py-4 space-y-3 ${assist ? 'pb-52 md:pb-36' : 'pb-32 md:pb-24'}`}
         role="log"
         aria-live="polite"
         aria-label={t.chat.title}
@@ -729,7 +738,7 @@ export default function ConversationPage() {
       {showScrollBtn && (
         <button
           onClick={() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          className="fixed bottom-36 md:bottom-20 right-4 z-10 h-10 w-10 rounded-full bg-surface-container-high border border-outline-variant shadow-md flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors"
+          className={`fixed ${assist ? 'bottom-52 md:bottom-36' : 'bottom-36 md:bottom-20'} right-4 z-10 h-10 w-10 rounded-full bg-surface-container-high border border-outline-variant shadow-md flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors`}
           aria-label={t.chat.scrollDownAriaLabel}
         >
           <ChevronDown className="h-5 w-5" aria-hidden="true" />
@@ -737,13 +746,16 @@ export default function ConversationPage() {
       )}
 
       {/* Fixed input bar — above BottomNav on mobile */}
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-10 bg-background/95 backdrop-blur-sm border-t border-outline-variant px-3 py-2.5">
+      <div className={`fixed ${largeNav ? 'bottom-20' : 'bottom-16'} md:bottom-0 left-0 right-0 z-10 bg-background/95 backdrop-blur-sm border-t border-outline-variant px-3 py-2.5`}>
         {isBlocked && (
           <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 rounded-xl bg-error-container text-error px-4 py-2.5 text-sm" role="alert">
             <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
             {blockedBy === 'them' ? t.chat.blockedBy : t.chat.blocked}
           </div>
         )}
+        <div className="max-w-3xl mx-auto">
+          <QuickReplies onPick={(text) => handleSend(text)} disabled={sending || loading || !!error || isBlocked} />
+        </div>
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
           <input
             ref={inputRef}
@@ -761,7 +773,7 @@ export default function ConversationPage() {
             disabled={loading || !!error || isBlocked}
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || sending || loading || !!error || isBlocked}
             className="flex-shrink-0 h-11 w-11 rounded-full bg-primary-fixed-dim text-on-primary-container flex items-center justify-center hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             aria-label={t.chat.sendAriaLabel}

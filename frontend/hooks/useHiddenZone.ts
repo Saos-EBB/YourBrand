@@ -73,9 +73,13 @@ export function useHiddenZone() {
       html.classList.add(theme === 'brick' ? 'underground-brick' : 'underground-neon')
     } else {
       UNDERGROUND.forEach((c) => html.classList.remove(c))
-      const saved = html.dataset.savedTheme ?? 'dark'
-      html.classList.add(saved)
-      delete html.dataset.savedTheme
+      // Nur zuruecksetzen, wenn die Zone vorher wirklich offen war — sonst
+      // kam bei jedem Laden im hellen Modus ein zusaetzliches "dark" dazu.
+      const saved = html.dataset.savedTheme
+      if (saved) {
+        html.classList.add(saved)
+        delete html.dataset.savedTheme
+      }
     }
   }, [isHidden, theme])
 

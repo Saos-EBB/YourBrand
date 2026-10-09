@@ -29,6 +29,9 @@ export interface Translations {
     profile: string
     admin: string
     settings: string
+    board: string
+    care: string
+    org: string
   }
   status: {
     label: string
@@ -48,6 +51,11 @@ export interface Translations {
     daysAgoPlural: string
   }
   notifications: {
+    care_invite: string
+    care_accepted: string
+    care_revoked: string
+    care_approval_needed: string
+    care_contact_approved: string
     label: string
     title: string
     tabNew: string
@@ -535,6 +543,8 @@ export interface Translations {
     sectionSupport: string
     lightMode: string
     lightModeDesc: string
+    classicPalette: string
+    classicPaletteDesc: string
     profanityFilter: string
     profanityFilterDesc: string
     fontSize: string
@@ -909,5 +919,170 @@ export interface Translations {
     activeUsers: string
     bannedUsers: string
     onlineNow: string
+  }
+  board: {
+    title: string
+    subtitle: string
+    new: string
+    rangeLabel: string
+    rangeStreet: string
+    range500: string
+    range1000: string
+    rangeKiez: string
+    rangeAll: string
+    kindAll: string
+    kindSearch: string
+    kindOffer: string
+    kindGift: string
+    kindMeet: string
+    empty: string
+    emptyRange: string
+    distanceM: string
+    distanceKm: string
+    expiresIn: string
+    expiresToday: string
+    tears: string
+    tearsNone: string
+    tearStrip: string
+    tear: string
+    torn: string
+    tornHint: string
+    messageLabel: string
+    messagePlaceholder: string
+    mine: string
+    remove: string
+    removeConfirm: string
+    removed: string
+    formTitle: string
+    formKind: string
+    formTitleLabel: string
+    formTitlePlaceholder: string
+    formBody: string
+    formBodyPlaceholder: string
+    formStreet: string
+    formVisibility: string
+    formVisibilityHint: string
+    submit: string
+    expiresAfter: string
+    consentTitle: string
+    consentText: string
+    consentCheck: string
+    consentLinks: string
+    publicPreviewTitle: string
+    publicPreviewMore: string
+    back: string
+    postedBy: string
+    nearYou: string
+    toBoard: string
+  }
+  care: {
+    title: string
+    helpersTitle: string
+    helpersEmpty: string
+    inviteFrom: string
+    inviteOrg: string
+    accept: string
+    decline: string
+    mayTitle: string
+    mayRead: string
+    mayProtect: string
+    mayWriteNever: string
+    allowedSince: string
+    validUntil: string
+    validForever: string
+    changeRights: string
+    save: string
+    cancel: string
+    end: string
+    endConfirm: string
+    clientsTitle: string
+    clientsEmpty: string
+    invite: string
+    inviteNickname: string
+    inviteRead: string
+    inviteProtect: string
+    inviteUntil: string
+    inviteOrgLabel: string
+    inviteNone: string
+    inviteSend: string
+    inviteSent: string
+    pendingInvite: string
+    vulnerable: string
+    approvalsTitle: string
+    approvalsEmpty: string
+    approvalFor: string
+    clientSaidYes: string
+    senderReports: string
+    senderNoReports: string
+    senderSince: string
+    approve: string
+    reject: string
+    protection: string
+    protectionDesc: string
+    readChats: string
+    hideChats: string
+    chatsEmpty: string
+    readOnly: string
+    openReports: string
+    expiresIn: string
+    awaitingCaretaker: string
+    helpedBy: string
+  }
+  org: {
+    title: string
+    none: string
+    verified: string
+    clients: string
+    team: string
+    roleAdmin: string
+    roleMember: string
+    person: string
+    responsible: string
+    rights: string
+    open: string
+    until: string
+    rightRead: string
+    rightProtect: string
+    approvalsN: string
+    reportsN: string
+    pending: string
+    noEnd: string
+    inDays: string
+    noClients: string
+    addMember: string
+    addMemberNickname: string
+    add: string
+    remove: string
+    clientsN: string
+    membersN: string
+    filterAll: string
+    filterOpen: string
+    filterExpiring: string
+    consentNote: string
+  }
+  assist: {
+    readAloud: string
+    stop: string
+    help: string
+    helpTitle: string
+    helpIntro: string
+    helpBlock: string
+    helpBlockDesc: string
+    helpReport: string
+    helpReportDesc: string
+    helpCare: string
+    helpCareDesc: string
+    helpSupport: string
+    helpSupportDesc: string
+    close: string
+    quickReplies: string
+    quickYes: string
+    quickNo: string
+    quickLater: string
+    quickThanks: string
+  }
+  kiezbar: {
+    members: string
+    online: string
   }
 }

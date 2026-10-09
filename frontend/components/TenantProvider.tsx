@@ -40,3 +40,11 @@ export function useModuleEnabled(module: TenantModule): boolean {
 export function BrandName() {
   return <>{useTenant().brand.name}</>
 }
+
+// Logo des Mandanten (tenant.json brand.logo), dekorativ neben dem Namen
+export function BrandLogo({ className }: { className?: string }) {
+  const { logo } = useTenant().brand
+  if (!logo) return null
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={`/api/v1/tenant/asset/${logo}`} alt="" className={className} />
+}
