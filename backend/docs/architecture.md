@@ -17,9 +17,12 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   payment, system-settings, setup, support, cities. `ChatModule` exportiert `ConversationsService`
   (`getOrCreate`, einzige Wahrheit für "Conversation zwischen zwei Usern anlegen/reaktivieren") an
   `MatchingModule` und `AdminModule`.
-- `src/modules/core/shop` — Mandanten-Modul `shop` (Schema `migrations/007_shop.sql`). Bisher
-  `ShopService` mit Artikelliste/Filtern und Bewertungen (nur Kaeufer); Filter-SQL baut die reine
-  Funktion `buildProductFilter` (getestet ohne DB). Ablauf und Fahrplan: `nextStep.md` im Repo-Root.
+- `src/modules/core/shop` — Mandanten-Modul `shop` (Schema `migrations/007_shop.sql`).
+  `ShopService` (Artikelliste/Filter, Bewertungen nur fuer Kaeufer, `GET settings`),
+  `ShopCheckoutService` (Bestellung + Stripe-Session mit Reservierung), `ShopAdminController`/`ShopAdminService`
+  unter `/admin/shop` (nur Admin/Owner: Artikel anlegen/bearbeiten, CSV-Import alles-oder-nichts, Keys
+  verschluesselt mit `hashShopCode` fuer die Suche). Reine Funktionen ohne DB getestet: `buildProductFilter`,
+  `validateCart`, `parseCsv`/`csvToProducts`. Ablauf und Fahrplan: `nextStep.md` im Repo-Root.
 - `src/modules/hidden/*` — beef, coin, teeth, badge. Beef treibt Coin-Awards/-Spends per
   `CoinService`-Injection; Badge wird intern von `BeefService` erzeugt.
 - `common/` — Guards, `crypto.helper.ts` (AES-256-CBC + SHA-256 Email-Hash), `rls.helper.ts`

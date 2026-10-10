@@ -67,3 +67,36 @@ export const MODES_BY_GROUP: Record<CartGroup, ShopDeliveryMode[]> = {
 export interface ShopSettings {
   shipping_cents: number
 }
+
+// Admin-Sicht (GET /admin/shop/products): auch inaktive Artikel, Bestand und freie Keys
+export interface AdminShopProduct extends Omit<ShopProduct, 'in_stock'> {
+  unlock_target: string | null
+  stock: number | null
+  active: boolean
+  free_codes: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminShopProductPage {
+  items: AdminShopProduct[]
+  total: number
+  page: number
+  limit: number
+  categories: string[]
+}
+
+export const SHOP_VAT_RATES = [19, 7, 0] as const
+export function defaultVat(f: ShopFulfillment): number {
+  return f === 'food' ? 7 : 19
+}
+
+// "39,90" / "39.90" -> Cent (Formular); null wenn keine Zahl
+export function euroToCents(raw: string): number | null {
+  const s = raw.trim().replace(/\s|€/g, '').replace(',', '.')
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) return null
+  return Math.round(Number(s) * 100)
+}
+export function centsToEuroInput(cents: number): string {
+  return (cents / 100).toFixed(2).replace('.', ',')
+}

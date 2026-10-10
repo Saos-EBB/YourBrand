@@ -112,10 +112,11 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
     - ✅ **10a** `/shop` (Filter in der URL, Filter-Sheet auf dem Handy, Kategorie-Kacheln) und `/shop/[id]` (Bewertungen, Formular für Käufer)
     - ✅ **10b** Warenkorb (eine Lieferart pro Bestellung), Kasse mit Feldern je Lieferart, Stripe eingebettet, Dankeseite; `GET /shop/settings` für die Versandpauschale
     - Bestellungen + Problem melden brauchen erst `GET /shop/orders` bzw. Schritt 9
-11. Admin-Pflege: Artikel, CSV-Import, Key-Import
+11. ✅ **Admin-Pflege** `/admin/shop`: Artikel anlegen/bearbeiten mit Vorschau, aus-/einblenden, CSV-Import mit Probelauf (alles oder nichts), Keys verschlüsselt hinzufügen
 12. Doku + Tests
 
 ## Offen / nicht gebaut
+- **Body-Limit 100 KB** (Express-Standard, `main.ts` setzt keins): CSV-Import auf 95 000 Zeichen, Keys auf 2000 pro Aufruf begrenzt. Für größere Dateien müsste das Limit in `main.ts` hoch — betrifft alle Module, daher erst abstimmen
 - **Rechtstexte** prüfen lassen: AGB (Bestellung = Angebot, Annahme mit Auftragsbestätigung, Wartezeit bei Lieferung), Widerrufsbelehrung je Artikelart, Datenschutz (Telefon/Adresse, 10 Jahre Rechnungen)
 - **EU-OSS:** digitale Leistungen an Privatkunden im EU-Ausland ab 10.000 €/Jahr mit dem Satz des Käuferlands — heute nur deutsche Sätze
 - **Marktplatz (Phase 2):** Stripe Connect, Provision in %, Melden wirklich gegenseitig zwischen Usern, DAC7-Meldepflicht

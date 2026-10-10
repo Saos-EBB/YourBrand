@@ -1,3 +1,16 @@
+## 2026-10-10 — feat(shop): Admin-Seite fuer Artikel — Shop Schritt 11
+**Was:** `/admin/shop` (nur Admin/Owner, Link „Shop“ oben auf `/admin`, wenn das Modul an ist): Liste mit Suche,
+Art, Status (sichtbar/ausgeblendet per Schalter direkt in der Zeile), Preis, Bestand bzw. freie Keys (0 rot).
+Seitenpanel (`components/shop/admin/Sheet.tsx`, rechts am Desktop, von unten am Handy, Esc schliesst, liegt ueber
+Demo-Banner und BottomNav) fuer: Artikel anlegen/bearbeiten mit Live-Vorschau der Shop-Karte, CSV-Import
+(Datei waehlen, ziehen oder einfuegen; Vorlage zum Herunterladen mit BOM fuer Excel; „1. Pruefen“ zeigt Fehler
+pro Zeile, „2. Importieren“ erst wenn alles stimmt), Keys hinzufuegen (einer pro Zeile).
+Verifiziert mit Playwright (Desktop dunkel, Handy hell + dunkel): Artikel angelegt → Hinweis „Artikel angelegt“,
+per Suche gefunden; Import mit kaputten Zeilen → Tabelle Zeile 3 / 4, Importieren gesperrt; 3 Keys → „3 neu
+gespeichert“, frei 3 → 6. `tsc` sauber, ESLint der neuen Dateien sauber (die 3 Meldungen in `admin/page.tsx`
+gab es vorher schon).
+**Nicht gebaut:** nur Deutsch (Admin-Werkzeug), kein Loeschen, kein Bild-Upload, keine Mehrfachauswahl.
+
 ## 2026-10-10 — feat(shop): Warenkorb und Kasse — Shop Schritt 10b
 **Was:** Warenkorb in `localStorage` (`xxx-shop-cart`, `lib/store/shopCartStore.ts`), gehoert dem eingeloggten User
 (anderer Login sieht ihn leer). Eine Lieferart pro Bestellung wie im Backend: Essen / Versand / Digital — legt man

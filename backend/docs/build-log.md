@@ -1,3 +1,19 @@
+## 2026-10-10 — feat(shop): Artikelpflege fuer Admins — Shop Schritt 11
+**Was:** `/admin/shop/*` (JwtGuard + RolesGuard `admin`, Owner erbt, Modul `shop`): Liste mit Suche (Titel/SKU),
+Art, Status, 50 pro Seite, freie Keys je Lizenz; `POST products` (409 bei doppelter SKU, MwSt nach Art
+vorbelegt), `PATCH products/:id` (nur mitgeschickte Felder, `null` leert; SKU und Art fest), `POST products/import`
+(CSV mit `;` oder `,`, Probelauf, Fehler pro Zeile mit Excel-Zeilennummer, nichts gespeichert solange ein Fehler
+da ist, Update nur der Spalten aus der Datei, Art einer vorhandenen SKU nicht aenderbar), `POST products/:id/codes`
+(nur Lizenzen, `encryptField` + HMAC-Hash `hashShopCode`, Doppelte uebersprungen). Regeln fuer Formular und Import
+gleich (`productRuleError`: Freischaltung nur bei unlock, Lizenzen ohne Bestand). Mehrdeutige Preise wie „12,345“
+werden abgelehnt statt geraten. 34 Tests gruen.
+Gegen Wegwerf-DB per curl geprueft: normaler User 403, anlegen/doppelt/Regeln/fremde Felder, PATCH, Import
+Probelauf → echt → Art-Konflikt schreibt nichts, Keys (3 neu, 1 doppelt, Merch → 400), Lizenz danach im Shop
+lieferbar, Keys in der DB ohne Klartext.
+**Nicht gebaut:** kein Loeschen (Artikel haengen an Bestellungen — dafuer „ausblenden“), kein Bild-Upload, keine
+Varianten, kein Audit-Log fuer Artikelaenderungen. CSV hoechstens 95 000 Zeichen und 2000 Keys pro Aufruf, weil
+Express JSON nur bis 100 KB annimmt und `main.ts` das Limit global setzt (nicht angefasst).
+
 ## 2026-10-10 — feat(shop): GET /shop/settings — Shop Schritt 10b
 **Was:** Liefert `shipping_cents`, damit Warenkorb und Kasse die Versandpauschale vor der Bestellung zeigen
 (PAngV). Gleicher Wert wie im Checkout, Standard `SHOP_SHIPPING_CENTS_DEFAULT` (490) an einer Stelle.

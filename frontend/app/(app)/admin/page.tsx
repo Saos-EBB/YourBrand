@@ -1,17 +1,19 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import {
   AlertCircle, BookOpen, Check, Coins, Crown, FileText,
-  Image as ImageIcon, Inbox, Shield, Swords, Users, Zap,
+  Image as ImageIcon, Inbox, Shield, ShoppingBag, Swords, Users, Zap,
 } from 'lucide-react'
 import { fetchApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store/authStore'
 import { useHiddenStore } from '@/lib/store/hiddenStore'
 import BanModal from '@/components/ui/BanModal'
 import { useTranslation } from '@/lib/i18n'
+import { useModuleEnabled } from '@/components/TenantProvider'
 import type { BanInfo } from '@/components/admin/shared/types'
 
 // ─── Tab components (lazy-loaded) ─────────────────────────────────────────────
@@ -53,6 +55,7 @@ export default function AdminPage() {
   // Selector instead of full store — prevents re-render on setUser/setBanned
   const accessToken = useAuthStore((s) => s.accessToken)
   const isHidden = useHiddenStore((s) => s.isHidden)
+  const shopOn = useModuleEnabled('shop')
 
   const [activeTab, setActiveTab] = useState<AdminTab>('tickets')
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
@@ -162,6 +165,12 @@ export default function AdminPage() {
               <Crown className="h-3 w-3" aria-hidden="true" />
               Owner
             </span>
+          )}
+          {/* Shop hat eine eigene Seite statt eines Tabs — Artikel, spaeter Bestellungen */}
+          {shopOn && (
+            <Link href="/admin/shop" className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-outline-variant px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high">
+              <ShoppingBag className="h-4 w-4" aria-hidden="true" /> Shop
+            </Link>
           )}
         </div>
 

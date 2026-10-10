@@ -23,3 +23,5 @@ export const MODES_BY_FULFILLMENT: Record<ShopFulfillment, ShopDeliveryMode[]> =
 
 // Versandpauschale pro Bestellung, falls system_settings.shop_shipping_cents fehlt
 export const SHOP_SHIPPING_CENTS_DEFAULT = 490;
+
+export const SHOP_VAT_RATES = [0, 7, 19] as const;

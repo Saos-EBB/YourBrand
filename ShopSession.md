@@ -7,7 +7,7 @@ stehen und wie gearbeitet wird**.
 ## Stand (2026-10-10)
 
 - **Branch:** `feat/shop-module`, zweigt von `main` ab (`f3cce38`).
-- **Schritte 1–4, 10a und 10b sind fertig.** Der Shop steht vom Stöbern bis zur Kasse. Als Nächstes: **Zahlungstests** (echte Stripe-Testkeys in `backend/.env` und `frontend/.env`), dann **Schritt 5** (Webhook, Risiko-Regeln, Eingangsbestätigung — ändert den Vertrag von `PaymentService`, vorher fragen).
+- **Schritte 1–4, 10a, 10b und 11 sind fertig.** Der Shop steht vom Stöbern bis zur Kasse, Admins pflegen Artikel unter `/admin/shop`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen dazwischen: Schritt 5 (Webhook, Risiko-Regeln — ändert den Vertrag von `PaymentService`, vorher fragen), 6 (Admin-Konsole Bestellungen), 7 (Auslieferung), 8 (Rechnungen), 9 (Fälle).
 - Gepusht ist alles bis `5a24df5`. Danach sind lokale Commits dazugekommen (siehe unten). Seit workmode an ist, wird **nicht gepusht**.
 
 | Commit | Schritt |
@@ -70,7 +70,7 @@ docker exec shop_mig_test psql -U t -d yb_shoptest -v ON_ERROR_STOP=1 -q \
 - **Unit-Tests:** `npx jest src/modules/core/shop src/common/tenant`
 - **Typecheck:** `npx tsc --noEmit -p tsconfig.json`. Die Fehler in `rps.handler.spec.ts` gab es vorher schon.
 - **Frontend-Typecheck:** im Container `docker exec <frontend> sh -c 'cd /app && npx tsc --noEmit'`, sofern einer läuft.
-- **Frontend anschauen:** Backend lokal auf :3900 (`ts-node src/main.ts` mit `TENANT=shoptest`, DB :55432, Redis-Wegwerf `shop_redis_test` auf :56379), Frontend als Container `shop_fe_test` (`next dev` :3901, Image + `node_modules`-Volume von `XXX_frontend`, `NEXT_PUBLIC_API_URL=http://localhost:3900/api/v1`, für die Kasse `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`). Login per selbst signiertem JWT (`JWT_SECRET` aus `backend/.env`) in `localStorage['xxx-auth']`; der Demo-User braucht `profiles.onboarding_completed = true`. Playwright liegt in `/home/silence/instantJobbot/node_modules/playwright`.
+- **Frontend anschauen:** Backend lokal auf :3900 (`ts-node src/main.ts` mit `TENANT=shoptest`, DB :55432, Redis-Wegwerf `shop_redis_test` auf :56379), Frontend als Container `shop_fe_test` (`next dev` :3901, Image + `node_modules`-Volume von `XXX_frontend`, `NEXT_PUBLIC_API_URL=http://localhost:3900/api/v1`, für die Kasse `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`). Ohne Login: Proxy `autologin-proxy.js` (Scratchpad) auf :3901 vor `next dev` auf :3911, setzt in jede Seite den Login von `demo1` (in der Test-DB Admin). Sonst Login per selbst signiertem JWT (`JWT_SECRET` aus `backend/.env`) in `localStorage['xxx-auth']`; der Demo-User braucht `profiles.onboarding_completed = true`. Playwright liegt in `/home/silence/instantJobbot/node_modules/playwright`.
 - **Danach aufräumen:** `docker stop shop_mig_test shop_redis_test shop_fe_test`, Backend-Prozess beenden
 
 ## Nächster Schritt: 4, Checkout
