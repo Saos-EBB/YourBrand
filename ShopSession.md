@@ -7,7 +7,7 @@ stehen und wie gearbeitet wird**.
 ## Stand (2026-10-11)
 
 - **Branch:** `feat/shop-module`, zweigt von `main` ab (`f3cce38`).
-- **Schritte 1–4, 6 (Teil 1), 7a, 10a, 10b und 11 sind fertig.** Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen dazwischen: Schritt 5 (Webhook, Risiko-Regeln — ändert den Vertrag von `PaymentService`, vorher fragen), 6 Rest (erstatten, sperren, Alarme), 7b (Codes einlösen — Vertrag mit Coin/Premium, vorher fragen) (Auslieferung), 8 (Rechnungen), 9 (Fälle).
+- **Schritte 1–4, 6 (Teil 1), 7, 10a, 10b und 11 sind fertig.** Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen dazwischen: Schritt 5 (Webhook, Risiko-Regeln — ändert den Vertrag von `PaymentService`, vorher fragen), 6 Rest (erstatten, sperren, Alarme) (Auslieferung), 8 (Rechnungen), 9 (Fälle).
 - Gepusht ist alles bis `5a24df5`. Danach sind lokale Commits dazugekommen (siehe unten). Seit workmode an ist, wird **nicht gepusht**.
 
 | Commit | Schritt |
@@ -20,6 +20,8 @@ stehen und wie gearbeitet wird**.
 Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `backend/src/app.module.ts`.
 
 ## Was entschieden ist
+
+- **Module reden nur über `ModuleBroker`** (`backend/src/modules/shared/broker/`), nie direkt — damit Module pro Mandant an/aus gehen. Anbieter melden sich in `onModuleInit` an. Kernteile (auth, profile, notifications, system-settings) dürfen direkt genutzt werden.
 
 - **Der Mandant verkauft.** Den Marktplatz (User verkaufen, der Mandant bekommt Prozente pro Transaktion) gibt es erst in Phase 2. Die Felder sind schon da und bleiben leer.
 - **Arten:** `food` (abholen/liefern), `physical` (Merch, Versandpauschale pro Bestellung), `license` (Key aus dem Vorrat), `unlock` (Code für die App wie `premium:30` oder `coins:500`, oder extern).

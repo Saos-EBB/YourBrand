@@ -1232,5 +1232,12 @@ export const en = {
     codesHint: "Keep it safe — it only works once.",
     codesPending: "Your keys and codes will appear here once we accept the order.",
     delivery: "Delivery",
+    redeemTitle: "Redeem code",
+    redeemText: "Enter your code, e.g. from a gift card. Case and spaces don't matter.",
+    redeemButton: "Redeem",
+    redeemNow: "Redeem now",
+    redeemedLabel: "Redeemed",
+    redeemSuccessCoins: "{n} coins added",
+    redeemSuccess: "Code redeemed",
   },
 } satisfies Translations

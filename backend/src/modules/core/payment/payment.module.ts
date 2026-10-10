@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { StripeService } from './stripe.service';
+import { StripePaymentGateway } from './payment-gateway.provider';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { Subscription } from './entities/subscription.entity';
 import { PaymentLog } from './entities/payment-log.entity';
@@ -14,6 +15,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
         NotificationsModule,
     ],
     controllers: [PaymentController],
-    providers: [PaymentService, StripeService, JwtGuard],
+    providers: [PaymentService, StripeService, StripePaymentGateway, JwtGuard],
 })
 export class PaymentModule { }

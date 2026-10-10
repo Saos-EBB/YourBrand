@@ -1243,5 +1243,12 @@ export const de = {
     codesHint: "Bewahre ihn gut auf — er gilt nur einmal.",
     codesPending: "Deine Keys und Codes erscheinen hier, sobald wir die Bestellung angenommen haben.",
     delivery: "Lieferung",
+    redeemTitle: "Code einlösen",
+    redeemText: "Gib deinen Code ein, z. B. aus einem Gutschein. Groß-/Kleinschreibung und Leerzeichen sind egal.",
+    redeemButton: "Einlösen",
+    redeemNow: "Jetzt einlösen",
+    redeemedLabel: "Eingelöst",
+    redeemSuccessCoins: "{n} Coins gutgeschrieben",
+    redeemSuccess: "Code eingelöst",
   },
 } satisfies Translations

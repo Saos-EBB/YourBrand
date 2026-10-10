@@ -1205,5 +1205,12 @@ export const fr = {
     codesHint: "Garde-le bien : il ne vaut qu'une fois.",
     codesPending: "Tes clés et codes apparaîtront ici dès que nous aurons accepté la commande.",
     delivery: "Livraison",
+    redeemTitle: "Utiliser un code",
+    redeemText: "Saisis ton code, p. ex. d'une carte cadeau. Majuscules et espaces n'ont pas d'importance.",
+    redeemButton: "Valider",
+    redeemNow: "Utiliser maintenant",
+    redeemedLabel: "Utilisé",
+    redeemSuccessCoins: "{n} pièces ajoutées",
+    redeemSuccess: "Code utilisé",
   },
 } satisfies Translations

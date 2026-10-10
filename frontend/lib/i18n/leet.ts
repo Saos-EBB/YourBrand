@@ -1215,5 +1215,12 @@ export const leetspeak = {
     codesHint: "K33P 17 54F3. 0N3 U53.",
     codesPending: "K3Y5 4PP34R 0NC3 4CC3P73D.",
     delivery: "D3L1V3RY",
+    redeemTitle: "R3D33M C0D3",
+    redeemText: "3N73R C0D3.",
+    redeemButton: "R3D33M",
+    redeemNow: "R3D33M N0W",
+    redeemedLabel: "R3D33M3D",
+    redeemSuccessCoins: "+{n} C01N5",
+    redeemSuccess: "C0D3 R3D33M3D",
   },
 }

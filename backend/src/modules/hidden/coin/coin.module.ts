@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CoinController } from './coin.controller';
 import { CoinTestPurchaseController } from './coin-test-purchase.controller';
 import { CoinService } from './coin.service';
+import { CoinUnlockProvider } from './coin-unlock.provider';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { UserCoinBalance } from './entities/user-coin-balance.entity';
 import { CoinTransaction } from './entities/coin-transaction.entity';
@@ -21,7 +22,7 @@ if (process.env.LOADTEST_MODE === 'true') {
         TypeOrmModule.forFeature([UserCoinBalance, CoinTransaction, User]),
     ],
     controllers,
-    providers: [CoinService, JwtGuard],
+    providers: [CoinService, CoinUnlockProvider, JwtGuard],
     exports: [CoinService],
 })
 export class CoinModule { }

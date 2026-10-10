@@ -1205,5 +1205,12 @@ export const ja = {
     codesHint: "大切に保管してください。使えるのは一度だけです。",
     codesPending: "注文が承認されると、キーとコードがここに表示されます。",
     delivery: "お届け",
+    redeemTitle: "コードを使う",
+    redeemText: "ギフトカードなどのコードを入力してください。大文字小文字やスペースは区別しません。",
+    redeemButton: "使う",
+    redeemNow: "今すぐ使う",
+    redeemedLabel: "使用済み",
+    redeemSuccessCoins: "{n} コインを追加しました",
+    redeemSuccess: "コードを使いました",
   },
 } satisfies Translations

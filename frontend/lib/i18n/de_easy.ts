@@ -1204,5 +1204,12 @@ export const deEasy = {
     codesHint: "Pass gut darauf auf. Er geht nur 1 Mal.",
     codesPending: "Hier stehen deine Codes, wenn wir Ja gesagt haben.",
     delivery: "Lieferung",
+    redeemTitle: "Code einlösen",
+    redeemText: "Schreib deinen Code hier rein. Groß oder klein ist egal.",
+    redeemButton: "Einlösen",
+    redeemNow: "Jetzt einlösen",
+    redeemedLabel: "Schon eingelöst",
+    redeemSuccessCoins: "Du hast {n} Coins bekommen",
+    redeemSuccess: "Code eingelöst",
   },
 } satisfies Translations

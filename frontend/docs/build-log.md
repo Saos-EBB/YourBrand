@@ -1,3 +1,11 @@
+## 2026-10-11 — feat(shop): Codes einloesen — Shop Schritt 7b
+**Was:** `/shop/redeem` (Code eingeben, Gross/klein und Leerzeichen egal, Fehler vom Backend unter dem Feld) und auf
+der Bestellseite „Jetzt einlösen“ direkt am Code; danach ist der Code durchgestrichen mit „Eingelöst“ und die
+Gutschrift steht darunter („2.000 Coins gutgeschrieben“). Link „Code einlösen“ auf „Meine Bestellungen“, Admin-Verlauf
+zeigt „Code eingelöst · 500 coins“. 7 neue Texte in allen 9 Sprachen.
+Verifiziert mit Playwright (Handy dunkel): Einloesen per Knopf, Premium-Code → „bleibt gültig“, falscher Code →
+„Code nicht gefunden“. `tsc` + ESLint sauber.
+
 ## 2026-10-11 — feat(shop): Meine Bestellungen und Lieferstand — Shop Schritt 7a
 **Was:** Kaeufer: Knopf „Meine Bestellungen“ neben dem Warenkorb, `/shop/orders` (Liste mit Status, Datum, Summe),
 `/shop/orders/[id]` (Status mit Erklaerung, Fortschrittsleiste fuer Abholen/Liefern/Versand, Sendungsnummer, Keys und

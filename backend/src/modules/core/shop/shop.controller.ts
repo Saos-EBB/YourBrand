@@ -9,6 +9,8 @@ import { CreateReviewDto } from './dto/create-review.dto';
 import { CheckoutDto } from './dto/checkout.dto';
 import { MyOrdersQuery } from './dto/my-orders.query';
 import { ShopOrdersService } from './shop-orders.service';
+import { ShopRedeemService } from './shop-redeem.service';
+import { RedeemCodeDto } from './dto/redeem.dto';
 
 @RequiresModule('shop')
 @UseGuards(JwtGuard)
@@ -18,6 +20,7 @@ export class ShopController {
         private readonly shop: ShopService,
         private readonly checkoutService: ShopCheckoutService,
         private readonly orders: ShopOrdersService,
+        private readonly redeemService: ShopRedeemService,
     ) { }
 
     // Was der Kaeufer vor der Bestellung sehen muss (Versandkosten, PAngV)
@@ -57,5 +60,12 @@ export class ShopController {
     @Get('orders/:id')
     myOrder(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
         return this.orders.getMine(req.user.sub, id);
+    }
+
+    // Raten bremsen: 60 Bit pro Code, trotzdem wenige Versuche pro Stunde
+    @Throttle({ default: { ttl: 3_600_000, limit: 20 } })
+    @Post('redeem')
+    redeem(@Req() req: any, @Body() dto: RedeemCodeDto) {
+        return this.redeemService.redeem(req.user.sub, dto.code);
     }
 }

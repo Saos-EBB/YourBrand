@@ -271,3 +271,9 @@ export interface MyShopOrderDetail {
     codes: { code: string | null; redeemed_at: string | null }[]
   }[]
 }
+
+// POST /shop/redeem
+export interface RedeemResult {
+  kind: string
+  amount: number
+}

@@ -24,7 +24,7 @@ function setup(order: { status: string; stripe_payment_intent_id: string | null 
         checkKeys: jest.fn(async () => undefined),
         onApproved: jest.fn(async () => ({ status: 'approved', progress: 'accepted' })),
     };
-    const service = new ShopOrdersAdminService(dataSource as any, { stripe: { paymentIntents: intents } } as any, fulfillment as any);
+    const service = new ShopOrdersAdminService(dataSource as any, { payments: () => intents } as any, fulfillment as any);
     // Typ steht als Parameter ($3) oder als Literal im SQL ('stripe_error')
     const events = () => calls.filter((c) => c.sql.includes('shop_order_events'))
         .map((c) => (c.sql.includes(`'stripe_error'`) ? 'stripe_error' : c.params[2]));
@@ -35,7 +35,7 @@ describe('ShopOrdersAdminService.decide', () => {
     it('Annehmen bucht ab, setzt approved und schreibt das Protokoll', async () => {
         const { service, intents, calls, events } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
         await expect(service.approve(ADMIN, ORDER, '  passt  ')).resolves.toEqual({ id: ORDER, status: 'approved', progress: 'accepted' });
-        expect(intents.capture).toHaveBeenCalledWith('pi_1', {}, { idempotencyKey: `shop-approve-${ORDER}` });
+        expect(intents.capture).toHaveBeenCalledWith('pi_1', `shop-approve-${ORDER}`);
         const update = calls.find((c) => c.sql.startsWith('UPDATE'))!;
         expect(update.sql).toContain(`status = 'held'`);
         expect(update.params).toEqual([ORDER, 'approved', ADMIN, 'passt']);
@@ -45,7 +45,7 @@ describe('ShopOrdersAdminService.decide', () => {
     it('Ablehnen gibt die Reservierung frei und speichert die Begruendung', async () => {
         const { service, intents, calls } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
         await service.reject(ADMIN, ORDER, 'Karte passt nicht zum Land');
-        expect(intents.cancel).toHaveBeenCalledWith('pi_1', {}, { idempotencyKey: `shop-reject-${ORDER}` });
+        expect(intents.cancel).toHaveBeenCalledWith('pi_1', `shop-reject-${ORDER}`);
         const event = calls.find((c) => c.sql.includes('shop_order_events'))!;
         expect(JSON.parse(event.params[3] as string)).toEqual({ note: 'Karte passt nicht zum Land' });
     });

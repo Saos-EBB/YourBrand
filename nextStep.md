@@ -109,7 +109,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
    - Offen: erstatten, sperren, Alarme, Nachfass-Cron (brauchen Schritt 5)
 7. Auslieferung: Keys zuteilen, Codes erzeugen + `/shop/redeem`, Versand-/Essens-Status
    - ✅ **7a** Keys zuteilen/Codes erzeugen bei der Annahme (vorher Prüfung: genug Keys, sonst kein Abbuchen), Lieferstand für Essen/Versand im Admin, Käufer: „Meine Bestellungen“ mit Fortschritt und Keys/Codes
-   - **7b** `/shop/redeem`: Code einlösen → `premium:30` / `coins:500` gutschreiben. Braucht Coin- und Premium-Modul → Vertrag zwischen Modulen, vorher abstimmen
+   - ✅ **7b** `/shop/redeem` + „Jetzt einlösen“: Coins über die neue Vermittlung `ModuleBroker` (shared). Premium-Codes vorerst „bleibt gültig“ (Premium-Modell offen)
 8. Rechnungen + Stornorechnungen (BullMQ-Worker wie GDPR-Export, pdfkit, Resend mit Anhang)
 9. Fälle: Melden in beide Richtungen, Support, Nachrichtenverlauf
 10. Frontend Käufer: Liste mit Filtern, Warenkorb, Checkout, Bestellungen, Problem melden
@@ -120,6 +120,9 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 12. Doku + Tests
 
 ## Offen / nicht gebaut
+- **Regel: Feature-Module nur über `ModuleBroker`** (Wunsch des Users, damit Module pro Mandant sauber an/aus gehen). Shop ist umgestellt. Offen: `MatchingModule` → `PaymentModule` direkt
+- **Premium per Code** (`premium:30`): `subscriptions` kennt nur monthly/yearly/lifetime — eigener Plan (Migration) oder anderes Modell, erst entscheiden
+- **Seed:** Titel und `unlock_target` passen nicht immer zusammen („Coin-Paket“ mit `premium:30`)
 - **Body-Limit 100 KB** (Express-Standard, `main.ts` setzt keins): CSV-Import auf 95 000 Zeichen, Keys auf 2000 pro Aufruf begrenzt. Für größere Dateien müsste das Limit in `main.ts` hoch — betrifft alle Module, daher erst abstimmen
 - **Rechtstexte** prüfen lassen: AGB (Bestellung = Angebot, Annahme mit Auftragsbestätigung, Wartezeit bei Lieferung), Widerrufsbelehrung je Artikelart, Datenschutz (Telefon/Adresse, 10 Jahre Rechnungen)
 - **EU-OSS:** digitale Leistungen an Privatkunden im EU-Ausland ab 10.000 €/Jahr mit dem Satz des Käuferlands — heute nur deutsche Sätze

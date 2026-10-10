@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { StripeService } from '../payment/stripe.service';
+import { ModuleBroker } from '../../shared/broker/module-broker';
 import { SystemSettingsService } from '../system-settings/system-settings.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { MODES_BY_FULFILLMENT, SHOP_SHIPPING_CENTS_DEFAULT } from './shop.constants';
@@ -81,7 +81,7 @@ export class ShopCheckoutService {
 
     constructor(
         @InjectDataSource() private readonly dataSource: DataSource,
-        private readonly stripeService: StripeService,
+        private readonly broker: ModuleBroker,
         private readonly settings: SystemSettingsService,
     ) { }
 
@@ -137,24 +137,13 @@ export class ShopCheckoutService {
         const metadata = { kind: 'shop', orderId };
         let session;
         try {
-            session = await this.stripeService.stripe.checkout.sessions.create({
-                mode: 'payment',
-                ui_mode: 'embedded_page' as any,
-                line_items: [
-                    ...lines.map(({ product, quantity }) => ({
-                        quantity,
-                        price_data: { currency: 'eur', unit_amount: product.price_cents, product_data: { name: product.title } },
-                    })),
-                    ...(shippingCents > 0 ? [{
-                        quantity: 1,
-                        price_data: { currency: 'eur', unit_amount: shippingCents, product_data: { name: 'Versand' } },
-                    }] : []),
+            session = await this.broker.payments().createReservedCheckout({
+                lines: [
+                    ...lines.map(({ product, quantity }) => ({ name: product.title, unitAmountCents: product.price_cents, quantity })),
+                    ...(shippingCents > 0 ? [{ name: 'Versand', unitAmountCents: shippingCents, quantity: 1 }] : []),
                 ],
-                payment_intent_data: { capture_method: 'manual', metadata },
-                // Rechnungsadresse fuer die Rechnung (§ 14 UStG)
-                billing_address_collection: 'required',
                 metadata,
-                return_url: `${process.env.APP_URL ?? 'http://localhost:3001'}/shop/orders/${orderId}?placed=1`,
+                returnUrl: `${process.env.APP_URL ?? 'http://localhost:3001'}/shop/orders/${orderId}?placed=1`,
             });
         } catch (err: any) {
             this.logger.error(`Stripe-Session fuer Bestellung ${orderId} fehlgeschlagen: ${err?.message}`);
@@ -166,7 +155,7 @@ export class ShopCheckoutService {
             throw new ServiceUnavailableException('Bezahlung gerade nicht möglich — bitte später nochmal');
         }
 
-        await this.dataSource.query('UPDATE shop_orders SET stripe_session_id = $2 WHERE id = $1', [orderId, session.id]);
-        return { orderId, clientSecret: session.client_secret as string };
+        await this.dataSource.query('UPDATE shop_orders SET stripe_session_id = $2 WHERE id = $1', [orderId, session.sessionId]);
+        return { orderId, clientSecret: session.clientSecret };
     }
 }

@@ -1,3 +1,19 @@
+## 2026-10-11 — feat(shared): Vermittlung zwischen Modulen + Codes einloesen — Shop Schritt 7b
+**Was:** Wunsch des Users: Module reden nur ueber einen Vermittler, nie direkt, damit man sie leichter an- und
+abstecken kann. `ModuleBroker` in `shared/` (global): Anbieter melden sich beim Start an, Nutzer fragen dort nach;
+ohne Anbieter gibt es `ModuleUnavailableError`. `PaymentModule` meldet `StripePaymentGateway` an (Checkout mit
+Reservierung, capture, cancel), `CoinModule` meldet `coins` an (`addCoins` Typ `purchase` — Coins sind im Shop
+gekauft, kein neuer CHECK-Wert noetig). Shop importiert nichts mehr aus `payment/`. `POST /shop/redeem`
+(20/Std.): Code normalisieren (Gross/klein, Leerzeichen, Striche egal), nur verkaufte Codes einer angenommenen
+Bestellung; erst Code reservieren (`UPDATE … WHERE redeemed_at IS NULL`), dann gutschreiben mit Idempotenz-Key
+`shop-code-<id>`; scheitert die Gutschrift, wird der Code wieder frei. Kein Anbieter (Coins aus, Premium noch gar
+nicht) → 503 „bleibt gültig“, Code unverbraucht. Protokoll-Eintrag `redeemed`. 55 Tests gruen.
+Gegen die Wegwerf-DB: Mandant mit `hidden: false` → 503, Code unverbraucht; `hidden: true` → 500 Coins gutgeschrieben,
+zweites Mal 409, falscher Code 404, Lizenz-Key 404.
+**Nicht gebaut:** Premium per Code (entschieden: erst nur Coins, Premium-Modell spaeter), Umbau Matching→Payment,
+Codes zuruecksetzen durch Admins. **Gefunden, nicht behoben:** `seed-shop.ts` waehlt Titel und `unlock_target`
+unabhaengig — „Coin-Paket“ kann `premium:30` sein und „Premium-Pass“ `coins:2000`.
+
 ## 2026-10-11 — feat(shop): Auslieferung nach der Annahme — Shop Schritt 7a
 **Was:** `ShopFulfillmentService`: vor dem Abbuchen prueft `checkKeys`, ob genug freie Lizenz-Keys da sind (sonst 409,
 kein Geld genommen). In der Transaktion der Annahme teilt `onApproved` Keys zu (`FOR UPDATE SKIP LOCKED`) und erzeugt

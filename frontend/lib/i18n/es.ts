@@ -1205,5 +1205,12 @@ export const es = {
     codesHint: "Guárdalo bien: solo vale una vez.",
     codesPending: "Tus claves y códigos aparecerán aquí cuando aceptemos el pedido.",
     delivery: "Entrega",
+    redeemTitle: "Canjear código",
+    redeemText: "Introduce tu código, p. ej. de una tarjeta regalo. Mayúsculas y espacios dan igual.",
+    redeemButton: "Canjear",
+    redeemNow: "Canjear ahora",
+    redeemedLabel: "Canjeado",
+    redeemSuccessCoins: "{n} monedas añadidas",
+    redeemSuccess: "Código canjeado",
   },
 } satisfies Translations

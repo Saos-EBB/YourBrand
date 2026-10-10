@@ -1219,5 +1219,12 @@ export interface Translations {
     codesHint: string
     codesPending: string
     delivery: string
+    redeemTitle: string
+    redeemText: string
+    redeemButton: string
+    redeemNow: string
+    redeemedLabel: string
+    redeemSuccessCoins: string
+    redeemSuccess: string
   }
 }

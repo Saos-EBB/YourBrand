@@ -20,6 +20,7 @@ const EVENT_LABEL: Record<string, string> = {
   expired: 'Reservierung verfallen',
   fulfilled: 'Ausgeliefert',
   progress: 'Lieferstand',
+  redeemed: 'Code eingelöst',
 }
 
 // Schnellauswahl beim Ablehnen — landet als Text im Feld, Begruendung bleibt Pflicht
@@ -318,6 +319,7 @@ function eventDetail(e: AdminShopOrderEvent): string | null {
   if (typeof d.note === 'string') return `„${d.note}“`
   if (Array.isArray(d.reasons)) return d.reasons.map((r) => HOLD_REASON_LABEL[String(r)] ?? String(r)).join(', ')
   if (typeof d.message === 'string') return d.message
+  if (typeof d.kind === 'string' && typeof d.amount === 'number') return `${d.amount} ${d.kind}`
   if (typeof d.progress === 'string') {
     const label = PROGRESS_LABEL[d.progress as ShopProgress] ?? d.progress
     return typeof d.tracking_number === 'string' ? `${label} · Sendung ${d.tracking_number}` : label

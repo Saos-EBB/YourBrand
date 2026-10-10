@@ -1205,5 +1205,12 @@ export const it = {
     codesHint: "Conservalo bene: vale una sola volta.",
     codesPending: "Chiavi e codici appariranno qui appena accettiamo l'ordine.",
     delivery: "Consegna",
+    redeemTitle: "Riscatta codice",
+    redeemText: "Inserisci il tuo codice, ad es. da un buono. Maiuscole e spazi non contano.",
+    redeemButton: "Riscatta",
+    redeemNow: "Riscatta ora",
+    redeemedLabel: "Riscattato",
+    redeemSuccessCoins: "{n} monete accreditate",
+    redeemSuccess: "Codice riscattato",
   },
 } satisfies Translations

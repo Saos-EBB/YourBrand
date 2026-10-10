@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Check, Package } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
-import { PROGRESS_FLOW, type PhysicalMode, type ShopDeliveryMode, type ShopOrderStatus, type ShopProgress } from '@/lib/shop'
+import { PROGRESS_FLOW, type PhysicalMode, type RedeemResult, type ShopDeliveryMode, type ShopOrderStatus, type ShopProgress } from '@/lib/shop'
 
 type T = ReturnType<typeof useTranslation>['t']
 export type Tone = 'wait' | 'ok' | 'bad'
@@ -74,4 +74,8 @@ export function OrdersButton() {
       <span className="hidden sm:inline">{t.shop.myOrders}</span>
     </Link>
   )
+}
+
+export function redeemMessage(t: T, r: RedeemResult): string {
+  return r.kind === 'coins' ? t.shop.redeemSuccessCoins.replace('{n}', r.amount.toLocaleString()) : t.shop.redeemSuccess
 }

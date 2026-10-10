@@ -23,8 +23,16 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   unter `/admin/shop` (nur Admin/Owner: Artikel anlegen/bearbeiten, CSV-Import alles-oder-nichts, Keys
   verschluesselt mit `hashShopCode` fuer die Suche; `ShopOrdersAdminService`: angehaltene Bestellungen annehmen
   = Stripe capture, ablehnen = cancel, nur aus `held`; `ShopFulfillmentService`: Keys zuteilen/Codes erzeugen bei der
-  Annahme, Lieferstand; `ShopOrdersService`: Bestellungen aus Kaeufersicht). Reine Funktionen ohne DB getestet: `buildProductFilter`,
+  Annahme, Lieferstand; `ShopOrdersService`: Bestellungen aus Kaeufersicht; `ShopRedeemService`: Codes einloesen ueber
+  `ModuleBroker`). Zahlung nur ueber `ModuleBroker.payments()`, kein Import aus `payment/`. Reine Funktionen ohne DB getestet: `buildProductFilter`,
   `validateCart`, `parseCsv`/`csvToProducts`, `progressError`. Ablauf und Fahrplan: `nextStep.md` im Repo-Root.
+- `src/modules/shared/broker/module-broker.ts` — **Vermittlung zwischen Feature-Modulen** (an/aus pro Mandant:
+  payments, hidden, shop, matching, …). Regel ab 2026-10-11: Feature-Module importieren sich nicht gegenseitig.
+  Der Anbieter meldet sich in `onModuleInit` an (`providePayments`, `provideUnlock('coins', …)`), der Nutzer fragt
+  ueber `ModuleBroker` (`payments()`, `canUnlock`/`unlock`). Ist das Modul aus, ist niemand angemeldet →
+  `ModuleUnavailableError` statt Absturz beim Start. Immer laufende Kernteile (auth, profile, notifications,
+  system-settings) duerfen weiter direkt genutzt werden. Angemeldet: `StripePaymentGateway` (payment),
+  `CoinUnlockProvider` (coin). Bekannte Altlast: `MatchingModule` → `PaymentModule` direkt.
 - `src/modules/hidden/*` — beef, coin, teeth, badge. Beef treibt Coin-Awards/-Spends per
   `CoinService`-Injection; Badge wird intern von `BeefService` erzeugt.
 - `common/` — Guards, `crypto.helper.ts` (AES-256-CBC + SHA-256 Email-Hash), `rls.helper.ts`

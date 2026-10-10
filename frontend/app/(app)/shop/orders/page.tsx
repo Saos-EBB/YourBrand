@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronLeft, ChevronRight, Package } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Package, Ticket } from 'lucide-react'
 import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { ProductTile } from '@/components/shop/ProductCard'
@@ -30,7 +30,12 @@ export default function MyOrdersPage() {
       <Link href="/shop" className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
         <ArrowLeft size={16} aria-hidden /> {t.shop.continueShopping}
       </Link>
-      <h1 className="text-3xl text-on-surface">{t.shop.myOrders}</h1>
+      <header className="flex items-end justify-between gap-4">
+        <h1 className="text-3xl text-on-surface">{t.shop.myOrders}</h1>
+        <Link href="/shop/redeem" className="inline-flex items-center gap-2 rounded-xl bg-surface-container-high px-3 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-highest">
+          <Ticket size={18} aria-hidden /> {t.shop.redeemTitle}
+        </Link>
+      </header>
 
       {error && <p className="text-sm text-error" role="alert">{error}</p>}
 

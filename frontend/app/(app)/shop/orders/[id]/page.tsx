@@ -7,8 +7,8 @@ import { ArrowLeft, Check, CheckCircle2, Copy, KeyRound, Ticket } from 'lucide-r
 import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { useShopCartStore } from '@/lib/store/shopCartStore'
-import { ProgressTracker, TONE_BADGE, buyerStatus } from '@/components/shop/OrderStatus'
-import { formatDate, formatPrice, orderNumber, type MyShopOrderDetail } from '@/lib/shop'
+import { ProgressTracker, TONE_BADGE, buyerStatus, redeemMessage } from '@/components/shop/OrderStatus'
+import { formatDate, formatPrice, orderNumber, type MyShopOrderDetail, type RedeemResult } from '@/lib/shop'
 
 // Solange sich noch etwas tut (Pruefung, Kueche, Versand), alle 15 s neu laden
 const LIVE = ['pending', 'authorized', 'held', 'approved']
@@ -26,6 +26,7 @@ function Order({ id }: { id: string }) {
   const clear = useShopCartStore((s) => s.clear)
   const [order, setOrder] = useState<MyShopOrderDetail | null>(null)
   const [error, setError] = useState('')
+  const [reload, setReload] = useState(0)
 
   useEffect(() => { if (placed) clear() }, [placed, clear])
 
@@ -38,7 +39,7 @@ function Order({ id }: { id: string }) {
     load()
     const timer = live ? setInterval(load, POLL_MS) : undefined
     return () => { cancelled = true; clearInterval(timer) }
-  }, [id, live])
+  }, [id, live, reload])
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
@@ -60,7 +61,7 @@ function Order({ id }: { id: string }) {
       {!order ? (
         !error && <div className="space-y-3" aria-hidden>{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-surface-container" />)}</div>
       ) : (
-        <Detail order={order} locale={locale} headline={!placed} />
+        <Detail order={order} locale={locale} headline={!placed} onRedeemed={() => setReload((n) => n + 1)} />
       )}
       {order && (
         <Link href="/shop" className="inline-block text-sm font-semibold text-primary-fixed-dim hover:underline">{t.shop.continueShopping}</Link>
@@ -69,7 +70,7 @@ function Order({ id }: { id: string }) {
   )
 }
 
-function Detail({ order, locale, headline }: { order: MyShopOrderDetail; locale: string; headline: boolean }) {
+function Detail({ order, locale, headline, onRedeemed }: { order: MyShopOrderDetail; locale: string; headline: boolean; onRedeemed: () => void }) {
   const { t } = useTranslation()
   const st = buyerStatus(t, order)
   const showTracker = order.status === 'approved' || order.status === 'fulfilled'
@@ -94,7 +95,7 @@ function Detail({ order, locale, headline }: { order: MyShopOrderDetail; locale:
         )}
       </section>
 
-      {digitalItems.length > 0 && <Codes order={order} items={digitalItems} />}
+      {digitalItems.length > 0 && <Codes order={order} items={digitalItems} onRedeemed={onRedeemed} />}
 
       <section className="space-y-3 rounded-2xl bg-surface-container p-5">
         <h2 className="font-semibold text-on-surface">{t.shop.summary}</h2>
@@ -138,9 +139,11 @@ function Detail({ order, locale, headline }: { order: MyShopOrderDetail; locale:
   )
 }
 
-function Codes({ order, items }: { order: MyShopOrderDetail; items: MyShopOrderDetail['items'] }) {
+function Codes({ order, items, onRedeemed }: { order: MyShopOrderDetail; items: MyShopOrderDetail['items']; onRedeemed: () => void }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState<string | null>(null)
+  const [redeeming, setRedeeming] = useState<string | null>(null)
+  const [result, setResult] = useState<{ code: string; ok: boolean; text: string } | null>(null)
   const any = items.some((i) => i.codes.length > 0)
   // Abgelehnt/abgelaufen: es kommen keine Codes mehr
   if (!any && !LIVE.includes(order.status)) return null
@@ -151,6 +154,21 @@ function Codes({ order, items }: { order: MyShopOrderDetail; items: MyShopOrderD
       setCopied(code)
       setTimeout(() => setCopied((c) => (c === code ? null : c)), 2000)
     } catch { /* Zwischenablage gesperrt — Code bleibt markierbar */ }
+  }
+
+  // Code fuer das eigene Konto einloesen (verschenken: Code kopieren)
+  async function redeem(code: string) {
+    setRedeeming(code)
+    setResult(null)
+    try {
+      const r = await fetchApi<RedeemResult>('/shop/redeem', { method: 'POST', body: JSON.stringify({ code }) })
+      setResult({ code, ok: true, text: redeemMessage(t, r) })
+      onRedeemed()
+    } catch (e) {
+      setResult({ code, ok: false, text: (e as Error).message })
+    } finally {
+      setRedeeming(null)
+    }
   }
 
   return (
@@ -170,11 +188,28 @@ function Codes({ order, items }: { order: MyShopOrderDetail; items: MyShopOrderD
               </div>
               <ul role="list" className="space-y-2">
                 {i.codes.map((c, n) => c.code && (
-                  <li key={n} className="flex items-center gap-2 rounded-xl border border-dashed border-outline-variant bg-background px-3 py-2.5">
-                    <code className="min-w-0 flex-1 select-all break-all font-mono text-base tracking-wider text-on-surface">{c.code}</code>
-                    <button onClick={() => copy(c.code!)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-on-surface hover:bg-surface-container-high">
-                      {copied === c.code ? <><Check size={14} aria-hidden /> {t.shop.copied}</> : <><Copy size={14} aria-hidden /> {t.shop.copy}</>}
-                    </button>
+                  <li key={n} className="space-y-1.5">
+                    <div className={`flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-outline-variant bg-background px-3 py-2.5 ${c.redeemed_at ? 'opacity-60' : ''}`}>
+                      <code className={`min-w-0 flex-1 select-all break-all font-mono text-base tracking-wider text-on-surface ${c.redeemed_at ? 'line-through' : ''}`}>{c.code}</code>
+                      {c.redeemed_at ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface-variant"><Check size={14} aria-hidden /> {t.shop.redeemedLabel}</span>
+                      ) : (
+                        <>
+                          <button onClick={() => copy(c.code!)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-on-surface hover:bg-surface-container-high">
+                            {copied === c.code ? <><Check size={14} aria-hidden /> {t.shop.copied}</> : <><Copy size={14} aria-hidden /> {t.shop.copy}</>}
+                          </button>
+                          {i.unlock_target && (
+                            <button onClick={() => redeem(c.code!)} disabled={redeeming !== null}
+                              className="inline-flex shrink-0 items-center rounded-lg bg-primary-fixed-dim px-3 py-1.5 text-xs font-bold text-on-primary-container disabled:opacity-40">
+                              {redeeming === c.code ? '…' : t.shop.redeemNow}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {result?.code === c.code && (
+                      <p className={`text-sm ${result.ok ? 'font-semibold text-primary-fixed-dim' : 'text-error'}`} role={result.ok ? 'status' : 'alert'}>{result.text}</p>
+                    )}
                   </li>
                 ))}
               </ul>

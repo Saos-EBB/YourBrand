@@ -1205,5 +1205,12 @@ export const ru = {
     codesHint: "Сохраните его — он действует один раз.",
     codesPending: "Ключи и коды появятся здесь, как только мы примем заказ.",
     delivery: "Доставка",
+    redeemTitle: "Активировать код",
+    redeemText: "Введите код, например с подарочной карты. Регистр и пробелы не важны.",
+    redeemButton: "Активировать",
+    redeemNow: "Активировать сейчас",
+    redeemedLabel: "Активирован",
+    redeemSuccessCoins: "Начислено {n} монет",
+    redeemSuccess: "Код активирован",
   },
 } satisfies Translations

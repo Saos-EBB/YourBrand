@@ -1,7 +1,7 @@
 import { BadGatewayException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { StripeService } from '../payment/stripe.service';
+import { ModuleBroker } from '../../shared/broker/module-broker';
 import { AdminListOrdersQuery } from './dto/admin-order.dto';
 import { ShopFulfillmentService } from './shop-fulfillment.service';
 
@@ -17,7 +17,7 @@ export class ShopOrdersAdminService {
 
     constructor(
         @InjectDataSource() private readonly dataSource: DataSource,
-        private readonly stripeService: StripeService,
+        private readonly broker: ModuleBroker,
         private readonly fulfillment: ShopFulfillmentService,
     ) { }
 
@@ -101,14 +101,14 @@ export class ShopOrdersAdminService {
     // Annehmen = Vertrag: reservierten Betrag abbuchen
     approve(adminId: string, id: string, note?: string) {
         return this.decide(adminId, id, 'approved', note?.trim() || null, async (pi) => {
-            await this.stripeService.stripe.paymentIntents.capture(pi, {}, { idempotencyKey: `shop-approve-${id}` });
+            await this.broker.payments().capture(pi, `shop-approve-${id}`);
         });
     }
 
     // Ablehnen = Reservierung freigeben, es fliesst kein Geld
     reject(adminId: string, id: string, note: string) {
         return this.decide(adminId, id, 'rejected', note.trim(), async (pi) => {
-            await this.stripeService.stripe.paymentIntents.cancel(pi, {}, { idempotencyKey: `shop-reject-${id}` });
+            await this.broker.payments().cancel(pi, `shop-reject-${id}`);
         });
     }
 
