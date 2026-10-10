@@ -98,7 +98,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 
 1. ✅ Mandanten-Modul
 2. ✅ Datenbank + Seed
-3. **Artikel-API mit Filtern**: `GET /shop/products?q&category&fulfillment&minPrice&maxPrice&minRating&inStock&sort&page&limit` mit Facetten, Detail, Bewertungen (nur Käufer)
+3. ✅ **Artikel-API mit Filtern**: `GET /shop/products?q&category&fulfillment&minPrice&maxPrice&minRating&inStock&sort&page&limit` mit Facetten, Detail, Bewertungen (nur Käufer)
 4. Checkout: Reservierung (`capture_method: manual`), Pflichtfelder je Lieferart, Eingangsbestätigung per Mail
 5. Risiko-Regeln, Anhalten, Protokoll, Stripe-Webhooks (Zahlung, Rückbuchung, Erstattung), Schwellen in `SystemSettingsService`
 6. Admin-Konsole `/admin/shop`: Eingang, Zeitstrahl, annehmen/ablehnen/erstatten/sperren, Alarme (Socket + Mail), Nachfass-Cron

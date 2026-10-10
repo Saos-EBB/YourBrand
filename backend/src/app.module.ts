@@ -38,6 +38,7 @@ import { MatchingModule } from './modules/core/matching/matching.module';
 import { BoardModule } from './modules/core/board/board.module';
 import { CareModule } from './modules/core/care/care.module';
 import { OrgModule } from './modules/core/care/org.module';
+import { ShopModule } from './modules/core/shop/shop.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { FeatureGuard } from './common/tenant/feature.guard';
 import { isModuleEnabled } from './common/tenant/tenant-config.loader';
@@ -60,8 +61,7 @@ const FEATURE_MODULES: Record<TenantFeature, Type[]> = {
   board: [BoardModule],
   caretaker: [CareModule],
   orgs: [OrgModule],
-  // ShopModule kommt mit der Produkt-API
-  shop: [],
+  shop: [ShopModule],
 };
 const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) ? FEATURE_MODULES[m] : []));
 

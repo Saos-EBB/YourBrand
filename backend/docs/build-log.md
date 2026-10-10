@@ -1,3 +1,11 @@
+## 2026-10-10 — feat(shop): Artikel-API mit Filtern und Bewertungen — Shop Schritt 3
+**Was:** `GET /shop/products` (Suche, Kategorie, Art, Preisspanne, Mindestbewertung, lieferbar, 4 Sortierungen,
+Seiten bis 60) mit Facetten fuers Filter-Panel, `GET /shop/products/:id` mit Bewertungen und `can_review`,
+`POST /shop/products/:id/reviews` (nur Kaeufer, nochmal bewerten ueberschreibt). Sortierung nur aus fester
+Liste, `%`/`_` in der Suche sind Text. Gegen Wegwerf-DB mit 1000 Artikeln geprueft: 2–12 ms pro Liste.
+**Nicht gebaut:** kein Caching, keine Volltextsuche (Trigram-ILIKE reicht), keine Cursor-Pagination
+(Offset reicht bei 1000), kein Loeschen einer Bewertung.
+
 ## 2026-10-09 — fix(mail): Reset-Link zeigt auf /reset-password
 **Was:** `sendPasswordResetEmail` baute `${APP_URL}/auth/reset-password` — im Frontend gibt es kein
 `/auth`-Praefix, der Link war 404. Seite dazu siehe `frontend/docs/build-log.md`.
