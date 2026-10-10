@@ -3,14 +3,19 @@ import { Throttle } from '@nestjs/throttler';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 import { ShopService } from './shop.service';
+import { ShopCheckoutService } from './shop-checkout.service';
 import { ListProductsQuery } from './dto/list-products.query';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { CheckoutDto } from './dto/checkout.dto';
 
 @RequiresModule('shop')
 @UseGuards(JwtGuard)
 @Controller('shop')
 export class ShopController {
-    constructor(private readonly shop: ShopService) { }
+    constructor(
+        private readonly shop: ShopService,
+        private readonly checkoutService: ShopCheckoutService,
+    ) { }
 
     @Get('products')
     list(@Query() query: ListProductsQuery) {
@@ -27,5 +32,11 @@ export class ShopController {
     @Post('products/:id/reviews')
     review(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateReviewDto) {
         return this.shop.upsertReview(req.user.sub, id, dto);
+    }
+
+    @Throttle({ default: { ttl: 3_600_000, limit: 20 } })
+    @Post('checkout')
+    checkout(@Req() req: any, @Body() dto: CheckoutDto) {
+        return this.checkoutService.checkout(req.user.sub, dto);
     }
 }

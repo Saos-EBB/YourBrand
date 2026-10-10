@@ -7,7 +7,7 @@ stehen und wie gearbeitet wird**.
 ## Stand (2026-10-10)
 
 - **Branch:** `feat/shop-module`, zweigt von `main` ab (`f3cce38`).
-- **Schritt 3 von 12 ist fertig.** Als Nächstes kommt **Schritt 4: Checkout**.
+- **Schritte 1–4 sind fertig.** Als Nächstes kommt **Schritt 10: Frontend Käufer** (vorgezogen: erst soll der Shop stehen und gut aussehen, Zahlungstests danach).
 - Gepusht ist alles bis `5a24df5`. Danach sind lokale Commits dazugekommen (siehe unten). Seit workmode an ist, wird **nicht gepusht**.
 
 | Commit | Schritt |

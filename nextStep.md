@@ -88,6 +88,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 4. Gegenprobe: `"shop": true` ohne `vatId`/`taxNumber` oder mit `"payments": false` → Backend startet nicht, Fehler nennt den Grund.
 
 ### Noch zu testen (mit den nächsten Schritten)
+- **Stripe-Parameter des Checkouts ungeprüft:** `backend/.env` hat einen Platzhalter-Key (`Invalid API Key provided`). Geprüft ist nur der Fehlerpfad (Bestellung `cancelled`, `stripe_error`, 503). Mit echtem `sk_test_…` nochmal: Session mit `capture_method: manual` + `embedded_page` wird angenommen, Beträge/Metadaten stimmen
 - Filter-API: Grenzwerte, Sortier-Whitelist, Pagination, Antwortzeit bei 1000 Artikeln
 - Rechnungsnummern ohne Lücken bei parallelen Bestellungen
 - Doppelte Stripe-Webhooks (Idempotenz), abgelaufene Reservierung, Teilerstattung
@@ -99,7 +100,8 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 1. ✅ Mandanten-Modul
 2. ✅ Datenbank + Seed
 3. ✅ **Artikel-API mit Filtern**: `GET /shop/products?q&category&fulfillment&minPrice&maxPrice&minRating&inStock&sort&page&limit` mit Facetten, Detail, Bewertungen (nur Käufer)
-4. Checkout: Reservierung (`capture_method: manual`), Pflichtfelder je Lieferart, Eingangsbestätigung per Mail
+4. ✅ **Checkout**: `POST /shop/checkout` legt die Bestellung `pending` an (Preise aus der DB, Pflichtfelder je Lieferart, Bestand/freie Keys) und öffnet eine Stripe-Session mit Reservierung (`capture_method: manual`). Stripe-Fehler → Bestellung `cancelled` + `stripe_error` im Protokoll + 503. Eingangsbestätigung → Schritt 5 (rechtlich erst nach Zahlung, also im Webhook)
+   - **Als Nächstes: Schritt 10 (Frontend) vorgezogen** — erst soll der Shop stehen und sich gut anfühlen, Zahlungstests danach
 5. Risiko-Regeln, Anhalten, Protokoll, Stripe-Webhooks (Zahlung, Rückbuchung, Erstattung), Schwellen in `SystemSettingsService`
 6. Admin-Konsole `/admin/shop`: Eingang, Zeitstrahl, annehmen/ablehnen/erstatten/sperren, Alarme (Socket + Mail), Nachfass-Cron
 7. Auslieferung: Keys zuteilen, Codes erzeugen + `/shop/redeem`, Versand-/Essens-Status

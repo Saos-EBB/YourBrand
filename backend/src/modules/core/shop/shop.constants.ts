@@ -9,3 +9,14 @@ export const SHOP_PAGE_SIZE_MAX = 60;
 
 // Bestellungen, nach denen jemand als Kaeufer gilt (darf bewerten)
 export const SHOP_BOUGHT_STATUSES = ['approved', 'fulfilled', 'partially_refunded'] as const;
+
+export const SHOP_DELIVERY_MODES = ['pickup', 'delivery', 'shipping', 'digital'] as const;
+export type ShopDeliveryMode = (typeof SHOP_DELIVERY_MODES)[number];
+
+// Welche Lieferart zu welcher Artikelart passt; eine Bestellung hat genau eine
+export const MODES_BY_FULFILLMENT: Record<ShopFulfillment, ShopDeliveryMode[]> = {
+    food: ['pickup', 'delivery'],
+    physical: ['shipping'],
+    license: ['digital'],
+    unlock: ['digital'],
+};

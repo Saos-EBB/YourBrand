@@ -1,3 +1,14 @@
+## 2026-10-10 — feat(shop): Checkout mit Reservierung — Shop Schritt 4
+**Was:** `POST /shop/checkout` (20/h): Warenkorb gegen die DB geprueft (Preise nie vom Client, doppelte Positionen
+zusammengezaehlt, Bestand bzw. freie Keys, eine Lieferart pro Bestellung, Pflichtangaben je Lieferart, Wunschzeit
+in den naechsten 7 Tagen, digital nur mit Widerrufs-Verzicht), Shop-Sperre → 403. Bestellung + Positionen +
+`created`-Event in einer Transaktion, dann Stripe Checkout (`embedded_page`, `capture_method: manual`,
+Versandpauschale `shop_shipping_cents` als eigene Zeile, Rechnungsadresse Pflicht). Stripe-Fehler → `cancelled`,
+`stripe_error`-Event, 503. Fehlerpfad gegen Wegwerf-DB geprueft; die echte Stripe-Session nicht, weil `.env`
+nur einen Platzhalter-Key hat (steht in `nextStep.md` unter „Noch zu testen“).
+**Nicht gebaut:** kein gemischter Warenkorb, keine Bestands-Reservierung beim Checkout, kein `GET /shop/orders`,
+keine Eingangsbestaetigung (kommt mit dem Webhook in Schritt 5).
+
 ## 2026-10-10 — chore(docs): ShopSession.md — Übergabe für die Shop-Arbeit
 **Was:** Stand, Entscheidungen, Arbeitsweise (workmode) und Test-Setup an einer Stelle, damit eine neue Session
 ohne Vorwissen weitermachen kann. Plan/Schema bleiben in `nextStep.md`.
