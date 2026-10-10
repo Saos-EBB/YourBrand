@@ -100,3 +100,98 @@ export function euroToCents(raw: string): number | null {
 export function centsToEuroInput(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',')
 }
+
+// Admin: Bestellungen (GET /admin/shop/orders). Konsole nur auf Deutsch.
+export type ShopOrderStatus =
+  | 'pending' | 'authorized' | 'held' | 'approved' | 'fulfilled'
+  | 'rejected' | 'expired' | 'cancelled' | 'refunded' | 'partially_refunded'
+
+export const ORDER_STATUS_LABEL: Record<ShopOrderStatus, string> = {
+  pending: 'Offen',
+  authorized: 'Reserviert',
+  held: 'Angehalten',
+  approved: 'Angenommen',
+  fulfilled: 'Ausgeliefert',
+  rejected: 'Abgelehnt',
+  expired: 'Abgelaufen',
+  cancelled: 'Abgebrochen',
+  refunded: 'Erstattet',
+  partially_refunded: 'Teilerstattet',
+}
+
+export const DELIVERY_MODE_LABEL: Record<ShopDeliveryMode, string> = {
+  pickup: 'Abholen',
+  delivery: 'Liefern',
+  shipping: 'Versand',
+  digital: 'Digital',
+}
+
+// Regel-Codes aus dem Risiko-Check (Schritt 5); Unbekanntes zeigt den Code
+export const HOLD_REASON_LABEL: Record<string, string> = {
+  amount_high: 'Hoher Betrag',
+  new_buyer: 'Erste Bestellung',
+  card_reuse: 'Karte bei mehreren Konten',
+  velocity: 'Viele Bestellungen in kurzer Zeit',
+  radar_elevated: 'Stripe Radar: erhöhtes Risiko',
+  previous_dispute: 'Frühere Rückbuchung',
+}
+
+export interface AdminShopOrder {
+  id: string
+  status: ShopOrderStatus
+  delivery_mode: ShopDeliveryMode
+  total_cents: number
+  currency: string
+  created_at: string
+  decide_by: string | null
+  hold_reasons: string[]
+  radar_risk: string | null
+  buyer_name: string | null
+  nickname: string | null
+  item_count: number
+  first_title: string | null
+}
+
+export interface AdminShopOrderPage {
+  items: AdminShopOrder[]
+  total: number
+  page: number
+  limit: number
+  counts: Partial<Record<ShopOrderStatus, number>>
+}
+
+export interface AdminShopOrderEvent {
+  id: string
+  type: string
+  data: Record<string, unknown>
+  created_at: string
+  actor_id: string | null
+  actor_nickname: string | null
+}
+
+export interface AdminShopOrderDetail extends Omit<AdminShopOrder, 'item_count' | 'first_title'> {
+  user_id: string | null
+  items_cents: number
+  shipping_cents: number
+  refunded_cents: number
+  contact_name: string | null
+  contact_phone: string | null
+  delivery_address: string | null
+  desired_at: string | null
+  delivery_note: string | null
+  buyer_email: string | null
+  buyer_address: string | null
+  withdrawal_waiver_at: string | null
+  stripe_payment_intent_id: string | null
+  decided_at: string | null
+  decided_by_nickname: string | null
+  decision_note: string | null
+  items: { id: string; sku: string; title: string; fulfillment: ShopFulfillment; quantity: number; unit_price_cents: number; vat_rate: number }[]
+  events: AdminShopOrderEvent[]
+  buyer_history: { completed: number; rejected: number; refunded: number } | null
+}
+
+// Kurze Bestellnummer fuer Anzeige und Suche
+export function orderNumber(id: string): string {
+  return id.slice(0, 8).toUpperCase()
+}

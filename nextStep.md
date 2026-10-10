@@ -105,6 +105,8 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
    - **Als Nächstes: Schritt 10 (Frontend) vorgezogen** — erst soll der Shop stehen und sich gut anfühlen, Zahlungstests danach
 5. Risiko-Regeln, Anhalten, Protokoll, Stripe-Webhooks (Zahlung, Rückbuchung, Erstattung), Schwellen in `SystemSettingsService`
 6. Admin-Konsole `/admin/shop`: Eingang, Zeitstrahl, annehmen/ablehnen/erstatten/sperren, Alarme (Socket + Mail), Nachfass-Cron
+   - ✅ **Teil 1** Eingang mit Status-Chips und Frist, Detail mit Käufer-Vorgeschichte und Zeitstrahl, annehmen (capture) / ablehnen (cancel, Begründung Pflicht). Artikelpflege jetzt unter `/admin/shop/products`
+   - Offen: erstatten, sperren, Alarme, Nachfass-Cron (brauchen Schritt 5)
 7. Auslieferung: Keys zuteilen, Codes erzeugen + `/shop/redeem`, Versand-/Essens-Status
 8. Rechnungen + Stornorechnungen (BullMQ-Worker wie GDPR-Export, pdfkit, Resend mit Anhang)
 9. Fälle: Melden in beide Richtungen, Support, Nachrichtenverlauf

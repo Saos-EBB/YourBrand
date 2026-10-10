@@ -1,3 +1,15 @@
+## 2026-10-11 — feat(shop): Bestellungs-Konsole fuer Admins — Shop Schritt 6 (Teil 1)
+**Was:** `/admin/shop` ist jetzt der Eingang fuer Bestellungen, die Artikelpflege liegt unter
+`/admin/shop/products`; beide im gemeinsamen Rahmen `components/shop/admin/AdminShopShell.tsx` (Rollen-/Modul-Check,
+Tabs). Eingang: Chips pro Status mit Zaehler (Angehalten rot), Suche, Zeilen mit Bestellnummer, Artikel, Kaeufer,
+Lieferart, Gruenden fuers Anhalten und Restzeit bis zur Frist (unter 1 Std rot, `useNow` alle 30 s).
+`OrderSheet`: Hinweis „Wartet auf deine Entscheidung“, Kaeufer mit Vorgeschichte und Radar, Lieferung, Artikel,
+Verlauf als Zeitstrahl. Annehmen mit Bestaetigung („42,76 € werden jetzt abgebucht“, Notiz optional), Ablehnen mit
+Schnellauswahl und Pflicht-Begruendung; Fehler (z. B. Stripe) unten im Panel, Zeitstrahl laedt neu.
+Verifiziert mit Playwright (Desktop dunkel, Handy hell): Annehmen → Stripe-Fehler sichtbar, Status bleibt;
+Ablehnen → Hinweis, Bestellung wandert zu „Abgelehnt“, Detail zeigt Begruendung und Wer/Wann. `tsc` + ESLint sauber.
+**Nicht gebaut:** nur Deutsch, kein Erstatten/Sperren, keine Live-Aktualisierung per Socket.
+
 ## 2026-10-10 — feat(shop): Admin-Seite fuer Artikel — Shop Schritt 11
 **Was:** `/admin/shop` (nur Admin/Owner, Link „Shop“ oben auf `/admin`, wenn das Modul an ist): Liste mit Suche,
 Art, Status (sichtbar/ausgeblendet per Schalter direkt in der Zeile), Preis, Bestand bzw. freie Keys (0 rot).

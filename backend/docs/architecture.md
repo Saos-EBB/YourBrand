@@ -21,7 +21,8 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   `ShopService` (Artikelliste/Filter, Bewertungen nur fuer Kaeufer, `GET settings`),
   `ShopCheckoutService` (Bestellung + Stripe-Session mit Reservierung), `ShopAdminController`/`ShopAdminService`
   unter `/admin/shop` (nur Admin/Owner: Artikel anlegen/bearbeiten, CSV-Import alles-oder-nichts, Keys
-  verschluesselt mit `hashShopCode` fuer die Suche). Reine Funktionen ohne DB getestet: `buildProductFilter`,
+  verschluesselt mit `hashShopCode` fuer die Suche; `ShopOrdersAdminService`: angehaltene Bestellungen annehmen
+  = Stripe capture, ablehnen = cancel, nur aus `held`). Reine Funktionen ohne DB getestet: `buildProductFilter`,
   `validateCart`, `parseCsv`/`csvToProducts`. Ablauf und Fahrplan: `nextStep.md` im Repo-Root.
 - `src/modules/hidden/*` — beef, coin, teeth, badge. Beef treibt Coin-Awards/-Spends per
   `CoinService`-Injection; Badge wird intern von `BeefService` erzeugt.

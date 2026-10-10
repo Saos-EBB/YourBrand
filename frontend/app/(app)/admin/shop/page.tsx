@@ -1,63 +1,47 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronLeft, ChevronRight, FileUp, KeyRound, Pencil, Plus, Search } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock, Search } from 'lucide-react'
 import { fetchApi } from '@/lib/api'
-import { useTranslation } from '@/lib/i18n'
-import { selectUserRole, useAuthStore } from '@/lib/store/authStore'
-import { useModuleEnabled } from '@/components/TenantProvider'
-import { ProductTile, fulfillmentLabel } from '@/components/shop/ProductCard'
-import { ProductEditor } from '@/components/shop/admin/ProductEditor'
-import { ImportDialog } from '@/components/shop/admin/ImportDialog'
-import { CodesDialog } from '@/components/shop/admin/CodesDialog'
-import { adminField, primaryBtn, secondaryBtn } from '@/components/shop/admin/Sheet'
-import { useHydrated } from '@/components/shop/Cart'
-import { SHOP_FULFILLMENTS, categoryLabel, formatPrice, type AdminShopProduct, type AdminShopProductPage } from '@/lib/shop'
+import { AdminShopShell } from '@/components/shop/admin/AdminShopShell'
+import { OrderSheet, ReasonChips, StatusBadge } from '@/components/shop/admin/OrderSheet'
+import { adminField } from '@/components/shop/admin/Sheet'
+import { formatDateTime, timeLeft, useNow } from '@/components/shop/admin/time'
+import {
+  DELIVERY_MODE_LABEL, ORDER_STATUS_LABEL, formatPrice, orderNumber,
+  type AdminShopOrder, type AdminShopOrderPage, type ShopOrderStatus,
+} from '@/lib/shop'
 
-type Status = 'all' | 'active' | 'inactive'
-type Dialog = { kind: 'edit'; product: AdminShopProduct | null } | { kind: 'import' } | { kind: 'codes'; product: AdminShopProduct } | null
+type Filter = ShopOrderStatus | 'all'
+// Reihenfolge der Chips: was ein Mensch tun muss zuerst
+const FILTERS: Filter[] = ['held', 'approved', 'fulfilled', 'rejected', 'expired', 'cancelled', 'refunded', 'all']
 
-export default function AdminShopPage() {
-  const ready = useHydrated()
-  const role = useAuthStore((s) => selectUserRole(s))
-  const shopOn = useModuleEnabled('shop')
-  const router = useRouter()
-  const isAdmin = role === 'admin' || role === 'owner'
-
-  useEffect(() => {
-    if (ready && !isAdmin) router.replace('/dashboard')
-  }, [ready, isAdmin, router])
-
-  if (!ready || !isAdmin) return null
-  if (!shopOn) return <p className="max-w-5xl mx-auto px-4 py-10 text-on-surface-variant">Das Modul Shop ist für diesen Mandanten aus.</p>
-  return <Products />
+export default function AdminShopOrdersPage() {
+  return <AdminShopShell active="orders"><Orders /></AdminShopShell>
 }
 
-function Products() {
-  const { t } = useTranslation()
+function Orders() {
   const [q, setQ] = useState('')
   const [query, setQuery] = useState('')
-  const [fulfillment, setFulfillment] = useState('')
-  const [status, setStatus] = useState<Status>('all')
+  const [status, setStatus] = useState<Filter>('held')
   const [page, setPage] = useState(1)
-  const [data, setData] = useState<AdminShopProductPage | null>(null)
+  const [data, setData] = useState<AdminShopOrderPage | null>(null)
   const [error, setError] = useState('')
-  const [dialog, setDialog] = useState<Dialog>(null)
+  const [open, setOpen] = useState<string | null>(null)
   const [reload, setReload] = useState(0)
   const [flash, setFlash] = useState('')
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const now = useNow()
 
   useEffect(() => {
     let cancelled = false
-    const qs = new URLSearchParams({ status, page: String(page), ...(query ? { q: query } : {}), ...(fulfillment ? { fulfillment } : {}) })
-    fetchApi<AdminShopProductPage>(`/admin/shop/products?${qs}`)
+    const qs = new URLSearchParams({ status, page: String(page), ...(query ? { q: query } : {}) })
+    fetchApi<AdminShopOrderPage>(`/admin/shop/orders?${qs}`)
       .then((d) => { if (!cancelled) { setData(d); setError('') } })
       .catch((e: Error) => { if (!cancelled) setError(e.message) })
     return () => { cancelled = true }
-  }, [query, fulfillment, status, page, reload])
+  }, [query, status, page, reload])
 
   useEffect(() => () => { clearTimeout(searchTimer.current); clearTimeout(flashTimer.current) }, [])
 
@@ -67,69 +51,59 @@ function Products() {
     searchTimer.current = setTimeout(() => { setQuery(value.trim()); setPage(1) }, 300)
   }
 
-  function notify(msg: string) {
-    setFlash(msg)
+  function choose(f: Filter) {
+    setStatus(f)
+    setPage(1)
+  }
+
+  function decided(message: string) {
+    setOpen(null)
+    setFlash(message)
     clearTimeout(flashTimer.current)
-    flashTimer.current = setTimeout(() => setFlash(''), 2500)
+    flashTimer.current = setTimeout(() => setFlash(''), 3000)
+    setReload((n) => n + 1)
   }
 
-  // Einzelne Zeile ersetzen statt neu laden — die Liste springt nicht
-  function replace(p: AdminShopProduct) {
-    setData((d) => d && { ...d, items: d.items.map((i) => (i.id === p.id ? p : i)) })
-  }
-
-  async function toggleActive(p: AdminShopProduct) {
-    replace({ ...p, active: !p.active })
-    try {
-      replace(await fetchApi<AdminShopProduct>(`/admin/shop/products/${p.id}`, { method: 'PATCH', body: JSON.stringify({ active: !p.active }) }))
-      notify(p.active ? 'Ausgeblendet' : 'Im Shop sichtbar')
-    } catch (e) {
-      replace(p)
-      setError((e as Error).message)
-    }
-  }
-
+  const counts = data?.counts ?? {}
+  const countOf = (f: Filter) => (f === 'all' ? Object.values(counts).reduce((a, b) => a + (b ?? 0), 0) : counts[f] ?? 0)
   const pages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1
+  const heldCount = counts.held ?? 0
 
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5 pb-24 md:pb-8">
+    <>
       {flash && (
         <div role="status" data-flash className="fixed left-1/2 top-20 z-[220] -translate-x-1/2 rounded-full bg-surface-container-highest px-4 py-2 text-sm font-medium text-on-surface shadow-lg">
           {flash}
         </div>
       )}
 
-      <Link href="/admin" className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
-        <ArrowLeft size={16} aria-hidden /> Admin
-      </Link>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-on-surface">Shop · Artikel</h1>
-          <p className="text-sm text-on-surface-variant">{data ? `${data.total.toLocaleString('de')} Artikel` : ' '}</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setDialog({ kind: 'import' })} className={secondaryBtn}><FileUp size={16} aria-hidden /> CSV importieren</button>
-          <button onClick={() => setDialog({ kind: 'edit', product: null })} className={primaryBtn}><Plus size={16} aria-hidden /> Neuer Artikel</button>
-        </div>
+      <header>
+        <h1 className="text-2xl font-bold text-on-surface">Shop · Bestellungen</h1>
+        <p className="text-sm text-on-surface-variant">
+          {!data ? ' ' : heldCount === 0 ? 'Nichts wartet auf dich.' : `${heldCount} ${heldCount === 1 ? 'Bestellung wartet' : 'Bestellungen warten'} auf eine Entscheidung.`}
+        </p>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        <label className="relative basis-full sm:basis-0 sm:flex-1">
+      <div className="space-y-3">
+        <label className="relative block">
           <span className="sr-only">Suchen</span>
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" aria-hidden />
-          <input value={q} onChange={(e) => onSearch(e.target.value)} placeholder="Titel oder SKU" className={`${adminField} pl-9`} />
+          <input value={q} onChange={(e) => onSearch(e.target.value)} placeholder="Bestellnummer, Name, E-Mail oder Nickname" className={`${adminField} pl-9`} />
         </label>
-        <select value={fulfillment} onChange={(e) => { setFulfillment(e.target.value); setPage(1) }} className="rounded-lg bg-surface-container-high px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary-fixed-dim" aria-label="Art">
-          <option value="">Alle Arten</option>
-          {SHOP_FULFILLMENTS.map((f) => <option key={f} value={f}>{fulfillmentLabel(t, f)}</option>)}
-        </select>
-        <div role="radiogroup" aria-label="Status" className="flex rounded-lg bg-surface-container-high p-1 gap-1">
-          {([['all', 'Alle'], ['active', 'Sichtbar'], ['inactive', 'Ausgeblendet']] as const).map(([s, label]) => (
-            <button key={s} role="radio" aria-checked={status === s} onClick={() => { setStatus(s); setPage(1) }}
-              className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${status === s ? 'bg-on-surface text-background' : 'text-on-surface-variant hover:text-on-surface'}`}>
-              {label}
-            </button>
-          ))}
+        <div role="radiogroup" aria-label="Status" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+          {FILTERS.map((f) => {
+            const n = countOf(f)
+            const on = status === f
+            return (
+              <button key={f} role="radio" aria-checked={on} onClick={() => choose(f)}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${on ? 'border-on-surface bg-on-surface text-background' : 'border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
+                {f === 'all' ? 'Alle' : ORDER_STATUS_LABEL[f]}
+                {data && n > 0 && (
+                  <span className={`rounded-full px-1.5 text-xs ${f === 'held' && !on ? 'bg-error text-background' : on ? 'bg-background/20' : 'bg-surface-container-highest'}`}>{n}</span>
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -137,13 +111,15 @@ function Products() {
 
       <section className="overflow-hidden rounded-2xl bg-surface-container">
         {!data ? (
-          <div className="space-y-px" aria-hidden>{Array.from({ length: 6 }, (_, i) => <div key={i} className="h-16 bg-surface-container-high/40 animate-pulse" />)}</div>
+          <div className="space-y-px" aria-hidden>{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-20 bg-surface-container-high/40 animate-pulse" />)}</div>
         ) : data.items.length === 0 ? (
-          <p className="py-16 text-center text-on-surface-variant">Keine Artikel gefunden.</p>
+          <div className="flex flex-col items-center gap-2 py-16 text-center text-on-surface-variant">
+            {status === 'held' && !query && <CheckCircle2 size={36} className="text-primary-fixed-dim" aria-hidden />}
+            <p>{status === 'held' && !query ? 'Alles entschieden.' : 'Keine Bestellungen gefunden.'}</p>
+          </div>
         ) : (
           <ul role="list" className="divide-y divide-outline-variant/50">
-            {data.items.map((p) => <Row key={p.id} p={p} onEdit={() => setDialog({ kind: 'edit', product: p })}
-              onCodes={() => setDialog({ kind: 'codes', product: p })} onToggle={() => toggleActive(p)} />)}
+            {data.items.map((o) => <OrderRow key={o.id} o={o} now={now} onOpen={() => setOpen(o.id)} />)}
           </ul>
         )}
       </section>
@@ -160,67 +136,42 @@ function Products() {
         </nav>
       )}
 
-      {dialog?.kind === 'edit' && (
-        <ProductEditor
-          product={dialog.product}
-          categories={data?.categories ?? []}
-          onClose={() => setDialog(null)}
-          onSaved={(p) => {
-            if (dialog.product) replace(p)
-            else setReload((n) => n + 1)
-            setDialog(null)
-            notify(dialog.product ? 'Gespeichert' : 'Artikel angelegt')
-          }}
-        />
-      )}
-      {dialog?.kind === 'import' && <ImportDialog onClose={() => setDialog(null)} onImported={() => setReload((n) => n + 1)} />}
-      {dialog?.kind === 'codes' && (
-        <CodesDialog product={dialog.product} onClose={() => setDialog(null)} onAdded={(free) => replace({ ...dialog.product, free_codes: free })} />
-      )}
-    </main>
+      {open && <OrderSheet id={open} onClose={() => setOpen(null)} onDecided={(_, msg) => decided(msg)} />}
+    </>
   )
 }
 
-function Row({ p, onEdit, onCodes, onToggle }: { p: AdminShopProduct; onEdit: () => void; onCodes: () => void; onToggle: () => void }) {
-  const { t } = useTranslation()
-  const stockLabel = p.fulfillment === 'license'
-    ? `${p.free_codes ?? 0} Keys frei`
-    : p.stock === null ? 'unbegrenzt' : `${p.stock} auf Lager`
-  const empty = p.fulfillment === 'license' ? !p.free_codes : p.stock === 0
+function OrderRow({ o, now, onOpen }: { o: AdminShopOrder; now: number; onOpen: () => void }) {
+  const left = o.status === 'held' && o.decide_by ? timeLeft(o.decide_by, now) : null
+  const who = o.nickname ?? o.buyer_name ?? 'gelöschter Nutzer'
+  const more = o.item_count > 1 ? ` +${o.item_count - 1}` : ''
 
   return (
-    <li className={`flex items-center gap-3 px-3 py-3 sm:px-4 ${p.active ? '' : 'opacity-60'}`}>
-      <div className="w-14 shrink-0"><ProductTile product={p} /></div>
-      <button onClick={onEdit} className="min-w-0 flex-1 text-left">
-        <p className="truncate text-sm font-semibold text-on-surface hover:underline">{p.title}</p>
-        <p className="truncate text-xs text-on-surface-variant">
-          <span className="font-mono">{p.sku}</span> · {categoryLabel(p.category)} · {fulfillmentLabel(t, p.fulfillment)}
-          {p.unlock_target && <> · <span className="font-mono">{p.unlock_target}</span></>}
-        </p>
-        <p className="text-xs text-on-surface sm:hidden">
-          <b>{formatPrice(p.price_cents, 'de')}</b> · <span className={empty ? 'font-semibold text-error' : 'text-on-surface-variant'}>{stockLabel}</span>
-        </p>
+    <li>
+      <button onClick={onOpen} className="flex w-full items-start gap-3 px-3 py-3 text-left hover:bg-surface-container-high/50 sm:items-center sm:px-4">
+        <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full sm:mt-0 ${left?.urgent ? 'bg-error' : o.status === 'held' ? 'bg-error/50' : 'bg-transparent'}`} aria-hidden />
+        <span className="min-w-0 flex-1 space-y-1">
+          <span className="flex items-center gap-2">
+            <span className="font-mono text-xs text-on-surface-variant">#{orderNumber(o.id)}</span>
+            <StatusBadge status={o.status} />
+          </span>
+          <span className="block truncate text-sm font-semibold text-on-surface">
+            {o.first_title ?? '—'}{more && <span className="font-normal text-on-surface-variant">{more}</span>}
+          </span>
+          <span className="block truncate text-xs text-on-surface-variant">
+            {who} · {DELIVERY_MODE_LABEL[o.delivery_mode]} · {formatDateTime(o.created_at)}
+          </span>
+          {o.hold_reasons.length > 0 && <span className="flex flex-wrap gap-1"><ReasonChips reasons={o.hold_reasons} /></span>}
+        </span>
+        <span className="shrink-0 space-y-1 text-right">
+          <span className="block text-sm font-bold text-on-surface">{formatPrice(o.total_cents, 'de')}</span>
+          {left && (
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold ${left.urgent ? 'text-error' : 'text-on-surface-variant'}`}>
+              <Clock size={12} aria-hidden /> {left.label}
+            </span>
+          )}
+        </span>
       </button>
-      <div className="hidden w-28 text-right sm:block">
-        <p className="text-sm font-bold text-on-surface">{formatPrice(p.price_cents, 'de')}</p>
-        <p className="text-xs text-on-surface-variant">{p.vat_rate} % MwSt</p>
-      </div>
-      <p className={`hidden w-28 text-right text-xs md:block ${empty ? 'font-semibold text-error' : 'text-on-surface-variant'}`}>{stockLabel}</p>
-      <div className="flex shrink-0 items-center gap-1">
-        {p.fulfillment === 'license' && (
-          <button onClick={onCodes} aria-label={`Keys für ${p.title} hinzufügen`} title="Keys hinzufügen" className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">
-            <KeyRound size={16} aria-hidden />
-          </button>
-        )}
-        <button onClick={onEdit} aria-label={`${p.title} bearbeiten`} title="Bearbeiten" className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">
-          <Pencil size={16} aria-hidden />
-        </button>
-        <label className="ml-1 cursor-pointer" title={p.active ? 'Im Shop sichtbar' : 'Ausgeblendet'}>
-          <span className="sr-only">{p.title} im Shop sichtbar</span>
-          <input type="checkbox" role="switch" checked={p.active} onChange={onToggle} className="peer sr-only" />
-          <span className="relative block h-6 w-11 rounded-full bg-surface-container-highest transition-colors peer-checked:bg-primary-fixed-dim peer-focus-visible:ring-2 peer-focus-visible:ring-primary-fixed-dim after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-on-surface after:transition-transform peer-checked:after:translate-x-5 peer-checked:after:bg-background" aria-hidden />
-        </label>
-      </div>
     </li>
   )
 }

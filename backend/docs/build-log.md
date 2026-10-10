@@ -1,3 +1,18 @@
+## 2026-10-11 — feat(shop): Bestellungen fuer Admins entscheiden — Shop Schritt 6 (Teil 1)
+**Was:** `ShopOrdersAdminService` unter `/admin/shop/orders` (gleiche Guards wie die Artikelpflege):
+`GET orders` (Status-Filter, Standard `held`, angehaltene nach Frist sortiert; Suche nach Bestellnummer-Anfang,
+Mail, Name, Nickname; Zaehler pro Status), `GET orders/:id` (Positionen, Protokoll mit Nickname, Vorgeschichte
+des Kaeufers), `POST orders/:id/approve` (Stripe `paymentIntents.capture`) und `POST orders/:id/reject`
+(Begruendung 5–1000 Zeichen, `paymentIntents.cancel`). Beides nur aus `held`, Idempotency-Key pro Bestellung,
+Status-Wechsel per `UPDATE … WHERE status = 'held'` (zwei Admins gleichzeitig → der zweite bekommt 409).
+Stripe-Fehler → 502, Status bleibt, `stripe_error` im Protokoll. Ohne Reservierung: Ablehnen geht, Annehmen nicht.
+Kein neuer Vertrag: nutzt den vorhandenen `StripeService.stripe`, `PaymentService` unangetastet. 40 Tests gruen.
+Gegen die Wegwerf-DB mit Testbestellungen per curl: Liste/Detail/Suche, Annehmen → 502 (Platzhalter-Key), leere
+Begruendung → 400, Ablehnen ohne Reservierung → `rejected` + Protokoll.
+**Nicht gebaut:** Erstatten, Shop-Sperre, Alarme (Socket + Mail), Nachfass-Cron und Ablauf der Frist — die
+`held`-Bestellungen entstehen erst mit Schritt 5 (Webhook + Risiko-Regeln). Regel-Codes (`amount_high`, …) sind
+bisher nur Anzeige-Labels im Frontend.
+
 ## 2026-10-10 — feat(shop): Artikelpflege fuer Admins — Shop Schritt 11
 **Was:** `/admin/shop/*` (JwtGuard + RolesGuard `admin`, Owner erbt, Modul `shop`): Liste mit Suche (Titel/SKU),
 Art, Status, 50 pro Seite, freie Keys je Lizenz; `POST products` (409 bei doppelter SKU, MwSt nach Art
