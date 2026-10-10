@@ -20,3 +20,6 @@ export const MODES_BY_FULFILLMENT: Record<ShopFulfillment, ShopDeliveryMode[]> =
     license: ['digital'],
     unlock: ['digital'],
 };
+
+// Versandpauschale pro Bestellung, falls system_settings.shop_shipping_cents fehlt
+export const SHOP_SHIPPING_CENTS_DEFAULT = 490;

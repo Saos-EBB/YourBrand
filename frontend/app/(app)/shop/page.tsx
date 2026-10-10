@@ -7,6 +7,7 @@ import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { useNavLabel } from '@/components/nav/useNavLabel'
 import { ProductCard, ProductCardSkeleton, fulfillmentLabel } from '@/components/shop/ProductCard'
+import { CartButton } from '@/components/shop/Cart'
 import { SHOP_FULFILLMENTS, SHOP_PAGE_SIZE, SHOP_SORTS, categoryLabel, type ShopProductPage, type ShopSort } from '@/lib/shop'
 
 // Filter stehen in der URL: Zurueck aus dem Artikel landet wieder auf derselben Auswahl
@@ -90,9 +91,12 @@ function Shop() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-      <header className="space-y-1">
-        <h1 className="text-3xl text-on-surface">{label('shop')}</h1>
-        <p className="text-sm text-on-surface-variant">{t.shop.subtitle}</p>
+      <header className="flex items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl text-on-surface">{label('shop')}</h1>
+          <p className="text-sm text-on-surface-variant">{t.shop.subtitle}</p>
+        </div>
+        <CartButton />
       </header>
 
       <div className="flex flex-wrap items-center gap-2">

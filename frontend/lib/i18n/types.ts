@@ -1136,5 +1136,56 @@ export interface Translations {
     reviewSaved: string
     you: string
     anonymous: string
+    cart: string
+    cartAria: string
+    cartEmpty: string
+    continueShopping: string
+    addToCart: string
+    added: string
+    toCart: string
+    quantity: string
+    removeItem: string
+    each: string
+    subtotal: string
+    shipping: string
+    total: string
+    vatIncluded: string
+    toCheckout: string
+    groupFood: string
+    groupPhysical: string
+    groupDigital: string
+    conflictTitle: string
+    conflictText: string
+    conflictReplace: string
+    conflictKeep: string
+    checkout: string
+    backToCart: string
+    editDetails: string
+    howToGet: string
+    modePickup: string
+    modeDelivery: string
+    modeShipping: string
+    modeDigital: string
+    fieldName: string
+    fieldAddress: string
+    fieldShippingAddress: string
+    fieldPhone: string
+    phoneHint: string
+    fieldDesiredAt: string
+    fieldPickupAt: string
+    fieldNote: string
+    notePlaceholder: string
+    addressPlaceholder: string
+    optional: string
+    waiverLabel: string
+    missingField: string
+    toPayment: string
+    preparingPayment: string
+    offerNote: string
+    paymentUnavailable: string
+    summary: string
+    thanksTitle: string
+    thanksText: string
+    orderNumber: string
   }
 }

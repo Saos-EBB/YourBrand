@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { StripeService } from '../payment/stripe.service';
 import { SystemSettingsService } from '../system-settings/system-settings.service';
 import { CheckoutDto } from './dto/checkout.dto';
-import { MODES_BY_FULFILLMENT } from './shop.constants';
+import { MODES_BY_FULFILLMENT, SHOP_SHIPPING_CENTS_DEFAULT } from './shop.constants';
 import type { ShopFulfillment } from './shop.constants';
 
 export interface CartProduct {
@@ -107,7 +107,7 @@ export class ShopCheckoutService {
         const lines = validateCart(dto, products);
 
         const itemsCents = lines.reduce((sum, l) => sum + l.product.price_cents * l.quantity, 0);
-        const shippingCents = dto.deliveryMode === 'shipping' ? await this.settings.getNumber('shop_shipping_cents', 490) : 0;
+        const shippingCents = dto.deliveryMode === 'shipping' ? await this.settings.getNumber('shop_shipping_cents', SHOP_SHIPPING_CENTS_DEFAULT) : 0;
 
         const orderId: string = await this.dataSource.transaction(async (tx) => {
             const [order] = await tx.query(

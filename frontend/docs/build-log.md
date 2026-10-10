@@ -1,3 +1,23 @@
+## 2026-10-10 — feat(shop): Warenkorb und Kasse — Shop Schritt 10b
+**Was:** Warenkorb in `localStorage` (`xxx-shop-cart`, `lib/store/shopCartStore.ts`), gehoert dem eingeloggten User
+(anderer Login sieht ihn leer). Eine Lieferart pro Bestellung wie im Backend: Essen / Versand / Digital — legt man
+etwas aus einer anderen Gruppe dazu, fragt die Seite, ob der Korb geleert werden soll. Artikelseite: Menge +
+„In den Warenkorb“, Warenkorb-Button mit Zaehler auf Liste und Artikel. `/shop/cart`: Menge aendern, entfernen,
+Zwischensumme, Versandpauschale (aus `GET /shop/settings`), Gesamt. `/shop/checkout`: nur die Felder der Lieferart
+(Abholen: Name + Telefon + Zeit; Liefern: Adresse + Telefon + Zeit; Versand: Adresse; Digital: Haken zum
+Widerrufsrecht), Fehler vom Backend werden angezeigt, danach Stripe eingebettet auf derselben Seite. Button
+„Weiter zur Bezahlung“, der zahlungspflichtige Klick ist Stripes „Bezahlen“. `/shop/orders/[id]`: Ruecksprung von
+Stripe, leert den Korb. Texte in allen 9 Sprachen.
+Verifiziert mit Playwright am Wegwerf-Stack (Desktop dunkel, Handy hell): Merch ×2 → Zaehler 2; Pizza dazu →
+Rueckfrage; Korb 26,38 € + 4,90 € = 31,28 €; leer abgeschickt → „Bitte ausfuellen: Versandadresse“; mit Adresse →
+Bestellung in der DB (`shipping`, 2638 + 490 = 3128, Adresse gespeichert), Stripe lehnt den Platzhalter-Key ab →
+`cancelled` + `stripe_error`, Kasse zeigt „Bezahlung gerade nicht moeglich“; Dankeseite leert den Korb.
+`tsc` + ESLint sauber.
+**Nicht gebaut:** Stripe-Formular selbst nicht gesehen (kein echter Key, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` fehlt
+in `frontend/.env` — dann zeigt die Kasse die Fehlermeldung, ohne zu bestellen). Keine Oeffnungszeiten fuer
+Wunschzeiten, keine gespeicherten Adressen, kein Gast-Checkout, keine Gutscheine. Die Dankeseite prueft den
+Bestellstatus nicht (kommt mit der Bestelluebersicht).
+
 ## 2026-10-10 — feat(shop): Shop-Seite mit Filtern, Artikel und Bewertungen — Shop Schritt 10a
 **Was:** `/shop`: Suche (300 ms verzoegert), Kategorie mit Anzahl, Art, Preisspanne in Euro (vertauschte
 Grenzen werden geradegerueckt), Mindestbewertung, „Nur lieferbar“, Sortierung, Seiten. Alle Filter stehen in

@@ -1,9 +1,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { SystemSettingsService } from '../system-settings/system-settings.service';
 import { ListProductsQuery } from './dto/list-products.query';
 import { CreateReviewDto } from './dto/create-review.dto';
-import { SHOP_BOUGHT_STATUSES } from './shop.constants';
+import { SHOP_BOUGHT_STATUSES, SHOP_SHIPPING_CENTS_DEFAULT } from './shop.constants';
 import type { ShopFulfillment, ShopSort } from './shop.constants';
 
 export interface ShopProduct {
@@ -70,7 +71,15 @@ export function buildProductFilter(query: ListProductsQuery): { where: string; p
 
 @Injectable()
 export class ShopService {
-    constructor(@InjectDataSource() private readonly dataSource: DataSource) { }
+    constructor(
+        @InjectDataSource() private readonly dataSource: DataSource,
+        private readonly settings: SystemSettingsService,
+    ) { }
+
+    // Gleicher Wert wie im Checkout — Versand ist eine Pauschale pro Bestellung
+    async getSettings(): Promise<{ shipping_cents: number }> {
+        return { shipping_cents: await this.settings.getNumber('shop_shipping_cents', SHOP_SHIPPING_CENTS_DEFAULT) };
+    }
 
     // Facetten (Kategorien, Preisspanne) ueber alle aktiven Artikel, nicht
     // ueber die gefilterten — sonst verschwinden Optionen beim Filtern

@@ -50,3 +50,20 @@ export function formatPrice(cents: number, locale: string): string {
 export function categoryLabel(slug: string): string {
   return slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
+
+// Eine Bestellung hat genau eine Lieferart (wie MODES_BY_FULFILLMENT im Backend):
+// Essen wird abgeholt oder geliefert, Merch verschickt, Keys/Codes sind digital
+export type CartGroup = 'food' | 'physical' | 'digital'
+export type ShopDeliveryMode = 'pickup' | 'delivery' | 'shipping' | 'digital'
+export function cartGroup(f: ShopFulfillment): CartGroup {
+  return f === 'food' ? 'food' : f === 'physical' ? 'physical' : 'digital'
+}
+export const MODES_BY_GROUP: Record<CartGroup, ShopDeliveryMode[]> = {
+  food: ['pickup', 'delivery'],
+  physical: ['shipping'],
+  digital: ['digital'],
+}
+
+export interface ShopSettings {
+  shipping_cents: number
+}

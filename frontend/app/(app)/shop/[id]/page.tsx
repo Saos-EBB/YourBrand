@@ -6,6 +6,7 @@ import { ArrowLeft, Bike, Download, Package, Star } from 'lucide-react'
 import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { ProductTile, Rating, Stars, fulfillmentLabel } from '@/components/shop/ProductCard'
+import { AddToCart, CartButton } from '@/components/shop/Cart'
 import { categoryLabel, formatPrice, type ShopFulfillment, type ShopProductDetail } from '@/lib/shop'
 
 type T = ReturnType<typeof useTranslation>['t']
@@ -36,9 +37,12 @@ export default function ShopProductPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-8">
-      <button onClick={back} className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
-        <ArrowLeft size={16} aria-hidden /> {t.shop.back}
-      </button>
+      <div className="flex items-center justify-between gap-4">
+        <button onClick={back} className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
+          <ArrowLeft size={16} aria-hidden /> {t.shop.back}
+        </button>
+        <CartButton />
+      </div>
 
       {!product ? (
         <div className="grid gap-6 md:grid-cols-2" aria-hidden="true">
@@ -65,6 +69,7 @@ export default function ShopProductPage({ params }: { params: Promise<{ id: stri
                 <p className="text-3xl font-bold text-on-surface">{formatPrice(product.price_cents, locale)}</p>
                 <p className="text-xs text-on-surface-variant">{t.shop.inclVat.replace('{rate}', String(product.vat_rate))}</p>
               </div>
+              <AddToCart product={product} />
               <DeliveryHint t={t} product={product} />
               {product.description && <p className="text-sm leading-relaxed text-on-surface-variant">{product.description}</p>}
             </div>

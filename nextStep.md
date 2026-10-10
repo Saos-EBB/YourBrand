@@ -88,6 +88,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 4. Gegenprobe: `"shop": true` ohne `vatId`/`taxNumber` oder mit `"payments": false` → Backend startet nicht, Fehler nennt den Grund.
 
 ### Noch zu testen (mit den nächsten Schritten)
+- **Stripe-Formular im Frontend ungesehen:** `frontend/.env` braucht `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_test_…`), sonst zeigt die Kasse nur die Fehlermeldung
 - **Stripe-Parameter des Checkouts ungeprüft:** `backend/.env` hat einen Platzhalter-Key (`Invalid API Key provided`). Geprüft ist nur der Fehlerpfad (Bestellung `cancelled`, `stripe_error`, 503). Mit echtem `sk_test_…` nochmal: Session mit `capture_method: manual` + `embedded_page` wird angenommen, Beträge/Metadaten stimmen
 - Filter-API: Grenzwerte, Sortier-Whitelist, Pagination, Antwortzeit bei 1000 Artikeln
 - Rechnungsnummern ohne Lücken bei parallelen Bestellungen
@@ -109,7 +110,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 9. Fälle: Melden in beide Richtungen, Support, Nachrichtenverlauf
 10. Frontend Käufer: Liste mit Filtern, Warenkorb, Checkout, Bestellungen, Problem melden
     - ✅ **10a** `/shop` (Filter in der URL, Filter-Sheet auf dem Handy, Kategorie-Kacheln) und `/shop/[id]` (Bewertungen, Formular für Käufer)
-    - 10b Warenkorb + Checkout-Formular je Lieferart + Stripe eingebettet
+    - ✅ **10b** Warenkorb (eine Lieferart pro Bestellung), Kasse mit Feldern je Lieferart, Stripe eingebettet, Dankeseite; `GET /shop/settings` für die Versandpauschale
     - Bestellungen + Problem melden brauchen erst `GET /shop/orders` bzw. Schritt 9
 11. Admin-Pflege: Artikel, CSV-Import, Key-Import
 12. Doku + Tests

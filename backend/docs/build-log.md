@@ -1,3 +1,8 @@
+## 2026-10-10 — feat(shop): GET /shop/settings — Shop Schritt 10b
+**Was:** Liefert `shipping_cents`, damit Warenkorb und Kasse die Versandpauschale vor der Bestellung zeigen
+(PAngV). Gleicher Wert wie im Checkout, Standard `SHOP_SHIPPING_CENTS_DEFAULT` (490) an einer Stelle.
+**Nicht gebaut:** keine weiteren Einstellungen (Oeffnungszeiten, Liefergebiet).
+
 ## 2026-10-10 — feat(shop): Artikelliste zeigt Lieferbares zuerst — Shop Schritt 10a
 **Was:** `buildProductFilter` setzt die Lieferbarkeit vor die gewaehlte Sortierung, damit ausverkaufte Artikel
 (z. B. Lizenzen ohne Keys) nicht zwischen den kaufbaren stehen. Frontend dazu siehe `frontend/docs/build-log.md`.

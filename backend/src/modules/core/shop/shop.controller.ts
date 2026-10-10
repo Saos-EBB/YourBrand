@@ -17,6 +17,12 @@ export class ShopController {
         private readonly checkoutService: ShopCheckoutService,
     ) { }
 
+    // Was der Kaeufer vor der Bestellung sehen muss (Versandkosten, PAngV)
+    @Get('settings')
+    settings() {
+        return this.shop.getSettings();
+    }
+
     @Get('products')
     list(@Query() query: ListProductsQuery) {
         return this.shop.listProducts(query);
