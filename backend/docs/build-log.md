@@ -1,3 +1,8 @@
+## 2026-10-10 — feat(shop): Artikelliste zeigt Lieferbares zuerst — Shop Schritt 10a
+**Was:** `buildProductFilter` setzt die Lieferbarkeit vor die gewaehlte Sortierung, damit ausverkaufte Artikel
+(z. B. Lizenzen ohne Keys) nicht zwischen den kaufbaren stehen. Frontend dazu siehe `frontend/docs/build-log.md`.
+**Nicht gebaut:** kein eigener Index dafuer (6–24 ms bei 1000 Artikeln).
+
 ## 2026-10-10 — feat(shop): Checkout mit Reservierung — Shop Schritt 4
 **Was:** `POST /shop/checkout` (20/h): Warenkorb gegen die DB geprueft (Preise nie vom Client, doppelte Positionen
 zusammengezaehlt, Bestand bzw. freie Keys, eine Lieferart pro Bestellung, Pflichtangaben je Lieferart, Wunschzeit

@@ -1,3 +1,18 @@
+## 2026-10-10 — feat(shop): Shop-Seite mit Filtern, Artikel und Bewertungen — Shop Schritt 10a
+**Was:** `/shop`: Suche (300 ms verzoegert), Kategorie mit Anzahl, Art, Preisspanne in Euro (vertauschte
+Grenzen werden geradegerueckt), Mindestbewertung, „Nur lieferbar“, Sortierung, Seiten. Alle Filter stehen in
+der URL, „Zurueck“ aus dem Artikel landet auf derselben Auswahl. Desktop: Filter-Spalte; Handy: Filter als
+Sheet von unten mit „N Artikel anzeigen“. Ohne Produktfotos bekommt jede Kategorie eine Kachel mit Farbverlauf
+und Icon (`components/shop/ProductCard.tsx`, unbekannte Kategorien nach Art). Ausverkauftes ist gedimmt, ohne
+durchgestrichenen Preis (sah nach Rabatt aus). `/shop/[id]`: Preis inkl. MwSt, Lieferart, Verteilung der Sterne,
+Bewertungsformular nur fuer Kaeufer (`can_review`). Texte in allen 9 Sprachen (`t.shop`).
+Backend: Liste sortiert Lieferbares zuerst (6–24 ms bei 1000 Artikeln).
+Verifiziert gegen Wegwerf-Stack (Backend :3900 auf Wegwerf-DB, `next dev` :3901), Playwright mit Demo-User:
+Desktop dunkel, Handy hell + dunkel, Filter-Sheet, Suche + Preis → URL `?q=hoodie&minPrice=2000&maxPrice=4000`
+(13 Treffer), Bewertung abgeschickt → in der DB, Schnitt 3.0 → 3.7. `tsc` + ESLint sauber.
+**Nicht gebaut:** kein Warenkorb/Checkout (10b), keine Bestelluebersicht, kein Bild-Upload, keine Merkliste,
+kein Endlos-Scroll. Sterne-Verteilung zaehlt nur die letzten 50 Bewertungen (so viele liefert die API).
+
 ## 2026-10-09 — fix(settings, auth): GDPR-Export-Bestaetigung + /reset-password
 **Was:** Der Export-Button speicherte die Antwort weiter als PDF-Blob — seit dem Worker-Umbau liefert
 `GET /gdpr/export` aber JSON und schickt das PDF per Mail, also kam eine kaputte Datei raus. Jetzt wird die

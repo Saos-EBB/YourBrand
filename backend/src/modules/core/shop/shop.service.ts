@@ -64,7 +64,8 @@ export function buildProductFilter(query: ListProductsQuery): { where: string; p
     if (query.maxPrice !== undefined) add((n) => `p.price_cents <= ${n}`, query.maxPrice);
     if (query.minRating !== undefined) add((n) => `p.rating_avg >= ${n}`, query.minRating);
     if (query.inStock) conditions.push(IN_STOCK_SQL);
-    return { where: conditions.join(' AND '), params, orderBy: ORDER_BY[query.sort ?? 'newest'] };
+    // Lieferbares zuerst, innerhalb davon die gewaehlte Sortierung
+    return { where: conditions.join(' AND '), params, orderBy: `${IN_STOCK_SQL} DESC, ${ORDER_BY[query.sort ?? 'newest']}` };
 }
 
 @Injectable()

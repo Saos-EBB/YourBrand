@@ -1086,4 +1086,55 @@ export interface Translations {
     members: string
     online: string
   }
+  shop: {
+    subtitle: string
+    searchPlaceholder: string
+    filters: string
+    showResults: string
+    resetFilters: string
+    all: string
+    category: string
+    kind: string
+    kindFood: string
+    kindPhysical: string
+    kindLicense: string
+    kindUnlock: string
+    price: string
+    priceFrom: string
+    priceTo: string
+    rating: string
+    inStockOnly: string
+    sort: string
+    sortNewest: string
+    sortPriceAsc: string
+    sortPriceDesc: string
+    sortRating: string
+    results: string
+    empty: string
+    pagination: string
+    page: string
+    prev: string
+    next: string
+    soldOut: string
+    available: string
+    noRatings: string
+    ratingAria: string
+    ratingCount: string
+    back: string
+    inclVat: string
+    deliveryFood: string
+    deliveryPhysical: string
+    deliveryLicense: string
+    deliveryUnlock: string
+    reviews: string
+    reviewsNone: string
+    reviewOnlyBuyers: string
+    reviewWrite: string
+    reviewYours: string
+    reviewBodyPlaceholder: string
+    reviewSend: string
+    reviewSaved: string
+    you: string
+    anonymous: string
+  }
 }

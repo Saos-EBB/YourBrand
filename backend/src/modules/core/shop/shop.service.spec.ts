@@ -12,7 +12,9 @@ function parse(raw: Record<string, string>) {
 
 describe('buildProductFilter', () => {
     it('ohne Filter: nur aktive Artikel, neueste zuerst', () => {
-        expect(buildProductFilter({})).toEqual({ where: 'p.active', params: [], orderBy: 'p.created_at DESC, p.id' });
+        const { where, params, orderBy } = buildProductFilter({});
+        expect([where, params]).toEqual(['p.active', []]);
+        expect(orderBy).toMatch(/^\(\(p\.stock IS NULL.*\) DESC, p\.created_at DESC, p\.id$/s);
     });
 
     it('nummeriert die Parameter in der Reihenfolge der Filter', () => {
@@ -36,9 +38,9 @@ describe('buildProductFilter', () => {
         expect(buildProductFilter(parse({ inStock: 'false' }).query).where).toBe('p.active');
     });
 
-    it('Sortierung nur aus der festen Liste', () => {
-        expect(buildProductFilter({ sort: 'price_desc' }).orderBy).toBe('p.price_cents DESC, p.id');
-        expect(buildProductFilter({ sort: 'rating' }).orderBy).toBe('p.rating_avg DESC, p.rating_count DESC, p.id');
+    it('Sortierung nur aus der festen Liste, Lieferbares zuerst', () => {
+        expect(buildProductFilter({ sort: 'price_desc' }).orderBy).toMatch(/\) DESC, p\.price_cents DESC, p\.id$/);
+        expect(buildProductFilter({ sort: 'rating' }).orderBy).toMatch(/\) DESC, p\.rating_avg DESC, p\.rating_count DESC, p\.id$/);
     });
 });
 

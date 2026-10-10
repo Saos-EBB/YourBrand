@@ -84,7 +84,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
    # Mandanten-DBs liegen auf der geteilten Infra (XXX_db), Datenbank yb_<slug>
    docker exec XXX_db psql -U <user> -d yb_kiez -c "SELECT fulfillment, count(*) FROM shop_products GROUP BY 1"
    ```
-   Im Frontend erscheint der Menüpunkt „Shop“. `/shop` ist noch leer (Seite kommt in Schritt 10).
+   Im Frontend erscheint der Menüpunkt „Shop“ mit Liste, Filtern und Artikelseiten.
 4. Gegenprobe: `"shop": true` ohne `vatId`/`taxNumber` oder mit `"payments": false` → Backend startet nicht, Fehler nennt den Grund.
 
 ### Noch zu testen (mit den nächsten Schritten)
@@ -108,6 +108,9 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 8. Rechnungen + Stornorechnungen (BullMQ-Worker wie GDPR-Export, pdfkit, Resend mit Anhang)
 9. Fälle: Melden in beide Richtungen, Support, Nachrichtenverlauf
 10. Frontend Käufer: Liste mit Filtern, Warenkorb, Checkout, Bestellungen, Problem melden
+    - ✅ **10a** `/shop` (Filter in der URL, Filter-Sheet auf dem Handy, Kategorie-Kacheln) und `/shop/[id]` (Bewertungen, Formular für Käufer)
+    - 10b Warenkorb + Checkout-Formular je Lieferart + Stripe eingebettet
+    - Bestellungen + Problem melden brauchen erst `GET /shop/orders` bzw. Schritt 9
 11. Admin-Pflege: Artikel, CSV-Import, Key-Import
 12. Doku + Tests
 
