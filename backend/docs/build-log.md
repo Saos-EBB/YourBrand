@@ -1,3 +1,8 @@
+## 2026-10-10 — chore(docs): ShopSession.md — Übergabe für die Shop-Arbeit
+**Was:** Stand, Entscheidungen, Arbeitsweise (workmode) und Test-Setup an einer Stelle, damit eine neue Session
+ohne Vorwissen weitermachen kann. Plan/Schema bleiben in `nextStep.md`.
+**Nicht gebaut:** keine Kopie des Plans, keine Automatik zum Aktualisieren.
+
 ## 2026-10-10 — feat(shop): Artikel-API mit Filtern und Bewertungen — Shop Schritt 3
 **Was:** `GET /shop/products` (Suche, Kategorie, Art, Preisspanne, Mindestbewertung, lieferbar, 4 Sortierungen,
 Seiten bis 60) mit Facetten fuers Filter-Panel, `GET /shop/products/:id` mit Bewertungen und `can_review`,
