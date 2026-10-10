@@ -7,6 +7,8 @@ import { ShopCheckoutService } from './shop-checkout.service';
 import { ListProductsQuery } from './dto/list-products.query';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { CheckoutDto } from './dto/checkout.dto';
+import { MyOrdersQuery } from './dto/my-orders.query';
+import { ShopOrdersService } from './shop-orders.service';
 
 @RequiresModule('shop')
 @UseGuards(JwtGuard)
@@ -15,6 +17,7 @@ export class ShopController {
     constructor(
         private readonly shop: ShopService,
         private readonly checkoutService: ShopCheckoutService,
+        private readonly orders: ShopOrdersService,
     ) { }
 
     // Was der Kaeufer vor der Bestellung sehen muss (Versandkosten, PAngV)
@@ -44,5 +47,15 @@ export class ShopController {
     @Post('checkout')
     checkout(@Req() req: any, @Body() dto: CheckoutDto) {
         return this.checkoutService.checkout(req.user.sub, dto);
+    }
+
+    @Get('orders')
+    myOrders(@Req() req: any, @Query() query: MyOrdersQuery) {
+        return this.orders.listMine(req.user.sub, query.page);
+    }
+
+    @Get('orders/:id')
+    myOrder(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+        return this.orders.getMine(req.user.sub, id);
     }
 }

@@ -20,17 +20,21 @@ function setup(order: { status: string; stripe_payment_intent_id: string | null 
         capture: jest.fn(opts.stripeFails ? fail : async () => ({})),
         cancel: jest.fn(opts.stripeFails ? fail : async () => ({})),
     };
-    const service = new ShopOrdersAdminService(dataSource as any, { stripe: { paymentIntents: intents } } as any);
+    const fulfillment = {
+        checkKeys: jest.fn(async () => undefined),
+        onApproved: jest.fn(async () => ({ status: 'approved', progress: 'accepted' })),
+    };
+    const service = new ShopOrdersAdminService(dataSource as any, { stripe: { paymentIntents: intents } } as any, fulfillment as any);
     // Typ steht als Parameter ($3) oder als Literal im SQL ('stripe_error')
     const events = () => calls.filter((c) => c.sql.includes('shop_order_events'))
         .map((c) => (c.sql.includes(`'stripe_error'`) ? 'stripe_error' : c.params[2]));
-    return { service, intents, calls, events };
+    return { service, intents, calls, events, fulfillment };
 }
 
 describe('ShopOrdersAdminService.decide', () => {
     it('Annehmen bucht ab, setzt approved und schreibt das Protokoll', async () => {
         const { service, intents, calls, events } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
-        await expect(service.approve(ADMIN, ORDER, '  passt  ')).resolves.toEqual({ id: ORDER, status: 'approved' });
+        await expect(service.approve(ADMIN, ORDER, '  passt  ')).resolves.toEqual({ id: ORDER, status: 'approved', progress: 'accepted' });
         expect(intents.capture).toHaveBeenCalledWith('pi_1', {}, { idempotencyKey: `shop-approve-${ORDER}` });
         const update = calls.find((c) => c.sql.startsWith('UPDATE'))!;
         expect(update.sql).toContain(`status = 'held'`);
@@ -44,6 +48,21 @@ describe('ShopOrdersAdminService.decide', () => {
         expect(intents.cancel).toHaveBeenCalledWith('pi_1', {}, { idempotencyKey: `shop-reject-${ORDER}` });
         const event = calls.find((c) => c.sql.includes('shop_order_events'))!;
         expect(JSON.parse(event.params[3] as string)).toEqual({ note: 'Karte passt nicht zum Land' });
+    });
+
+    it('zu wenig Keys: kein Abbuchen, Status bleibt', async () => {
+        const { service, intents, fulfillment, calls } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
+        fulfillment.checkKeys.mockRejectedValueOnce(new ConflictException('Zu wenig freie Keys'));
+        await expect(service.approve(ADMIN, ORDER)).rejects.toThrow(/Keys/);
+        expect(intents.capture).not.toHaveBeenCalled();
+        expect(calls.some((c) => c.sql.startsWith('UPDATE'))).toBe(false);
+    });
+
+    it('Ablehnen liefert nichts aus', async () => {
+        const { service, fulfillment } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
+        await service.reject(ADMIN, ORDER, 'Verdacht auf Betrug');
+        expect(fulfillment.checkKeys).not.toHaveBeenCalled();
+        expect(fulfillment.onApproved).not.toHaveBeenCalled();
     });
 
     it('nur angehaltene Bestellungen, sonst 409 ohne Stripe-Aufruf', async () => {

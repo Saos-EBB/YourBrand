@@ -6,7 +6,8 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 import { ShopAdminService } from './shop-admin.service';
 import { ShopOrdersAdminService } from './shop-orders-admin.service';
-import { AdminListOrdersQuery, ApproveOrderDto, RejectOrderDto } from './dto/admin-order.dto';
+import { AdminListOrdersQuery, ApproveOrderDto, RejectOrderDto, SetProgressDto } from './dto/admin-order.dto';
+import { ShopFulfillmentService } from './shop-fulfillment.service';
 import { AddCodesDto, AdminListProductsQuery, CreateProductDto, ImportProductsDto, UpdateProductDto } from './dto/admin-product.dto';
 
 // Artikelpflege und Bestellungen — nur Admins (Owner erbt). Loeschen gibt es nicht: Artikel
@@ -19,6 +20,7 @@ export class ShopAdminController {
     constructor(
         private readonly admin: ShopAdminService,
         private readonly orders: ShopOrdersAdminService,
+        private readonly fulfillment: ShopFulfillmentService,
     ) { }
 
     @Get('products')
@@ -66,5 +68,10 @@ export class ShopAdminController {
     @Post('orders/:id/reject')
     reject(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RejectOrderDto) {
         return this.orders.reject(req.user.sub, id, dto.note);
+    }
+
+    @Post('orders/:id/progress')
+    progress(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SetProgressDto) {
+        return this.fulfillment.setProgress(req.user.sub, id, dto.progress, dto.trackingNumber);
     }
 }

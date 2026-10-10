@@ -8,6 +8,7 @@ import { useTranslation } from '@/lib/i18n'
 import { useNavLabel } from '@/components/nav/useNavLabel'
 import { ProductCard, ProductCardSkeleton, fulfillmentLabel } from '@/components/shop/ProductCard'
 import { CartButton } from '@/components/shop/Cart'
+import { OrdersButton } from '@/components/shop/OrderStatus'
 import { SHOP_FULFILLMENTS, SHOP_PAGE_SIZE, SHOP_SORTS, categoryLabel, type ShopProductPage, type ShopSort } from '@/lib/shop'
 
 // Filter stehen in der URL: Zurueck aus dem Artikel landet wieder auf derselben Auswahl
@@ -96,7 +97,10 @@ function Shop() {
           <h1 className="text-3xl text-on-surface">{label('shop')}</h1>
           <p className="text-sm text-on-surface-variant">{t.shop.subtitle}</p>
         </div>
-        <CartButton />
+        <div className="flex gap-2">
+          <OrdersButton />
+          <CartButton />
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-2">

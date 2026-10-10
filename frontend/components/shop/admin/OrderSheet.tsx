@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, Clock } from 'lucide-react'
 import { fetchApi } from '@/lib/api'
 import {
-  DELIVERY_MODE_LABEL, HOLD_REASON_LABEL, ORDER_STATUS_LABEL, formatPrice, orderNumber,
-  type AdminShopOrderDetail, type AdminShopOrderEvent, type ShopOrderStatus,
+  DELIVERY_MODE_LABEL, HOLD_REASON_LABEL, NOT_MET_FROM, ORDER_STATUS_LABEL, PROGRESS_FLOW, PROGRESS_LABEL, formatPrice, orderNumber,
+  type AdminShopOrderDetail, type AdminShopOrderEvent, type PhysicalMode, type ShopOrderStatus, type ShopProgress,
 } from '@/lib/shop'
 import { Sheet, adminField, primaryBtn, secondaryBtn } from './Sheet'
 import { formatDateTime, timeLeft, useNow } from './time'
@@ -18,6 +18,8 @@ const EVENT_LABEL: Record<string, string> = {
   rejected: 'Abgelehnt',
   stripe_error: 'Stripe-Fehler',
   expired: 'Reservierung verfallen',
+  fulfilled: 'Ausgeliefert',
+  progress: 'Lieferstand',
 }
 
 // Schnellauswahl beim Ablehnen — landet als Text im Feld, Begruendung bleibt Pflicht
@@ -59,10 +61,12 @@ export function ReasonChips({ reasons }: { reasons: string[] }) {
 
 type Mode = 'idle' | 'approve' | 'reject'
 
-export function OrderSheet({ id, onClose, onDecided }: {
+export function OrderSheet({ id, onClose, onDecided, onChanged }: {
   id: string
   onClose: () => void
   onDecided: (status: 'approved' | 'rejected', message: string) => void
+  // Lieferstand geaendert: Panel bleibt offen, Liste laedt neu
+  onChanged: (message: string) => void
 }) {
   const [detail, setDetail] = useState<AdminShopOrderDetail | null>(null)
   const [loadError, setLoadError] = useState('')
@@ -83,6 +87,7 @@ export function OrderSheet({ id, onClose, onDecided }: {
 
   const order = detail?.id === id ? detail : null
   const held = order?.status === 'held'
+  const shipping = order?.status === 'approved' && order.delivery_mode !== 'digital' && order.progress !== 'not_met'
 
   async function decide() {
     if (!order) return
@@ -110,7 +115,9 @@ export function OrderSheet({ id, onClose, onDecided }: {
     setError('')
   }
 
-  const footer = !held ? undefined : (
+  const footer = shipping ? (
+    <ProgressFooter key={order.progress} order={order} onDone={(msg) => { setReload((n) => n + 1); onChanged(msg) }} />
+  ) : !held ? undefined : (
     <div className="space-y-3">
       {error && <p className="rounded-lg bg-error-container/40 px-3 py-2 text-sm text-error" role="alert">{error}</p>}
       {mode === 'idle' && (
@@ -215,6 +222,12 @@ function Status({ order, now }: { order: AdminShopOrderDetail; now: number }) {
           {formatDateTime(order.decided_at)}{order.decided_by_nickname ? ` von ${order.decided_by_nickname}` : ' vom System'}
         </span>
       )}
+      {order.progress && order.status === 'approved' && (
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${order.progress === 'not_met' ? 'bg-error-container/50 text-error' : 'bg-surface-container-highest text-on-surface'}`}>
+          {PROGRESS_LABEL[order.progress]}
+        </span>
+      )}
+      {order.tracking_number && <span className="text-on-surface-variant">Sendung <span className="font-mono text-on-surface">{order.tracking_number}</span></span>}
       {order.decision_note && <p className="basis-full text-on-surface">„{order.decision_note}“</p>}
     </div>
   )
@@ -279,6 +292,11 @@ function Items({ order }: { order: AdminShopOrderDetail }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-on-surface">{i.title}</span>
                 <span className="font-mono text-xs text-on-surface-variant">{i.sku}</span>
+                {(i.fulfillment === 'license' || i.fulfillment === 'unlock') && i.codes_assigned > 0 && (
+                  <span className="ml-2 text-xs text-primary-fixed-dim">
+                    {i.codes_assigned} {i.fulfillment === 'license' ? (i.codes_assigned === 1 ? 'Key zugeteilt' : 'Keys zugeteilt') : (i.codes_assigned === 1 ? 'Code erzeugt' : 'Codes erzeugt')}
+                  </span>
+                )}
               </span>
               <span className="font-semibold text-on-surface">{formatPrice(i.unit_price_cents * i.quantity, 'de')}</span>
             </li>
@@ -300,6 +318,13 @@ function eventDetail(e: AdminShopOrderEvent): string | null {
   if (typeof d.note === 'string') return `„${d.note}“`
   if (Array.isArray(d.reasons)) return d.reasons.map((r) => HOLD_REASON_LABEL[String(r)] ?? String(r)).join(', ')
   if (typeof d.message === 'string') return d.message
+  if (typeof d.progress === 'string') {
+    const label = PROGRESS_LABEL[d.progress as ShopProgress] ?? d.progress
+    return typeof d.tracking_number === 'string' ? `${label} · Sendung ${d.tracking_number}` : label
+  }
+  if (typeof d.keys === 'number' || typeof d.codes === 'number') {
+    return [d.keys ? `${d.keys} Keys zugeteilt` : '', d.codes ? `${d.codes} Codes erzeugt` : ''].filter(Boolean).join(', ') || null
+  }
   return null
 }
 
@@ -323,5 +348,52 @@ function Timeline({ events }: { events: AdminShopOrderEvent[] }) {
         })}
       </ol>
     </Section>
+  )
+}
+
+// Lieferstand weiterschalten: naechster Schritt gross, "nicht angetroffen" klein daneben
+function ProgressFooter({ order, onDone }: { order: AdminShopOrderDetail; onDone: (message: string) => void }) {
+  const mode = order.delivery_mode as PhysicalMode
+  const flow = PROGRESS_FLOW[mode]
+  const current = order.progress ?? 'accepted'
+  const next = flow[flow.indexOf(current) + 1]
+  const notMetFrom = NOT_MET_FROM[mode]
+  const canNotMet = notMetFrom !== undefined && flow.indexOf(current) >= flow.indexOf(notMetFrom)
+  const [tracking, setTracking] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function go(progress: ShopProgress) {
+    setBusy(true)
+    setError('')
+    try {
+      await fetchApi(`/admin/shop/orders/${order.id}/progress`, {
+        method: 'POST',
+        body: JSON.stringify({ progress, ...(progress === 'shipped' && tracking.trim() ? { trackingNumber: tracking.trim() } : {}) }),
+      })
+      onDone(`#${orderNumber(order.id)}: ${PROGRESS_LABEL[progress]}`)
+    } catch (e) {
+      setError((e as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {error && <p className="rounded-lg bg-error-container/40 px-3 py-2 text-sm text-error" role="alert">{error}</p>}
+      {next === 'shipped' && (
+        <input value={tracking} onChange={(e) => setTracking(e.target.value)} maxLength={80} placeholder="Sendungsnummer (optional)" className={`${adminField} font-mono`} />
+      )}
+      <div className="flex gap-3">
+        {canNotMet && (
+          <button onClick={() => go('not_met')} disabled={busy} className={`${secondaryBtn} flex-1 text-error`}>Nicht angetroffen</button>
+        )}
+        {next && (
+          <button onClick={() => go(next)} disabled={busy} className={`${primaryBtn} flex-[2]`}>
+            {busy ? 'Speichert …' : `Weiter: ${PROGRESS_LABEL[next]}`}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }

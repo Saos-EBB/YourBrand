@@ -108,12 +108,14 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
    - ✅ **Teil 1** Eingang mit Status-Chips und Frist, Detail mit Käufer-Vorgeschichte und Zeitstrahl, annehmen (capture) / ablehnen (cancel, Begründung Pflicht). Artikelpflege jetzt unter `/admin/shop/products`
    - Offen: erstatten, sperren, Alarme, Nachfass-Cron (brauchen Schritt 5)
 7. Auslieferung: Keys zuteilen, Codes erzeugen + `/shop/redeem`, Versand-/Essens-Status
+   - ✅ **7a** Keys zuteilen/Codes erzeugen bei der Annahme (vorher Prüfung: genug Keys, sonst kein Abbuchen), Lieferstand für Essen/Versand im Admin, Käufer: „Meine Bestellungen“ mit Fortschritt und Keys/Codes
+   - **7b** `/shop/redeem`: Code einlösen → `premium:30` / `coins:500` gutschreiben. Braucht Coin- und Premium-Modul → Vertrag zwischen Modulen, vorher abstimmen
 8. Rechnungen + Stornorechnungen (BullMQ-Worker wie GDPR-Export, pdfkit, Resend mit Anhang)
 9. Fälle: Melden in beide Richtungen, Support, Nachrichtenverlauf
 10. Frontend Käufer: Liste mit Filtern, Warenkorb, Checkout, Bestellungen, Problem melden
     - ✅ **10a** `/shop` (Filter in der URL, Filter-Sheet auf dem Handy, Kategorie-Kacheln) und `/shop/[id]` (Bewertungen, Formular für Käufer)
     - ✅ **10b** Warenkorb (eine Lieferart pro Bestellung), Kasse mit Feldern je Lieferart, Stripe eingebettet, Dankeseite; `GET /shop/settings` für die Versandpauschale
-    - Bestellungen + Problem melden brauchen erst `GET /shop/orders` bzw. Schritt 9
+    - ✅ Bestellungen (mit 7a). Problem melden braucht Schritt 9
 11. ✅ **Admin-Pflege** `/admin/shop`: Artikel anlegen/bearbeiten mit Vorschau, aus-/einblenden, CSV-Import mit Probelauf (alles oder nichts), Keys verschlüsselt hinzufügen
 12. Doku + Tests
 

@@ -1187,5 +1187,37 @@ export interface Translations {
     thanksTitle: string
     thanksText: string
     orderNumber: string
+    myOrders: string
+    ordersEmpty: string
+    orderedOn: string
+    moreItems: string
+    stPaying: string
+    stPayingText: string
+    stReview: string
+    stReviewText: string
+    stAccepted: string
+    stPreparing: string
+    stReady: string
+    stOnTheWay: string
+    stShipped: string
+    stDelivered: string
+    stPickedUp: string
+    stNotMet: string
+    stNotMetText: string
+    stDigitalReady: string
+    stRejected: string
+    stRejectedText: string
+    stExpired: string
+    stExpiredText: string
+    stRefunded: string
+    stPartiallyRefunded: string
+    trackingNumber: string
+    codeLicense: string
+    codeUnlock: string
+    copy: string
+    copied: string
+    codesHint: string
+    codesPending: string
+    delivery: string
   }
 }

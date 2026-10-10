@@ -154,7 +154,7 @@ export class ShopCheckoutService {
                 // Rechnungsadresse fuer die Rechnung (§ 14 UStG)
                 billing_address_collection: 'required',
                 metadata,
-                return_url: `${process.env.APP_URL ?? 'http://localhost:3001'}/shop/orders/${orderId}`,
+                return_url: `${process.env.APP_URL ?? 'http://localhost:3001'}/shop/orders/${orderId}?placed=1`,
             });
         } catch (err: any) {
             this.logger.error(`Stripe-Session fuer Bestellung ${orderId} fehlgeschlagen: ${err?.message}`);

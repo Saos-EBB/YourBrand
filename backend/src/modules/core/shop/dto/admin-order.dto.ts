@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
+import { SHOP_PROGRESS, type ShopProgress } from '../shop-fulfillment';
 
 export const SHOP_ORDER_STATUSES = [
     'pending', 'authorized', 'held', 'approved', 'fulfilled',
@@ -28,4 +29,13 @@ export class ApproveOrderDto {
 export class RejectOrderDto {
     @IsString() @Length(5, 1000, { message: 'Begründung: 5–1000 Zeichen' })
     note!: string;
+}
+
+export class SetProgressDto {
+    @IsIn(SHOP_PROGRESS)
+    progress!: ShopProgress;
+
+    // Nur bei "versendet"
+    @IsOptional() @IsString() @MaxLength(80)
+    trackingNumber?: string;
 }

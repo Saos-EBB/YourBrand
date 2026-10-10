@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { StripeService } from '../payment/stripe.service';
 import { AdminListOrdersQuery } from './dto/admin-order.dto';
+import { ShopFulfillmentService } from './shop-fulfillment.service';
 
 const ORDER_PAGE_SIZE = 50;
 
@@ -17,6 +18,7 @@ export class ShopOrdersAdminService {
     constructor(
         @InjectDataSource() private readonly dataSource: DataSource,
         private readonly stripeService: StripeService,
+        private readonly fulfillment: ShopFulfillmentService,
     ) { }
 
     async listOrders(query: AdminListOrdersQuery) {
@@ -40,7 +42,7 @@ export class ShopOrdersAdminService {
 
         const [items, [{ total }], counts] = await Promise.all([
             this.dataSource.query(
-                `SELECT o.id, o.status, o.delivery_mode, o.total_cents, o.currency, o.created_at, o.decide_by,
+                `SELECT o.id, o.status, o.progress, o.delivery_mode, o.total_cents, o.currency, o.created_at, o.decide_by,
                         o.hold_reasons, o.radar_risk, COALESCE(o.buyer_name, o.contact_name) AS buyer_name,
                         pr.nickname,
                         (SELECT count(*)::int FROM shop_order_items i WHERE i.order_id = o.id) AS item_count,
@@ -71,8 +73,9 @@ export class ShopOrdersAdminService {
 
         const [items, events, [history]] = await Promise.all([
             this.dataSource.query(
-                `SELECT id, product_id, sku, title, fulfillment, quantity, unit_price_cents, vat_rate::float AS vat_rate
-                   FROM shop_order_items WHERE order_id = $1 ORDER BY id`,
+                `SELECT i.id, i.product_id, i.sku, i.title, i.fulfillment, i.quantity, i.unit_price_cents, i.vat_rate::float AS vat_rate,
+                        (SELECT count(*)::int FROM shop_codes c WHERE c.order_item_id = i.id) AS codes_assigned
+                   FROM shop_order_items i WHERE i.order_id = $1 ORDER BY i.id`,
                 [id],
             ),
             this.dataSource.query(
@@ -114,7 +117,7 @@ export class ShopOrdersAdminService {
         stripeCall: (paymentIntentId: string) => Promise<void>,
     ) {
         const [order] = await this.dataSource.query(
-            'SELECT status, stripe_payment_intent_id FROM shop_orders WHERE id = $1', [id],
+            'SELECT status, delivery_mode, stripe_payment_intent_id FROM shop_orders WHERE id = $1', [id],
         );
         if (!order) throw new NotFoundException('Bestellung nicht gefunden');
         if (order.status !== DECIDABLE) throw new ConflictException('Bestellung ist nicht mehr angehalten — Seite neu laden');
@@ -122,6 +125,7 @@ export class ShopOrdersAdminService {
         if (!order.stripe_payment_intent_id && status === 'approved') {
             throw new ConflictException('Keine Zahlung reserviert — Annehmen nicht möglich');
         }
+        if (status === 'approved') await this.fulfillment.checkKeys(id);
 
         if (order.stripe_payment_intent_id) {
             try {
@@ -150,7 +154,8 @@ export class ShopOrdersAdminService {
                 `INSERT INTO shop_order_events (order_id, actor_id, type, data) VALUES ($1, $2, $3, $4)`,
                 [id, adminId, status, JSON.stringify(note ? { note } : {})],
             );
-            return row;
+            if (status === 'rejected') return { ...row, progress: null };
+            return { ...row, ...(await this.fulfillment.onApproved(m, id, order.delivery_mode)) };
         });
     }
 }

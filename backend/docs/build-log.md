@@ -1,3 +1,18 @@
+## 2026-10-11 — feat(shop): Auslieferung nach der Annahme — Shop Schritt 7a
+**Was:** `ShopFulfillmentService`: vor dem Abbuchen prueft `checkKeys`, ob genug freie Lizenz-Keys da sind (sonst 409,
+kein Geld genommen). In der Transaktion der Annahme teilt `onApproved` Keys zu (`FOR UPDATE SKIP LOCKED`) und erzeugt
+Freischalt-Codes (`XXXX-XXXX-XXXX`, ohne 0/O/1/I, verschluesselt + HMAC-Hash). Digitale Bestellungen sind damit
+`fulfilled`, Essen/Versand starten bei `progress = accepted`. Reicht es beim Zuteilen doch nicht (Wettlauf), rollt die
+Annahme zurueck; nochmal annehmen bucht dank Idempotency-Key nicht doppelt ab. `POST /admin/shop/orders/:id/progress`:
+nur vorwaerts, Schritt muss zur Lieferart passen (`progressError`), „nicht angetroffen“ nur bei Essen ab fertig/unterwegs,
+`delivered` → `fulfilled`, Sendungsnummer bei `shipped`, jeder Schritt im Protokoll. Kaeufer: `GET /shop/orders`
+(ohne abgebrochene Kassen) und `GET /shop/orders/:id` (nur eigene, sonst 404; Keys/Codes entschluesselt erst nach der
+Annahme, ohne zurueckgerufene; interne Notiz und Risiko-Gruende nicht dabei). Stripe-Ruecksprung jetzt mit `?placed=1`.
+47 Tests gruen. Gegen die Wegwerf-DB: Auslieferung direkt ueber den Service (Stripe hat nur den Platzhalter-Key) —
+3 Keys zugeteilt, 1 Code erzeugt; Fortschritt vorwaerts/rueckwaerts/falsche Art/digital per curl; fremde Bestellung 404.
+**Nicht gebaut:** Einloesen der Codes in der App (`/shop/redeem`, Schritt 7b — braucht Coin/Premium, also einen Vertrag
+zwischen Modulen), Mails an den Kaeufer (Schritt 8), Rueckruf von Keys/Codes bei Erstattung, Tracking-Links.
+
 ## 2026-10-11 — feat(shop): Bestellungen fuer Admins entscheiden — Shop Schritt 6 (Teil 1)
 **Was:** `ShopOrdersAdminService` unter `/admin/shop/orders` (gleiche Guards wie die Artikelpflege):
 `GET orders` (Status-Filter, Standard `held`, angehaltene nach Frist sortiert; Suche nach Bestellnummer-Anfang,

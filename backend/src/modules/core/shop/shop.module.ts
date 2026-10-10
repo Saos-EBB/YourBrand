@@ -6,6 +6,8 @@ import { ShopCheckoutService } from './shop-checkout.service';
 import { ShopAdminController } from './shop-admin.controller';
 import { ShopAdminService } from './shop-admin.service';
 import { ShopOrdersAdminService } from './shop-orders-admin.service';
+import { ShopFulfillmentService } from './shop-fulfillment.service';
+import { ShopOrdersService } from './shop-orders.service';
 import { StripeService } from '../payment/stripe.service';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
@@ -15,6 +17,6 @@ import { SystemSettingsModule } from '../system-settings/system-settings.module'
 @Module({
     imports: [SystemSettingsModule],
     controllers: [ShopController, ShopAdminController],
-    providers: [ShopService, ShopCheckoutService, ShopAdminService, ShopOrdersAdminService, StripeService, JwtGuard],
+    providers: [ShopService, ShopCheckoutService, ShopAdminService, ShopOrdersAdminService, ShopFulfillmentService, ShopOrdersService, StripeService, JwtGuard],
 })
 export class ShopModule { }

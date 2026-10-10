@@ -46,6 +46,11 @@ export function formatPrice(cents: number, locale: string): string {
   return new Intl.NumberFormat(lang, { style: 'currency', currency: 'EUR' }).format(cents / 100)
 }
 
+export function formatDate(iso: string, locale: string, withTime = false): string {
+  const lang = locale === 'de_easy' || locale === 'leet' ? 'de' : locale
+  return new Intl.DateTimeFormat(lang, withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' }).format(new Date(iso))
+}
+
 // Kategorien sind Daten des Mandanten, kein i18n: Slug lesbar machen
 export function categoryLabel(slug: string): string {
   return slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
@@ -139,6 +144,7 @@ export const HOLD_REASON_LABEL: Record<string, string> = {
 export interface AdminShopOrder {
   id: string
   status: ShopOrderStatus
+  progress: ShopProgress | null
   delivery_mode: ShopDeliveryMode
   total_cents: number
   currency: string
@@ -183,10 +189,11 @@ export interface AdminShopOrderDetail extends Omit<AdminShopOrder, 'item_count' 
   buyer_address: string | null
   withdrawal_waiver_at: string | null
   stripe_payment_intent_id: string | null
+  tracking_number: string | null
   decided_at: string | null
   decided_by_nickname: string | null
   decision_note: string | null
-  items: { id: string; sku: string; title: string; fulfillment: ShopFulfillment; quantity: number; unit_price_cents: number; vat_rate: number }[]
+  items: { id: string; sku: string; title: string; fulfillment: ShopFulfillment; quantity: number; unit_price_cents: number; vat_rate: number; codes_assigned: number }[]
   events: AdminShopOrderEvent[]
   buyer_history: { completed: number; rejected: number; refunded: number } | null
 }
@@ -194,4 +201,73 @@ export interface AdminShopOrderDetail extends Omit<AdminShopOrder, 'item_count' 
 // Kurze Bestellnummer fuer Anzeige und Suche
 export function orderNumber(id: string): string {
   return id.slice(0, 8).toUpperCase()
+}
+
+// Lieferfortschritt bei Essen und Versand — wie shop-fulfillment.ts im Backend
+export type ShopProgress = 'accepted' | 'preparing' | 'ready' | 'on_the_way' | 'shipped' | 'delivered' | 'not_met'
+export type PhysicalMode = Exclude<ShopDeliveryMode, 'digital'>
+export const PROGRESS_FLOW: Record<PhysicalMode, ShopProgress[]> = {
+  pickup: ['accepted', 'preparing', 'ready', 'delivered'],
+  delivery: ['accepted', 'preparing', 'on_the_way', 'delivered'],
+  shipping: ['accepted', 'shipped', 'delivered'],
+}
+// Admin-Konsole (nur Deutsch)
+export const PROGRESS_LABEL: Record<ShopProgress, string> = {
+  accepted: 'Angenommen',
+  preparing: 'Wird zubereitet',
+  ready: 'Abholbereit',
+  on_the_way: 'Unterwegs',
+  shipped: 'Versendet',
+  delivered: 'Zugestellt / abgeholt',
+  not_met: 'Nicht angetroffen',
+}
+// "Nicht angetroffen" ab diesem Schritt (nur Essen)
+export const NOT_MET_FROM: Partial<Record<PhysicalMode, ShopProgress>> = { pickup: 'ready', delivery: 'on_the_way' }
+
+// Kaeufersicht (GET /shop/orders)
+export interface MyShopOrder {
+  id: string
+  status: ShopOrderStatus
+  progress: ShopProgress | null
+  delivery_mode: ShopDeliveryMode
+  total_cents: number
+  created_at: string
+  item_count: number
+  first_title: string | null
+  first_fulfillment: ShopFulfillment | null
+}
+
+export interface MyShopOrderPage {
+  items: MyShopOrder[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface MyShopOrderDetail {
+  id: string
+  status: ShopOrderStatus
+  progress: ShopProgress | null
+  delivery_mode: ShopDeliveryMode
+  items_cents: number
+  shipping_cents: number
+  total_cents: number
+  refunded_cents: number
+  contact_name: string | null
+  contact_phone: string | null
+  delivery_address: string | null
+  desired_at: string | null
+  delivery_note: string | null
+  tracking_number: string | null
+  created_at: string
+  items: {
+    id: string
+    product_id: string | null
+    title: string
+    fulfillment: ShopFulfillment
+    quantity: number
+    unit_price_cents: number
+    unlock_target: string | null
+    codes: { code: string | null; redeemed_at: string | null }[]
+  }[]
 }

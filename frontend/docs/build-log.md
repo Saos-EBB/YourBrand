@@ -1,3 +1,15 @@
+## 2026-10-11 — feat(shop): Meine Bestellungen und Lieferstand — Shop Schritt 7a
+**Was:** Kaeufer: Knopf „Meine Bestellungen“ neben dem Warenkorb, `/shop/orders` (Liste mit Status, Datum, Summe),
+`/shop/orders/[id]` (Status mit Erklaerung, Fortschrittsleiste fuer Abholen/Liefern/Versand, Sendungsnummer, Keys und
+Codes mit Kopieren-Knopf, Artikel und Summen, Lieferangaben; laedt alle 15 s neu, solange sich etwas tut). Danke-Hinweis
+und Korb leeren nur bei `?placed=1` (Ruecksprung aus Stripe) — alte Bestellungen ansehen leert den Korb nicht mehr.
+32 neue Texte in allen 9 Sprachen. Admin: Panel zeigt bei angenommenen Bestellungen „Weiter: <naechster Schritt>“,
+„Nicht angetroffen“ und beim Versand ein Feld fuer die Sendungsnummer; Artikel zeigen „3 Keys zugeteilt“; Liste zeigt
+den Lieferstand; Hinweis-Toast unten, damit er das Panel nicht verdeckt.
+Verifiziert mit Playwright (Desktop dunkel, Handy hell): Liste, Code kopiert (Zwischenablage = Code), Liefern
+Angenommen → Unterwegs im Admin, Kaeufer sieht die Leiste weiterlaufen, Versand mit Sendungsnummer. `tsc` + ESLint sauber.
+**Nicht gebaut:** Einloesen-Knopf (7b), Live-Update per Socket (Abfrage alle 15 s reicht vorerst).
+
 ## 2026-10-11 — feat(shop): Bestellungs-Konsole fuer Admins — Shop Schritt 6 (Teil 1)
 **Was:** `/admin/shop` ist jetzt der Eingang fuer Bestellungen, die Artikelpflege liegt unter
 `/admin/shop/products`; beide im gemeinsamen Rahmen `components/shop/admin/AdminShopShell.tsx` (Rollen-/Modul-Check,

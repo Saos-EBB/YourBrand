@@ -8,7 +8,7 @@ import { OrderSheet, ReasonChips, StatusBadge } from '@/components/shop/admin/Or
 import { adminField } from '@/components/shop/admin/Sheet'
 import { formatDateTime, timeLeft, useNow } from '@/components/shop/admin/time'
 import {
-  DELIVERY_MODE_LABEL, ORDER_STATUS_LABEL, formatPrice, orderNumber,
+  DELIVERY_MODE_LABEL, ORDER_STATUS_LABEL, PROGRESS_LABEL, formatPrice, orderNumber,
   type AdminShopOrder, type AdminShopOrderPage, type ShopOrderStatus,
 } from '@/lib/shop'
 
@@ -64,6 +64,13 @@ function Orders() {
     setReload((n) => n + 1)
   }
 
+  function changed(message: string) {
+    setFlash(message)
+    clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setFlash(''), 3000)
+    setReload((n) => n + 1)
+  }
+
   const counts = data?.counts ?? {}
   const countOf = (f: Filter) => (f === 'all' ? Object.values(counts).reduce((a, b) => a + (b ?? 0), 0) : counts[f] ?? 0)
   const pages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1
@@ -72,7 +79,7 @@ function Orders() {
   return (
     <>
       {flash && (
-        <div role="status" data-flash className="fixed left-1/2 top-20 z-[220] -translate-x-1/2 rounded-full bg-surface-container-highest px-4 py-2 text-sm font-medium text-on-surface shadow-lg">
+        <div role="status" data-flash className="fixed bottom-24 left-1/2 z-[220] md:bottom-6 -translate-x-1/2 rounded-full bg-surface-container-highest px-4 py-2 text-sm font-medium text-on-surface shadow-lg">
           {flash}
         </div>
       )}
@@ -136,7 +143,7 @@ function Orders() {
         </nav>
       )}
 
-      {open && <OrderSheet id={open} onClose={() => setOpen(null)} onDecided={(_, msg) => decided(msg)} />}
+      {open && <OrderSheet id={open} onClose={() => setOpen(null)} onDecided={(_, msg) => decided(msg)} onChanged={changed} />}
     </>
   )
 }
@@ -154,6 +161,9 @@ function OrderRow({ o, now, onOpen }: { o: AdminShopOrder; now: number; onOpen: 
           <span className="flex items-center gap-2">
             <span className="font-mono text-xs text-on-surface-variant">#{orderNumber(o.id)}</span>
             <StatusBadge status={o.status} />
+            {o.status === 'approved' && o.progress && (
+              <span className={`text-[11px] font-semibold ${o.progress === 'not_met' ? 'text-error' : 'text-on-surface-variant'}`}>{PROGRESS_LABEL[o.progress]}</span>
+            )}
           </span>
           <span className="block truncate text-sm font-semibold text-on-surface">
             {o.first_title ?? '—'}{more && <span className="font-normal text-on-surface-variant">{more}</span>}
