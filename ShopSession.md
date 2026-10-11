@@ -45,35 +45,26 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
 - **Commit-Ende:** die Attribution-Zeilen aus der Session (`Co-Authored-By` / `Claude-Session`).
 - **Pushen:** nur, wenn ausdrücklich gewünscht, und nur den Branch. Kein Merge, kein PR, kein PR-Link.
 
-## Testen wie bisher
+## Testen
 
-Der Haupt-Stack (`XXX_db`) läuft nicht immer, und die Loadtest-DB bleibt unangetastet. Getestet wird in einem Wegwerf-Postgres aus dem Projekt-Image:
+**Ein Befehl:** `scripts/shop_demo.sh up` → http://localhost:3901/shop, eingeloggt als Admin `gutz` (Admin-Konsole
+`/admin/shop`). `scripts/shop_demo.sh down` stoppt alles, die Daten bleiben im Volume `shop_demo_pgdata`.
 
-```bash
-cd backend
-docker run -d --rm --name shop_mig_test -p 127.0.0.1:55432:5432 \
-  -e POSTGRES_PASSWORD=t -e POSTGRES_USER=t -e POSTGRES_DB=postgres \
-  --entrypoint docker-entrypoint.sh xxx_db:local postgres
-P="docker exec -i shop_mig_test psql -U t"
-$P -d postgres -qc "CREATE DATABASE yb_shoptest"
-for f in migrations/00[1-6]_*.sql; do $P -d yb_shoptest -q -v ON_ERROR_STOP=1 < $f >/dev/null; done
-# 007 enthält $$ -> am Stück, wie tenant-init
-docker exec shop_mig_test psql -U t -d yb_shoptest -v ON_ERROR_STOP=1 -q \
-  -c "SET search_path=public; $(cat migrations/007_shop.sql)"
-```
-
-- **Demo-User:** 8 Einträge in `users` (`email_search_hash` = sha256-Hex) plus `profiles` mit `birthdate`. `profiles` hat Pflichtfelder.
-- **Seed:** braucht eine Mandanten-Config mit `"modules": {"shop": true}` und `legal.vatId` unter einem eigenen `TENANT_DIR`:
-  ```bash
-  TENANT=shoptest TENANT_DIR=<dir>/tenants DB_HOST=127.0.0.1 DB_PORT=55432 DB_USER=t DB_PASSWORD=t \
-    npx ts-node -r tsconfig-paths/register src/database/seeds/seed-shop.ts
-  ```
-- **Testscripts gegen die DB** gehören unter `backend/.claude/` (gitignored) und werden danach gelöscht. Im Scratchpad laufen sie nicht, siehe `backend/docs/errors.md`.
-- **Unit-Tests:** `npx jest src/modules/core/shop src/common/tenant`
-- **Typecheck:** `npx tsc --noEmit -p tsconfig.json`. Die Fehler in `rps.handler.spec.ts` gab es vorher schon.
-- **Frontend-Typecheck:** im Container `docker exec <frontend> sh -c 'cd /app && npx tsc --noEmit'`, sofern einer läuft.
-- **Frontend anschauen:** Backend lokal auf :3900 (`ts-node src/main.ts` mit `TENANT=shoptest`, DB :55432, Redis-Wegwerf `shop_redis_test` auf :56379), Frontend als Container `shop_fe_test` (`next dev` :3901, Image + `node_modules`-Volume von `XXX_frontend`, `NEXT_PUBLIC_API_URL=http://localhost:3900/api/v1`, für die Kasse `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`). Ohne Login: Proxy `autologin-proxy.js` (Scratchpad) auf :3901 vor `next dev` auf :3911, setzt in jede Seite den Login von `demo1` (in der Test-DB Admin). Sonst Login per selbst signiertem JWT (`JWT_SECRET` aus `backend/.env`) in `localStorage['xxx-auth']`; der Demo-User braucht `profiles.onboarding_completed = true`. Playwright liegt in `/home/silence/instantJobbot/node_modules/playwright`. Angehaltene Testbestellungen gibt es erst mit Schritt 5; bis dahin legt `seed-orders.sql` (Scratchpad) 8 Bestellungen in verschiedenen Status an, Annehmen scheitert dort am Platzhalter-Key (502), Ablehnen ohne Reservierung geht. Annehmen mit Auslieferung ohne Stripe: `approve-direct.ts` (Scratchpad) ruft `ShopFulfillmentService` direkt auf.
-- **Danach aufräumen:** `docker stop shop_mig_test shop_redis_test shop_fe_test`, Backend-Prozess beenden
+- Eigener Stack, getrennt von Haupt-Stack und Mandanten: Postgres `shop_demo_db` (:55432), Redis `shop_demo_redis`
+  (:56379), Frontend `shop_demo_fe` (`next dev` :3911, eigene Volumes für `node_modules` und `.next`), Backend auf dem
+  Host (:3900), Auto-Login-Proxy (:3901, `scripts/shop-demo/autologin-proxy.js`). Container mit
+  `--restart unless-stopped`; nach einem Neustart des Rechners braucht es nur nochmal `up` für Backend und Proxy.
+- `up` ist idempotent: neue Migrationen werden nachgezogen (`shop_demo_migrations`), Seeds überspringen Vorhandenes.
+  Seeds: `demo-seed.ts` (Demo-User), `seed-shop.ts` (1000 Artikel), `scripts/shop-demo/seed-orders.ts`
+  (9 Bestellungen in allen Zuständen, Lizenz-Keys, ein offener Fall; Annahme über den echten `ShopFulfillmentService`).
+- Mandant: `scripts/shop-demo/tenant.json` (`core` + `shop` + `hidden`), Zustand und Logs in `.shop-demo/` (gitignored).
+- Frisch anfangen: `scripts/shop_demo.sh down && docker volume rm shop_demo_pgdata`.
+- Stripe ist nicht angebunden (Platzhalter-Key): Kasse und „Annehmen“ zeigen den Fehlerweg.
+- In der Demo ist `gutz` Admin und Käufer zugleich — Team-Antworten in einem Fall erscheinen daher beim Käufer als „eigene“.
+- **Unit-Tests:** `cd backend && npx jest src/modules/core/shop src/modules/shared src/common/tenant`
+- **Typecheck:** `npx tsc --noEmit -p tsconfig.json --incremental false`. Die Fehler in `rps.handler.spec.ts` gab es vorher schon.
+- **Frontend-Typecheck/Lint:** `docker exec shop_demo_fe sh -c 'npx tsc --noEmit && npx eslint <pfade>'`
+- Playwright liegt in `/home/silence/instantJobbot/node_modules/playwright`.
 
 ## Nächster Schritt: 4, Checkout
 

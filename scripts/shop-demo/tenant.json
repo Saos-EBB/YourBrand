@@ -1,0 +1,14 @@
+{
+  "slug": "shopdemo",
+  "brand": { "name": "Shop Demo", "logo": "logo.svg", "favicon": "favicon.png" },
+  "theme": { "default": "dark", "tokens": {} },
+  "locale": { "default": "de", "available": ["de", "en", "de_easy"] },
+  "tier": "core",
+  "modules": { "shop": true, "hidden": true },
+  "legal": {
+    "name": "Shop Demo GmbH",
+    "address": "Kiezstraße 12, 10999 Berlin",
+    "email": "shop@demo.example.com",
+    "vatId": "DE123456789"
+  }
+}

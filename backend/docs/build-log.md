@@ -1,3 +1,14 @@
+## 2026-10-11 — chore(scripts): Shop-Demo mit einem Befehl — scripts/shop_demo.sh
+**Was:** Wunsch des Users nach dem Verlust der Wegwerf-Testumgebung (Neustart, `/tmp` + `--rm`-Container weg):
+`scripts/shop_demo.sh up|down` wie `demo.sh`. Eigener Stack (Postgres/Redis/Frontend als Container mit festem Volume
+und `--restart unless-stopped`, Backend + Auto-Login-Proxy auf dem Host), Migrationen per psql mit eigener
+Buchfuehrung (`shop_demo_migrations`), DB selbst angelegt wie `tenant-init.ts` (POSTGRES_DB bekaeme vom postgis-Image
+schon die Extensions aus der Baseline). Seeds: Demo-User, 1000 Artikel, `scripts/shop-demo/seed-orders.ts`
+(Bestellungen in allen Zustaenden ueber den echten `ShopFulfillmentService`). Zustand in `.shop-demo/` (gitignored).
+Geprueft: frisches `up` (Volume neu), Shop/Bestellungen/Admin im Browser ohne Fehler, `down` + zweites `up` legt
+nichts doppelt an.
+**Nicht gebaut:** `reset`/`logs`-Befehle (frisch anfangen = Volume loeschen, steht im Kopf des Skripts), Stripe-Anbindung.
+
 ## 2026-10-11 — feat(shop): Faelle — Problem melden, Kaeufer melden — Shop Schritt 9 (Backend)
 **Was:** `ShopCasesService` auf den Tabellen aus 007. Kaeufer: `POST /shop/orders/:id/cases` (Grund aus
 `PROBLEM_REASONS`, Beschreibung 10–2000 Zeichen, nur eigene Bestellung, nicht bei abgebrochener Kasse, eine offene
