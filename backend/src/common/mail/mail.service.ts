@@ -87,4 +87,20 @@ export class MailService {
       `,
         });
     }
+
+    // Shop-Alarm an Admins: nur Bestell-/Fallnummer und Link, keine Kaeuferdaten
+    async sendShopAlertEmail(to: string, subject: string, text: string, link: string) {
+        // Resend wirft nicht, sondern liefert { error }
+        const { error } = await this.resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to,
+            subject,
+            html: `
+        <h2>${subject}</h2>
+        <p>${text}</p>
+        <a href="${link}">Zur Shop-Konsole</a>
+      `,
+        });
+        if (error) throw new Error(error.message);
+    }
 }

@@ -64,6 +64,14 @@ export interface BeefGameBoardUpdateEvent {
     targetId?: string;
 }
 
+// Shop braucht einen Menschen: geht an alle Admins (Socket-Raum "admin")
+export type ShopAlertKind = 'case_opened' | 'case_reply' | 'not_met' | 'case_overdue' | 'decide_soon' | 'expired';
+export interface ShopAlertEvent {
+    kind: ShopAlertKind;
+    orderId?: string;
+    caseId?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Event name constants
 // ---------------------------------------------------------------------------
@@ -77,6 +85,7 @@ export const AppEvents = {
     beefGameFinished:      'hidden.beef.game.finished',
     beefGameGo:            'hidden.beef.game.go',
     beefGameBoardUpdate:   'hidden.beef.game.board_update',
+    shopAlert:             'shop.alert',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -92,6 +101,7 @@ type EventPayloadMap = {
     [AppEvents.beefGameFinished]:      BeefGameFinishedEvent;
     [AppEvents.beefGameGo]:            BeefGameGoEvent;
     [AppEvents.beefGameBoardUpdate]:   BeefGameBoardUpdateEvent;
+    [AppEvents.shopAlert]:             ShopAlertEvent;
 };
 
 // ---------------------------------------------------------------------------

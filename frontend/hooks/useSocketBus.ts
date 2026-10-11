@@ -102,6 +102,11 @@ export function useSocketBus(isReady: boolean) {
         useNotificationStore.getState().bumpAdminSoundTick()
       },
 
+      'shop.alert': () => {
+        useNotificationStore.getState().bumpShopAlertTick()
+        useNotificationStore.getState().bumpAdminSoundTick()
+      },
+
       'media:pending_review': () => {
         useNotificationStore.getState().incrementAdminTicketCount()
         useNotificationStore.getState().incrementAdminMediaCount()

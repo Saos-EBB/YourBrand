@@ -1,3 +1,14 @@
+## 2026-10-11 — feat(shop): Shop-Alarme live — Shop Schritt 6c
+**Was:** Socket-Event `shop.alert` → Ton (wie Tickets) + `shopAlertTick` im `notificationStore`. Admin-Badge zaehlt
+angehaltene Bestellungen und Faelle beim Team mit (`/admin/shop/attention`, nur mit Modul) und zaehlt bei jedem Alarm
+neu. Shop-Konsole: Zaehler an den Tabs Bestellungen/Fälle (rot bei dringend), Listen laden bei Alarm neu. Zeitstrahl
+kennt „Erinnerung: Frist läuft bald ab“. `scripts/shop_demo.sh`: Frontend bekommt `NEXT_PUBLIC_WS_URL` (Socket lief
+vorher ins Leere auf :3000), Container merken sich ihre Einstellungen per Label und werden bei Aenderung neu angelegt
+(Daten bleiben in den Volumes).
+Verifiziert mit Playwright: Kaeufer meldet per API ein Problem, die offene Fälle-Seite zeigt es ohne Neuladen (Zaehler
+4 → 5); Desktop dunkel, Handy hell. `tsc` sauber, ESLint sauber bis auf 3 alte `any` in `useSocketBus.ts`.
+**Nicht gebaut:** Toast mit Art des Alarms, Neuladen eines offenen Bestell-/Fall-Panels beim Alarm.
+
 ## 2026-10-11 — feat(shop): Erstatten + Shop-Sperre im Bestell-Panel — Shop Schritt 6b
 **Was:** `OrderSheet`: „Erstatten …“ bei abgebuchten Bestellungen (auch neben dem Lieferstand): Betrag vorbelegt mit
 dem offenen Rest, „Alles“, Schnellgruende, Begruendung Pflicht, bei Teil-Erstattung Haekchen „Keys/Codes sperren“,

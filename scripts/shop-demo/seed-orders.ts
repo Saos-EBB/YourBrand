@@ -11,6 +11,7 @@ import { encryptField } from '../../backend/src/common/crypto/crypto.helper';
 import { hashShopCode } from '../../backend/src/modules/core/shop/shop-admin.service';
 import { ShopCasesService } from '../../backend/src/modules/core/shop/shop-cases.service';
 import { ShopFulfillmentService } from '../../backend/src/modules/core/shop/shop-fulfillment.service';
+import type { ShopAlertService } from '../../backend/src/modules/core/shop/shop-alert.service';
 
 // Auto-Login-User (Admin) bestellt selbst mit, damit "Meine Bestellungen" gefuellt ist
 const ME = process.env.SHOP_DEMO_USER ?? 'gutz';
@@ -63,8 +64,10 @@ async function main() {
             }
         }
 
-        const cases = new ShopCasesService(ds);
-        const fulfillment = new ShopFulfillmentService(ds, cases);
+        // Seed alarmiert niemanden
+        const noAlerts = { send: async () => undefined } as unknown as ShopAlertService;
+        const cases = new ShopCasesService(ds, noAlerts);
+        const fulfillment = new ShopFulfillmentService(ds, cases, noAlerts);
         let i = 0;
         for (const s of SPECS) {
             i++;

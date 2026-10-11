@@ -1,3 +1,22 @@
+## 2026-10-11 — feat(shop): Alarme + Nachfass-Cron — Shop Schritt 6c
+**Was:** Neues typisiertes Event `shop.alert` (`AppEvents.shopAlert`, Arten case_opened/case_reply/not_met/case_overdue/
+decide_soon/expired), `ChatGateway` leitet es an den Socket-Raum `admin` weiter (Vertrag vom User freigegeben).
+`ShopAlertService.send`: immer Socket, bei Dringendem (nicht angetroffen, Frist laeuft in 30 Min. ab, Fall ueber der
+Frist) zusaetzlich Mail an alle Admins/Owner (`MailService.sendShopAlertEmail`, nur Nummer + Link, keine Kaeuferdaten;
+Resend-Fehler werden erkannt und geloggt, brechen nichts ab). Ausgeloest: Kaeufer meldet Problem / antwortet (Antwort
+gibt dem Team eine neue Frist), „nicht angetroffen“ erst nach dem Commit. `ShopFollowUpService` (jede Minute, Laeufe
+stapeln sich nicht): Erinnerung 30 Min. vor `decide_by` (einmal, Eintrag `reminder` im Protokoll), nach der Frist
+Reservierung aufheben (Stripe cancel ueber den Broker, Key `shop-expire-<id>`) → `expired` + Protokoll; Stripe-Fehler →
+bleibt angehalten, `stripe_error` nur einmal; Faelle beim Team ueber der Frist → Alarm, danach erneut alle 30 Min.
+(dringend) / 2 Std. (hoch) / 4 Std. (`last_alert_at`). `GET /admin/shop/attention` (angehalten, Faelle beim Team,
+davon dringend). Keine Migration. 82 Tests gruen (+9).
+Geprueft im Demo-Stack: Cron gegen echte Daten (Stripe-Platzhalter → bleibt angehalten, Fehler einmal; ueberfaelliger
+Fall → Alarm, Mail-Fehler „2 von 2 nicht gesendet“ geloggt), echter Cron-Code gegen die Demo-DB mit Stripe-Attrappe
+(verfallen, Erinnerung nur einmal ueber zwei Laeufe).
+**Nicht gebaut:** Telegram/SMS, Alarm nur an zustaendige Admins (`assigned_to`), Eintraege in `admin_tickets`,
+Alarm „neue Bestellung angehalten“ (kommt mit dem Webhook in Schritt 5), Alarme pro Admin abschalten, Sperre gegen
+parallele Cron-Laeufe auf mehreren Instanzen (ein Backend pro Mandant).
+
 ## 2026-10-11 — feat(shop): Erstatten + Shop-Sperre — Shop Schritt 6b
 **Was:** Vertrag im `ModuleBroker` erweitert (vom User freigegeben): `PaymentGateway.refund(paymentIntent, betragCent,
 idempotencyKey) → { refundId }`, `StripePaymentGateway` ruft `stripe.refunds.create`. `ShopRefundService`:

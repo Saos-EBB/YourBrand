@@ -24,6 +24,7 @@ const EVENT_LABEL: Record<string, string> = {
   redeemed: 'Code eingelöst',
   case_opened: 'Fall eröffnet',
   refunded: 'Erstattet',
+  reminder: 'Erinnerung: Frist läuft bald ab',
 }
 
 // Schnellauswahl beim Ablehnen — landet als Text im Feld, Begruendung bleibt Pflicht

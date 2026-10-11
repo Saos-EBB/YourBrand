@@ -2,31 +2,41 @@
 
 import Link from 'next/link'
 import { Inbox } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useNotificationStore } from '@/lib/store/notificationStore'
 import { useAuthStore } from '@/lib/store/authStore'
 import { fetchApi } from '@/lib/api'
+import { useModuleEnabled } from '@/components/TenantProvider'
+import type { ShopAttention } from '@/lib/shop'
 
 export function AdminBadge() {
   const ticketCount = useNotificationStore((s) => s.adminTicketCount)
   const accessToken = useAuthStore((s) => s.accessToken)
-  const hasFetched  = useRef(false)
+  const shopOn = useModuleEnabled('shop')
+  // Shop-Alarm: neu zaehlen statt hochzaehlen (Erinnerungen betreffen schon Gezaehltes)
+  const shopAlertTick = useNotificationStore((s) => s.shopAlertTick)
 
   useEffect(() => {
-    if (!accessToken || hasFetched.current) return
-    hasFetched.current = true
+    if (!accessToken) return
+    let cancelled = false
 
     async function loadCount() {
       try {
-        const [reports, support] = await Promise.all([
+        const [reports, support, shop] = await Promise.all([
           fetchApi<{ total: number }>('/admin/reports?status=open&limit=1&page=1'),
           fetchApi<{ total: number }>('/admin/tickets?status=open&limit=1&page=1'),
+          // Angehaltene Bestellungen + Faelle, bei denen das Team dran ist
+          shopOn ? fetchApi<ShopAttention>('/admin/shop/attention').catch(() => null) : null,
         ])
-        useNotificationStore.getState().setAdminTicketCount((reports.total ?? 0) + (support.total ?? 0))
+        if (cancelled) return
+        useNotificationStore.getState().setAdminTicketCount(
+          (reports.total ?? 0) + (support.total ?? 0) + (shop ? shop.held + shop.cases_open : 0),
+        )
       } catch {}
     }
     loadCount()
-  }, [accessToken])
+    return () => { cancelled = true }
+  }, [accessToken, shopOn, shopAlertTick])
 
   return (
     <Link

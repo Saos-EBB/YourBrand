@@ -7,7 +7,7 @@ stehen und wie gearbeitet wird**.
 ## Stand (2026-10-11)
 
 - **Branch:** `feat/shop-module`, zweigt von `main` ab (`f3cce38`).
-- **Schritte 1–4, 6a, 6b, 7, 9, 10a, 10b und 11 sind fertig.** Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen dazwischen: Schritt 5 (Webhook, Risiko-Regeln — ändert den Vertrag von `PaymentService`, vorher fragen), 6c (Alarme, Nachfass-Cron), 8 (Rechnungen).
+- **Schritte 1–4, 6, 7, 9, 10a, 10b und 11 sind fertig.** Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen dazwischen: Schritt 5 (Webhook, Risiko-Regeln — ändert den Vertrag von `PaymentService`, vorher fragen), 8 (Rechnungen).
 - Gepusht ist alles bis `5a24df5`. Danach sind lokale Commits dazugekommen (siehe unten). Seit workmode an ist, wird **nicht gepusht**.
 
 | Commit | Schritt |
@@ -59,7 +59,9 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
   (9 Bestellungen in allen Zuständen, Lizenz-Keys, ein offener Fall; Annahme über den echten `ShopFulfillmentService`).
 - Mandant: `scripts/shop-demo/tenant.json` (`core` + `shop` + `hidden`), Zustand und Logs in `.shop-demo/` (gitignored).
 - Frisch anfangen: `scripts/shop_demo.sh down && docker volume rm shop_demo_pgdata`.
-- Stripe ist nicht angebunden (Platzhalter-Key): Kasse und „Annehmen“ zeigen den Fehlerweg.
+- Stripe ist nicht angebunden (Platzhalter-Key): Kasse und „Annehmen“ zeigen den Fehlerweg. Angehaltene Bestellungen
+  über der Frist bleiben deshalb angehalten (der Cron schreibt einmal `stripe_error`), Alarm-Mails scheitern am
+  Resend-Platzhalter (steht als Warnung im Log `.shop-demo/backend.log`).
 - In der Demo ist `gutz` Admin und Käufer zugleich — Team-Antworten in einem Fall erscheinen daher beim Käufer als „eigene“.
 - **Unit-Tests:** `cd backend && npx jest src/modules/core/shop src/modules/shared src/common/tenant`
 - **Typecheck:** `npx tsc --noEmit -p tsconfig.json --incremental false`. Die Fehler in `rps.handler.spec.ts` gab es vorher schon.

@@ -2,9 +2,10 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 import { AdminListCasesQuery, OpenProblemDto, ReportBuyerDto } from './dto/case.dto';
+import { ShopAlertService } from './shop-alert.service';
 
 const CASE_PAGE_SIZE = 50;
-// Bis wann das Team reagieren soll — der Nachfass-Cron (spaeter) meldet sich danach
+// Bis wann das Team reagieren soll — der Nachfass-Cron (ShopFollowUpService) meldet sich danach
 const DUE = { problem: '24 hours', report: '72 hours', not_met: '2 hours' } as const;
 const PRIORITY = { problem: 'normal', report: 'normal', not_met: 'urgent' } as const;
 // Abgebrochene Kassen sind keine Bestellung, dazu gibt es nichts zu melden
@@ -14,7 +15,10 @@ const NO_CASE_STATUS = ['pending', 'cancelled'];
 // Team meldet einen Kaeufer (nur intern), "nicht angetroffen" oeffnet selbst einen Fall.
 @Injectable()
 export class ShopCasesService {
-    constructor(@InjectDataSource() private readonly dataSource: DataSource) { }
+    constructor(
+        @InjectDataSource() private readonly dataSource: DataSource,
+        private readonly alerts: ShopAlertService,
+    ) { }
 
     // ---- Kaeufer ------------------------------------------------------------
 
@@ -23,7 +27,7 @@ export class ShopCasesService {
         if (!order) throw new NotFoundException('Bestellung nicht gefunden');
         if (NO_CASE_STATUS.includes(order.status)) throw new BadRequestException('Zu dieser Bestellung kann man nichts melden');
 
-        return this.dataSource.transaction(async (m) => {
+        const created = await this.dataSource.transaction(async (m) => {
             // eine offene Meldung pro Bestellung reicht — weiter schreiben geht im Verlauf
             const [open] = await m.query(
                 `SELECT id FROM shop_cases WHERE order_id = $1 AND opened_by = $2 AND kind = 'problem' AND status <> 'resolved' FOR UPDATE`,
@@ -34,6 +38,8 @@ export class ShopCasesService {
             await this.insertMessage(m, id, userId, dto.message.trim(), false);
             return { id };
         });
+        await this.alerts.send('case_opened', { orderId, caseId: created.id });
+        return created;
     }
 
     // Problem-Meldungen des Kaeufers zu einer Bestellung, ohne interne Notizen
@@ -60,9 +66,14 @@ export class ShopCasesService {
         if (c.status === 'resolved') throw new ConflictException('Die Meldung ist abgeschlossen — bei Bedarf eine neue aufmachen');
         await this.dataSource.transaction(async (m) => {
             await this.insertMessage(m, caseId, userId, body.trim(), false);
-            // Kaeufer hat geantwortet: wieder beim Team
-            await m.query(`UPDATE shop_cases SET status = 'open' WHERE id = $1 AND status = 'waiting'`, [caseId]);
+            // Kaeufer hat geantwortet: wieder beim Team, mit neuer Frist
+            await m.query(
+                `UPDATE shop_cases SET status = 'open', due_at = now() + $2::interval, last_alert_at = NULL
+                  WHERE id = $1 AND status = 'waiting'`,
+                [caseId, DUE.problem],
+            );
         });
+        await this.alerts.send('case_reply', { caseId });
         return { ok: true };
     }
 

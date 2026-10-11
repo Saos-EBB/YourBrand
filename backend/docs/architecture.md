@@ -24,7 +24,8 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   verschluesselt mit `hashShopCode` fuer die Suche; `ShopOrdersAdminService`: angehaltene Bestellungen annehmen
   = Stripe capture, ablehnen = cancel, nur aus `held`; `ShopFulfillmentService`: Keys zuteilen/Codes erzeugen bei der
   Annahme, Lieferstand; `ShopOrdersService`: Bestellungen aus Kaeufersicht; `ShopRedeemService`: Codes einloesen ueber
-  `ModuleBroker`; `ShopRefundService`: erstatten ueber `payments().refund`, Shop-Sperre). Zahlung nur ueber `ModuleBroker.payments()`, kein Import aus `payment/`. Reine Funktionen ohne DB getestet: `buildProductFilter`,
+  `ModuleBroker`; `ShopRefundService`: erstatten ueber `payments().refund`, Shop-Sperre; `ShopAlertService`: Event `shop.alert` →
+  ChatGateway → Socket-Raum `admin`, Dringendes per Mail; `ShopFollowUpService`: Cron fuer Fristen). Zahlung nur ueber `ModuleBroker.payments()`, kein Import aus `payment/`. Reine Funktionen ohne DB getestet: `buildProductFilter`,
   `validateCart`, `parseCsv`/`csvToProducts`, `progressError`. Ablauf und Fahrplan: `nextStep.md` im Repo-Root.
 - `src/modules/shared/broker/module-broker.ts` — **Vermittlung zwischen Feature-Modulen** (an/aus pro Mandant:
   payments, hidden, shop, matching, …). Regel ab 2026-10-11: Feature-Module importieren sich nicht gegenseitig.

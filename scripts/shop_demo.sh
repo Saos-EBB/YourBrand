@@ -51,11 +51,21 @@ ensure_prereqs() {
   cp tenants/default/logo.svg tenants/default/favicon.png "$STATE/tenants/$SLUG/"
 }
 
+# Geaenderte Einstellungen (Ports, Env) erkennt das Label: dann neu anlegen,
+# Daten bleiben in den Volumes
 start_container() {
   local name=$1; shift
-  if docker ps --format '{{.Names}}' | grep -qx "$name"; then return; fi
-  if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then docker start "$name" >/dev/null; return; fi
-  docker run -d --name "$name" --restart unless-stopped "$@" >/dev/null
+  local cfg; cfg=$(printf '%s\n' "$@" | sha1sum | cut -c1-12)
+  if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
+    if [[ $(docker inspect -f '{{index .Config.Labels "shopdemo.cfg"}}' "$name") != "$cfg" ]]; then
+      echo "   $name: Einstellungen geaendert, neu anlegen"
+      docker rm -f "$name" >/dev/null
+    else
+      docker start "$name" >/dev/null
+      return
+    fi
+  fi
+  docker run -d --name "$name" --restart unless-stopped --label "shopdemo.cfg=$cfg" "$@" >/dev/null
 }
 
 start_infra() {
@@ -120,6 +130,7 @@ start_frontend() {
   start_container $FE --network host -v "$ROOT/frontend:/app" -v shop_demo_fe_modules:/app/node_modules \
     -v shop_demo_fe_next:/app/.next -w /app \
     -e NEXT_PUBLIC_API_URL=http://localhost:3900/api/v1 -e BACKEND_INTERNAL_URL=http://localhost:3900 \
+    -e NEXT_PUBLIC_WS_URL=http://localhost:3900 \
     -e NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${pk:-pk_test_demo_not_used}" \
     node:20-alpine sh -c '[ -x node_modules/.bin/next ] || npm ci; exec npx next dev -p 3911'
 }

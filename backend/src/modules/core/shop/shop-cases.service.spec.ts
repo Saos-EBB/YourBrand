@@ -17,7 +17,8 @@ function setup(answers: Record<string, unknown[]>) {
         return key ? answers[key] : [];
     });
     const ds = { query, transaction: (fn: (m: unknown) => unknown) => fn({ query }) };
-    return { service: new ShopCasesService(ds as any), calls };
+    const alerts = { send: jest.fn(async () => undefined) };
+    return { service: new ShopCasesService(ds as any, alerts as any), calls, alerts };
 }
 const problem = { reason: 'damaged', message: 'Tasse kam kaputt an' } as OpenProblemDto;
 
@@ -30,6 +31,18 @@ describe('ShopCasesService', () => {
         expect(calls.some((c) => c.sql.includes("'case_opened'"))).toBe(true);
         const msg = calls.find((c) => c.sql.includes('INSERT INTO shop_case_messages'))!;
         expect(msg.params).toEqual(['c1', USER, 'Tasse kam kaputt an', false]);
+    });
+
+    it('Problem melden alarmiert das Team; Antwort des Kaeufers gibt neue Frist und alarmiert', async () => {
+        const a = setup({ 'SELECT status FROM shop_orders': [{ status: 'fulfilled' }], 'INSERT INTO shop_cases': [{ id: 'c1' }] });
+        await a.service.openProblem(USER, 'o1', problem);
+        expect(a.alerts.send).toHaveBeenCalledWith('case_opened', { orderId: 'o1', caseId: 'c1' });
+        const r = setup({ 'SELECT status FROM shop_cases': [{ status: 'waiting' }] });
+        await r.service.buyerReply(USER, 'c1', 'Und jetzt?');
+        const reopen = r.calls.find((c) => c.sql.includes(`SET status = 'open'`))!;
+        expect(reopen.sql).toContain('last_alert_at = NULL');
+        expect(reopen.params).toEqual(['c1', '24 hours']);
+        expect(r.alerts.send).toHaveBeenCalledWith('case_reply', { caseId: 'c1' });
     });
 
     it('fremde Bestellung 404, abgebrochene Kasse 400, zweite offene Meldung 409', async () => {

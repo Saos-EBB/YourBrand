@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { OnEvent } from '@nestjs/event-emitter';
-import { AppEvents } from '../../shared/events/app-events';
+import { AppEvents, type ShopAlertEvent } from '../../shared/events/app-events';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, IsNull, Not } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -130,6 +130,11 @@ for (const conv of conversations) {
     @OnEvent('ticket.new')
     handleTicketNew(): void {
         this.server.to('admin').emit('ticket.new', {});
+    }
+
+    @OnEvent(AppEvents.shopAlert)
+    handleShopAlert(payload: ShopAlertEvent): void {
+        this.server.to('admin').emit('shop.alert', payload);
     }
 
     @OnEvent('media.pending_review')

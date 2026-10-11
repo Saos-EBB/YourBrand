@@ -37,6 +37,9 @@ interface NotificationState {
   incrementAdminMediaCount: () => void
   adminSoundTick: number
   bumpAdminSoundTick: () => void
+  // Shop-Alarm (Socket shop.alert): Zaehler und Listen laden neu
+  shopAlertTick: number
+  bumpShopAlertTick: () => void
 }
 
 export function mergeNotification(existing: Notification[], incoming: Notification): Notification[] {
@@ -133,4 +136,6 @@ export const useNotificationStore = create<NotificationState>()((set) => ({
   incrementAdminMediaCount: () => set((s) => ({ adminMediaCount: s.adminMediaCount + 1 })),
   adminSoundTick: 0,
   bumpAdminSoundTick: () => set((s) => ({ adminSoundTick: s.adminSoundTick + 1 })),
+  shopAlertTick: 0,
+  bumpShopAlertTick: () => set((s) => ({ shopAlertTick: s.shopAlertTick + 1 })),
 }))

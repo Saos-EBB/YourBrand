@@ -107,7 +107,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 6. Admin-Konsole `/admin/shop`: Eingang, Zeitstrahl, annehmen/ablehnen/erstatten/sperren, Alarme (Socket + Mail), Nachfass-Cron
    - ✅ **Teil 1** Eingang mit Status-Chips und Frist, Detail mit Käufer-Vorgeschichte und Zeitstrahl, annehmen (capture) / ablehnen (cancel, Begründung Pflicht). Artikelpflege jetzt unter `/admin/shop/products`
    - ✅ **6b** Erstatten (ganz/teilweise über `ModuleBroker.payments().refund`, volle Erstattung sperrt offene Keys/Codes) und Shop-Sperre (7/30 Tage/unbefristet) im Bestell-Panel
-   - Offen: Alarme (Socket + Mail), Nachfass-Cron
+   - ✅ **6c** Alarme (`shop.alert` per Socket an alle Admins, Dringendes per Mail) und Nachfass-Cron (Erinnerung 30 Min. vor der Frist, danach verfällt die Reservierung; überfällige Fälle melden sich erneut). Zähler am Admin-Badge und an den Shop-Tabs
 7. Auslieferung: Keys zuteilen, Codes erzeugen + `/shop/redeem`, Versand-/Essens-Status
    - ✅ **7a** Keys zuteilen/Codes erzeugen bei der Annahme (vorher Prüfung: genug Keys, sonst kein Abbuchen), Lieferstand für Essen/Versand im Admin, Käufer: „Meine Bestellungen“ mit Fortschritt und Keys/Codes
    - ✅ **7b** `/shop/redeem` + „Jetzt einlösen“: Coins über die neue Vermittlung `ModuleBroker` (shared). Premium-Codes vorerst „bleibt gültig“ (Premium-Modell offen)

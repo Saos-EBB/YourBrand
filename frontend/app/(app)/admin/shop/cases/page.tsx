@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { fetchApi } from '@/lib/api'
+import { useNotificationStore } from '@/lib/store/notificationStore'
 import { AdminShopShell } from '@/components/shop/admin/AdminShopShell'
 import { CaseSheet } from '@/components/shop/admin/CaseSheet'
 import { formatDateTime, timeLeft, useNow } from '@/components/shop/admin/time'
@@ -25,6 +26,8 @@ function Cases() {
   const [error, setError] = useState('')
   const [open, setOpen] = useState<string | null>(null)
   const [reload, setReload] = useState(0)
+  // Shop-Alarm per Socket: Liste neu laden
+  const alertTick = useNotificationStore((s) => s.shopAlertTick)
   const [flash, setFlash] = useState('')
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const now = useNow()
@@ -35,7 +38,7 @@ function Cases() {
       .then((d) => { if (!cancelled) { setData(d); setError('') } })
       .catch((e: Error) => { if (!cancelled) setError(e.message) })
     return () => { cancelled = true }
-  }, [status, page, reload])
+  }, [status, page, reload, alertTick])
 
   useEffect(() => () => clearTimeout(flashTimer.current), [])
 

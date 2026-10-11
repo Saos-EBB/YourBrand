@@ -5,6 +5,7 @@ import { encryptField } from '../../../common/crypto/crypto.helper';
 import { hashShopCode } from './shop-admin.service';
 import { generateUnlockCode, progressError, type ShopProgress } from './shop-fulfillment';
 import { ShopCasesService } from './shop-cases.service';
+import { ShopAlertService } from './shop-alert.service';
 
 interface DigitalItem { id: string; product_id: string; fulfillment: string; quantity: number; title: string }
 
@@ -15,6 +16,7 @@ export class ShopFulfillmentService {
     constructor(
         @InjectDataSource() private readonly dataSource: DataSource,
         private readonly cases: ShopCasesService,
+        private readonly alerts: ShopAlertService,
     ) { }
 
     // Vor dem Abbuchen: reichen die freien Keys? Sonst gar nicht erst Geld nehmen.
@@ -87,7 +89,8 @@ export class ShopFulfillmentService {
     }
 
     async setProgress(adminId: string, orderId: string, next: ShopProgress, trackingNumber?: string) {
-        return this.dataSource.transaction(async (m) => {
+        let notMetCase: string | null = null;
+        const result = await this.dataSource.transaction(async (m) => {
             const [order] = await m.query(
                 'SELECT status, delivery_mode, progress, fulfilled_at FROM shop_orders WHERE id = $1 FOR UPDATE', [orderId],
             );
@@ -113,8 +116,11 @@ export class ShopFulfillmentService {
                 [orderId, adminId, JSON.stringify({ progress: next, ...(tracking ? { tracking_number: tracking } : {}) })],
             );
             // Nicht angetroffen: ein Mensch klaert das (Annahmeverzug), daher sofort ein dringender Fall
-            if (next === 'not_met') await this.cases.openNotMet(m, adminId, orderId);
+            if (next === 'not_met') notMetCase = await this.cases.openNotMet(m, adminId, orderId);
             return { id: orderId, status: done && !partly ? 'fulfilled' : order.status, progress: next };
         });
+        // erst nach dem Commit: der Alarm soll nur kommen, wenn der Fall wirklich da ist
+        if (notMetCase) await this.alerts.send('not_met', { orderId, caseId: notMetCase });
+        return result;
     }
 }

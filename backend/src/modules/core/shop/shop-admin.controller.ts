@@ -8,6 +8,7 @@ import { ShopAdminService } from './shop-admin.service';
 import { ShopOrdersAdminService } from './shop-orders-admin.service';
 import { AdminListOrdersQuery, ApproveOrderDto, BlockBuyerDto, RefundOrderDto, RejectOrderDto, SetProgressDto } from './dto/admin-order.dto';
 import { ShopRefundService } from './shop-refund.service';
+import { ShopAlertService } from './shop-alert.service';
 import { ShopFulfillmentService } from './shop-fulfillment.service';
 import { ShopCasesService } from './shop-cases.service';
 import { AdminCaseMessageDto, AdminListCasesQuery, ReportBuyerDto, ResolveCaseDto } from './dto/case.dto';
@@ -26,7 +27,13 @@ export class ShopAdminController {
         private readonly fulfillment: ShopFulfillmentService,
         private readonly cases: ShopCasesService,
         private readonly refunds: ShopRefundService,
+        private readonly alerts: ShopAlertService,
     ) { }
+
+    @Get('attention')
+    attention() {
+        return this.alerts.attention();
+    }
 
     @Get('products')
     list(@Query() query: AdminListProductsQuery) {

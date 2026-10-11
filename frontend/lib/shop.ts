@@ -342,3 +342,10 @@ export interface AdminShopCaseDetail extends Omit<AdminShopCase, 'last_message' 
   total_cents: number | null
   messages: { id: string; body: string; internal: boolean; created_at: string; author_nickname: string | null; from_buyer: boolean }[]
 }
+
+// Was gerade einen Menschen braucht (GET /admin/shop/attention)
+export interface ShopAttention {
+  held: number
+  cases_open: number
+  urgent: number
+}
