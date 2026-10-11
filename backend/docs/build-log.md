@@ -1,3 +1,13 @@
+## 2026-10-12 — fix(shop): Bestand beim Annehmen herunterzaehlen
+**Was:** Luecke aus Schritt 5: Bestand (Essen/Merch) wurde nie verringert. `checkAvailability` (vorher `checkKeys`)
+prueft vor dem Abbuchen Keys und Bestand (gleiche Artikel ueber Positionen summiert, NULL = unbegrenzt) → Admin 409,
+System haelt an mit `out_of_stock`. `onApproved` zieht in der Annahme-Transaktion ab (`FOR UPDATE`), nie unter 0;
+zwei Kaeufer, letztes Stueck → nach dem Abbuchen scheitert nichts mehr, Protokoll `stock_short` mit fehlender Menge.
+Geprueft gegen die Demo-DB (Bestand 2: A mit 2×1 → ok, B danach abgewiesen, erzwungen → Bestand 0 + `stock_short`;
+Testdaten danach entfernt). 169 Tests gruen.
+**Nicht gebaut:** Bestand zurueckbuchen bei Erstattung/Ablehnung, Bestand schon beim Reservieren blocken, Warnung bei
+niedrigem Bestand.
+
 ## 2026-10-12 — feat(shop): Stripe-Webhook + Risiko-Regeln, automatische Annahme — Shop Schritt 5
 **Was:** Vertrag im `ModuleBroker` (vom User freigegeben): neutrale `PaymentEvent`s (authorized mit Radar/Karte/
 Rechnungsadresse, canceled, checkout_expired, refunded, dispute_opened/closed), `handlePaymentEvents(kind, handler)` /

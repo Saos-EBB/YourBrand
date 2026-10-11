@@ -66,10 +66,12 @@ export class ShopIntakeService {
         try {
             await this.orders.approveBySystem(orderId);
         } catch (err) {
+            const message = (err as Error).message;
             const reason = err instanceof BadGatewayException ? 'capture_failed'
-                : err instanceof ConflictException && /Keys/.test((err as Error).message) ? 'keys_missing'
-                    : err instanceof ConflictException ? null : 'system_error';
-            // Conflict ohne Keys: schon entschieden (z. B. doppelte Zustellung) — nichts zu tun
+                : err instanceof ConflictException && /Keys/.test(message) ? 'keys_missing'
+                    : err instanceof ConflictException && /Bestand/.test(message) ? 'out_of_stock'
+                        : err instanceof ConflictException ? null : 'system_error';
+            // Sonstiger Conflict: schon entschieden (z. B. doppelte Zustellung) — nichts zu tun
             if (!reason) return;
             this.logger.warn(`Automatische Annahme von ${orderId}: ${(err as Error).message}`);
             await this.hold(orderId, [reason]);

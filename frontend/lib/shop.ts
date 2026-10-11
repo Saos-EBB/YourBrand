@@ -143,6 +143,7 @@ export const HOLD_REASON_LABEL: Record<string, string> = {
   amount_mismatch: 'Reservierter Betrag weicht ab',
   capture_failed: 'Abbuchen fehlgeschlagen',
   keys_missing: 'Keys fehlen',
+  out_of_stock: 'Bestand reicht nicht',
   system_error: 'Automatische Annahme hängt',
 }
 

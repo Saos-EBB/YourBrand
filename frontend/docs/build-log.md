@@ -1,3 +1,6 @@
+## 2026-10-12 — fix(shop): Bestand-Labels
+**Was:** Haltegrund „Bestand reicht nicht“, Zeitstrahl „Bestand reichte nicht“ mit fehlender Menge (rot).
+
 ## 2026-10-12 — feat(shop): Haltegruende + Rueckbuchungen anzeigen — Shop Schritt 5
 **Was:** Neue Haltegruende (Radar hoch, Betrag weicht ab, Abbuchen fehlgeschlagen, Keys fehlen, automatische Annahme
 haengt), Rueckbuchungsgruende von Stripe als deutsche Labels, Zeitstrahl kennt „Kasse abgebrochen“ und zeigt Radar beim

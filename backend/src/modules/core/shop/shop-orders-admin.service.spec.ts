@@ -21,7 +21,7 @@ function setup(order: { status: string; stripe_payment_intent_id: string | null 
         cancel: jest.fn(opts.stripeFails ? fail : async () => ({})),
     };
     const fulfillment = {
-        checkKeys: jest.fn(async () => undefined),
+        checkAvailability: jest.fn(async () => undefined),
         onApproved: jest.fn(async () => ({ status: 'approved', progress: 'accepted' })),
     };
     const invoices = { enqueue: jest.fn(async () => undefined) };
@@ -56,7 +56,7 @@ describe('ShopOrdersAdminService.decide', () => {
 
     it('zu wenig Keys: kein Abbuchen, Status bleibt', async () => {
         const { service, intents, fulfillment, calls } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
-        fulfillment.checkKeys.mockRejectedValueOnce(new ConflictException('Zu wenig freie Keys'));
+        fulfillment.checkAvailability.mockRejectedValueOnce(new ConflictException('Zu wenig freie Keys'));
         await expect(service.approve(ADMIN, ORDER)).rejects.toThrow(/Keys/);
         expect(intents.capture).not.toHaveBeenCalled();
         expect(calls.some((c) => c.sql.startsWith('UPDATE'))).toBe(false);
@@ -66,7 +66,7 @@ describe('ShopOrdersAdminService.decide', () => {
         const { service, fulfillment, invoices } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
         await service.reject(ADMIN, ORDER, 'Verdacht auf Betrug');
         expect(invoices.enqueue).not.toHaveBeenCalled();
-        expect(fulfillment.checkKeys).not.toHaveBeenCalled();
+        expect(fulfillment.checkAvailability).not.toHaveBeenCalled();
         expect(fulfillment.onApproved).not.toHaveBeenCalled();
     });
 

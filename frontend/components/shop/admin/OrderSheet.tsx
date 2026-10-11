@@ -27,6 +27,7 @@ const EVENT_LABEL: Record<string, string> = {
   reminder: 'Erinnerung: Frist läuft bald ab',
   invoice_issued: 'Beleg erstellt',
   cancelled: 'Kasse abgebrochen',
+  stock_short: 'Bestand reichte nicht',
 }
 
 // Schnellauswahl beim Ablehnen — landet als Text im Feld, Begruendung bleibt Pflicht
@@ -362,6 +363,9 @@ function Items({ order }: { order: AdminShopOrderDetail }) {
 
 function eventDetail(e: AdminShopOrderEvent): string | null {
   const d = e.data
+  if (e.type === 'stock_short' && Array.isArray(d.items)) {
+    return (d.items as { title: string; missing: number }[]).map((i) => `${i.title}: ${i.missing} fehlt`).join(', ')
+  }
   if (e.type === 'authorized' && typeof d.radar === 'string') return `Stripe Radar: ${RADAR_LABEL[d.radar] ?? d.radar}`
   if (e.type === 'invoice_issued' && typeof d.number === 'string') {
     return typeof d.amount_cents === 'number' ? `${d.number} · ${formatPrice(d.amount_cents, 'de')}` : d.number
@@ -395,7 +399,7 @@ function Timeline({ events }: { events: AdminShopOrderEvent[] }) {
       <ol className="relative ml-1.5 space-y-4 border-l border-outline-variant pl-5">
         {events.map((e) => {
           const detail = eventDetail(e)
-          const bad = ['stripe_error', 'held', 'rejected', 'refunded'].includes(e.type)
+          const bad = ['stripe_error', 'held', 'rejected', 'refunded', 'stock_short'].includes(e.type)
           return (
             <li key={e.id} className="relative">
               <span className={`absolute -left-[1.6rem] top-1 h-2.5 w-2.5 rounded-full ring-4 ring-background ${bad ? 'bg-error' : 'bg-primary-fixed-dim'}`} aria-hidden />

@@ -68,6 +68,7 @@ describe('ShopIntakeService', () => {
     it.each([
         [new BadGatewayException('Stripe: down'), 'capture_failed'],
         [new ConflictException('Zu wenig freie Keys: X (1 fehlen)'), 'keys_missing'],
+        [new ConflictException('Bestand reicht nicht: Tasse (noch 0, bestellt 1)'), 'out_of_stock'],
         [new Error('db weg'), 'system_error'],
     ])('Annahme scheitert (%s): ein Mensch entscheidet (%s)', async (err, reason) => {
         const { service, orders, held, alerts } = setup({ status: 'authorized' });

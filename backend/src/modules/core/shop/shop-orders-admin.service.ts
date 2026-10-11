@@ -153,7 +153,7 @@ export class ShopOrdersAdminService {
         if (!order.stripe_payment_intent_id && status === 'approved') {
             throw new ConflictException('Keine Zahlung reserviert — Annehmen nicht möglich');
         }
-        if (status === 'approved') await this.fulfillment.checkKeys(id);
+        if (status === 'approved') await this.fulfillment.checkAvailability(id);
 
         if (order.stripe_payment_intent_id) {
             try {
