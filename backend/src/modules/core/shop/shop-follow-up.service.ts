@@ -4,6 +4,8 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ModuleBroker } from '../../shared/broker/module-broker';
 import { ShopAlertService } from './shop-alert.service';
+import { ShopBuyerMailService } from './shop-buyer-mail.service';
+import { ShopIntakeService } from './shop-intake.service';
 
 // So viele verfallene Bestellungen pro Lauf — der Rest kommt in der naechsten Minute
 const EXPIRE_BATCH = 20;
@@ -12,6 +14,7 @@ const EXPIRE_BATCH = 20;
 const rowsOf = <T>(r: unknown): T[] => ((Array.isArray(r) && Array.isArray(r[0]) ? r[0] : r) as T[]);
 
 // Nachfass-Cron: niemand soll eine Frist verpassen.
+// - reserviert, aber haengen geblieben (5 Min.): anhalten, ein Mensch entscheidet
 // - angehaltene Bestellung: 30 Min. vor der Frist ein Alarm, danach verfaellt die
 //   Reservierung (Stripe cancel ueber den Broker), der Kaeufer zahlt nichts
 // - Fall beim Team ueber der Frist: Alarm, dann erneut alle 30 Min. (dringend) bzw. 4 Std.
@@ -24,6 +27,8 @@ export class ShopFollowUpService {
         @InjectDataSource() private readonly dataSource: DataSource,
         private readonly broker: ModuleBroker,
         private readonly alerts: ShopAlertService,
+        private readonly buyerMail: ShopBuyerMailService,
+        private readonly intake: ShopIntakeService,
     ) { }
 
     @Cron(CronExpression.EVERY_MINUTE)
@@ -32,6 +37,7 @@ export class ShopFollowUpService {
         if (this.running) return;
         this.running = true;
         try {
+            await this.holdStuck();
             await this.remindDecisions();
             await this.expireHeld();
             await this.alertOverdueCases();
@@ -40,6 +46,15 @@ export class ShopFollowUpService {
         } finally {
             this.running = false;
         }
+    }
+
+    // Reserviert, aber weder angenommen noch angehalten (Absturz zwischen Webhook und Abbuchen):
+    // ein Mensch entscheidet
+    async holdStuck(): Promise<void> {
+        const stuck: { id: string }[] = await this.dataSource.query(
+            `SELECT id FROM shop_orders WHERE status = 'authorized' AND authorized_at < now() - interval '5 minutes'`,
+        );
+        for (const o of stuck) await this.intake.hold(o.id, ['system_error']);
     }
 
     // Einmal pro Bestellung; der Eintrag im Protokoll merkt sich, dass erinnert wurde
@@ -86,7 +101,10 @@ export class ShopFollowUpService {
                 await m.query(`INSERT INTO shop_order_events (order_id, type, data) VALUES ($1, 'expired', '{}')`, [o.id]);
                 return true;
             });
-            if (expired) await this.alerts.send('expired', { orderId: o.id });
+            if (expired) {
+                await this.alerts.send('expired', { orderId: o.id });
+                await this.buyerMail.declined(o.id, 'expired');
+            }
         }
     }
 

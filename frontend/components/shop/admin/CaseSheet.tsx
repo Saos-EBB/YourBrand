@@ -10,8 +10,8 @@ import {
 import { Sheet, adminField, primaryBtn, secondaryBtn } from './Sheet'
 import { formatDateTime, timeLeft, useNow } from './time'
 
-// Meldungen gegen Kaeufer haben kein Gegenueber — dort ist alles intern
-const INTERNAL_ONLY = ['report', 'not_met']
+// Meldungen gegen Kaeufer und Rueckbuchungen haben kein Gegenueber — dort ist alles intern
+const INTERNAL_ONLY = ['report', 'not_met', 'dispute']
 
 export function CaseSheet({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged: (message: string) => void }) {
   const [detail, setDetail] = useState<AdminShopCaseDetail | null>(null)

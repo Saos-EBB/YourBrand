@@ -8,6 +8,8 @@ import { PaymentLog } from './entities/payment-log.entity';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { StripeService } from './stripe.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ModuleBroker } from '../../shared/broker/module-broker';
+import { toPaymentEvent } from './payment-events';
 
 const PRICE_IDS: Record<string, string> = {
     monthly: 'price_1TRsRsCOHQFsQZnIt9XUXTFZ',
@@ -24,6 +26,7 @@ export class PaymentService {
         private readonly paymentLogRepository: Repository<PaymentLog>,
         private readonly stripeService: StripeService,
         private readonly notificationsService: NotificationsService,
+        private readonly broker: ModuleBroker,
     ) { }
 
     async getActiveSubscription(userId: string) {
@@ -93,6 +96,14 @@ export class PaymentService {
             );
         } catch (err: any) {
             throw new BadRequestException(`Webhook-Fehler: ${err.message}`);
+        }
+
+        // Zahlungen anderer Module (metadata.kind, z. B. Shop) gehen neutral ueber den Broker.
+        // Wirft der Empfaenger, antwortet der Webhook mit Fehler und Stripe stellt erneut zu.
+        const forModule = await toPaymentEvent(this.stripeService.stripe as any, event);
+        if (forModule) {
+            const handled = await this.broker.dispatchPaymentEvent(forModule.kind, forModule.event);
+            return { received: true, ...(handled ? {} : { ignored: forModule.kind }) };
         }
 
         switch (event.type) {

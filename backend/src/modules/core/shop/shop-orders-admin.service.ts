@@ -5,6 +5,7 @@ import { ModuleBroker } from '../../shared/broker/module-broker';
 import { AdminListOrdersQuery } from './dto/admin-order.dto';
 import { ShopFulfillmentService } from './shop-fulfillment.service';
 import { ShopInvoiceService } from './shop-invoice.service';
+import { ShopBuyerMailService } from './shop-buyer-mail.service';
 
 const ORDER_PAGE_SIZE = 50;
 
@@ -21,6 +22,7 @@ export class ShopOrdersAdminService {
         private readonly broker: ModuleBroker,
         private readonly fulfillment: ShopFulfillmentService,
         private readonly invoices: ShopInvoiceService,
+        private readonly buyerMail: ShopBuyerMailService,
     ) { }
 
     async listOrders(query: AdminListOrdersQuery) {
@@ -121,21 +123,32 @@ export class ShopOrdersAdminService {
     }
 
     // Ablehnen = Reservierung freigeben, es fliesst kein Geld
-    reject(adminId: string, id: string, note: string) {
-        return this.decide(adminId, id, 'rejected', note.trim(), async (pi) => {
+    async reject(adminId: string, id: string, note: string) {
+        const result = await this.decide(adminId, id, 'rejected', note.trim(), async (pi) => {
             await this.broker.payments().cancel(pi, `shop-reject-${id}`);
         });
+        await this.buyerMail.declined(id, 'rejected');
+        return result;
+    }
+
+    // Unauffaellig nach den Risiko-Regeln: das System nimmt an (decided_by NULL).
+    // Gleicher Weg wie beim Menschen, nur aus 'authorized' statt 'held'.
+    approveBySystem(id: string) {
+        return this.decide(null, id, 'approved', null, async (pi) => {
+            await this.broker.payments().capture(pi, `shop-approve-${id}`);
+        }, 'authorized');
     }
 
     private async decide(
-        adminId: string, id: string, status: 'approved' | 'rejected', note: string | null,
+        adminId: string | null, id: string, status: 'approved' | 'rejected', note: string | null,
         stripeCall: (paymentIntentId: string) => Promise<void>,
+        from: 'held' | 'authorized' = DECIDABLE,
     ) {
         const [order] = await this.dataSource.query(
             'SELECT status, delivery_mode, stripe_payment_intent_id FROM shop_orders WHERE id = $1', [id],
         );
         if (!order) throw new NotFoundException('Bestellung nicht gefunden');
-        if (order.status !== DECIDABLE) throw new ConflictException('Bestellung ist nicht mehr angehalten — Seite neu laden');
+        if (order.status !== from) throw new ConflictException('Bestellung ist nicht mehr angehalten — Seite neu laden');
         // Ohne Reservierung gibt es nichts abzubuchen; Ablehnen geht trotzdem
         if (!order.stripe_payment_intent_id && status === 'approved') {
             throw new ConflictException('Keine Zahlung reserviert — Annehmen nicht möglich');
@@ -159,8 +172,8 @@ export class ShopOrdersAdminService {
         const result = await this.dataSource.transaction(async (m) => {
             const updated = await m.query(
                 `UPDATE shop_orders SET status = $2, decided_by = $3, decided_at = now(), decision_note = $4
-                  WHERE id = $1 AND status = '${DECIDABLE}' RETURNING id, status, decided_at`,
-                [id, status, adminId, note],
+                  WHERE id = $1 AND status = $5 RETURNING id, status, decided_at`,
+                [id, status, adminId, note, from],
             );
             // UPDATE ... RETURNING liefert bei pg [rows, rowCount]
             const row = (Array.isArray(updated[0]) ? updated[0] : updated)[0];

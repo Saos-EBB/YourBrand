@@ -9,6 +9,8 @@ import { AppEvents, TypedEventBus, type ShopAlertKind } from '../../shared/event
 const MAIL: Partial<Record<ShopAlertKind, { subject: string; text: string; path: string }>> = {
     not_met: { subject: 'Shop: Käufer nicht angetroffen', text: 'Ein dringender Fall wurde eröffnet (Frist 2 Stunden).', path: '/admin/shop/cases' },
     decide_soon: { subject: 'Shop: Entscheidung läuft bald ab', text: 'Eine angehaltene Bestellung verfällt in weniger als 30 Minuten.', path: '/admin/shop' },
+    order_held: { subject: 'Shop: Bestellung angehalten', text: 'Die Risiko-Regeln haben eine Bestellung angehalten — bitte annehmen oder ablehnen.', path: '/admin/shop' },
+    dispute: { subject: 'Shop: Rückbuchung', text: 'Stripe meldet eine Rückbuchung (eröffnet oder abgeschlossen).', path: '/admin/shop/cases' },
     case_overdue: { subject: 'Shop: Fall-Frist überschritten', text: 'Ein Fall wartet über seine Frist hinaus auf eine Antwort.', path: '/admin/shop/cases' },
 };
 

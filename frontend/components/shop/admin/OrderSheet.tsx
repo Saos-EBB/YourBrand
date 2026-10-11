@@ -26,6 +26,7 @@ const EVENT_LABEL: Record<string, string> = {
   refunded: 'Erstattet',
   reminder: 'Erinnerung: Frist läuft bald ab',
   invoice_issued: 'Beleg erstellt',
+  cancelled: 'Kasse abgebrochen',
 }
 
 // Schnellauswahl beim Ablehnen — landet als Text im Feld, Begruendung bleibt Pflicht
@@ -44,7 +45,7 @@ const BLOCK_DAYS: { label: string; days: number | null }[] = [
 const REFUNDABLE: ShopOrderStatus[] = ['approved', 'fulfilled', 'partially_refunded']
 
 // Stripe Radar risk_level
-const RADAR_LABEL: Record<string, string> = { normal: 'normal', elevated: 'erhöht', highest: 'hoch' }
+const RADAR_LABEL: Record<string, string> = { normal: 'normal', elevated: 'erhöht', highest: 'hoch', not_assessed: 'nicht bewertet' }
 
 const BADGE: Partial<Record<ShopOrderStatus, string>> = {
   held: 'bg-error-container/50 text-error',
@@ -361,6 +362,7 @@ function Items({ order }: { order: AdminShopOrderDetail }) {
 
 function eventDetail(e: AdminShopOrderEvent): string | null {
   const d = e.data
+  if (e.type === 'authorized' && typeof d.radar === 'string') return `Stripe Radar: ${RADAR_LABEL[d.radar] ?? d.radar}`
   if (e.type === 'invoice_issued' && typeof d.number === 'string') {
     return typeof d.amount_cents === 'number' ? `${d.number} · ${formatPrice(d.amount_cents, 'de')}` : d.number
   }

@@ -26,12 +26,15 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   Annahme, Lieferstand; `ShopOrdersService`: Bestellungen aus Kaeufersicht; `ShopRedeemService`: Codes einloesen ueber
   `ModuleBroker`; `ShopRefundService`: erstatten ueber `payments().refund`, Shop-Sperre; `ShopAlertService`: Event `shop.alert` →
   ChatGateway → Socket-Raum `admin`, Dringendes per Mail; `ShopFollowUpService`: Cron fuer Fristen; `ShopInvoiceService` reiht Belege in die Queue `shop-invoice`,
-  `ShopInvoiceProcessor` im Worker erzeugt Nummer + PDF + Zeile in einer Transaktion und versendet). Zahlung nur ueber `ModuleBroker.payments()`, kein Import aus `payment/`. Reine Funktionen ohne DB getestet: `buildProductFilter`,
+  `ShopInvoiceProcessor` im Worker erzeugt Nummer + PDF + Zeile in einer Transaktion und versendet;
+  `ShopPaymentEventsService` empfaengt Zahlungs-Events ueber den Broker, `ShopIntakeService` + `ShopRiskService`
+  pruefen Regeln und nehmen an oder halten an). Zahlung nur ueber `ModuleBroker.payments()`, kein Import aus `payment/`. Reine Funktionen ohne DB getestet: `buildProductFilter`,
   `validateCart`, `parseCsv`/`csvToProducts`, `progressError`. Ablauf und Fahrplan: `nextStep.md` im Repo-Root.
 - `src/modules/shared/broker/module-broker.ts` — **Vermittlung zwischen Feature-Modulen** (an/aus pro Mandant:
   payments, hidden, shop, matching, …). Regel ab 2026-10-11: Feature-Module importieren sich nicht gegenseitig.
   Der Anbieter meldet sich in `onModuleInit` an (`providePayments`, `provideUnlock('coins', …)`), der Nutzer fragt
-  ueber `ModuleBroker` (`payments()`, `canUnlock`/`unlock`). Ist das Modul aus, ist niemand angemeldet →
+  ueber `ModuleBroker` (`payments()`, `canUnlock`/`unlock`). Zahlungs-Webhooks: `payments` uebersetzt Stripe in
+  neutrale `PaymentEvent`s und reicht sie per `dispatchPaymentEvent(metadata.kind, …)` an das angemeldete Modul. Ist das Modul aus, ist niemand angemeldet →
   `ModuleUnavailableError` statt Absturz beim Start. Immer laufende Kernteile (auth, profile, notifications,
   system-settings) duerfen weiter direkt genutzt werden. Angemeldet: `StripePaymentGateway` (payment),
   `CoinUnlockProvider` (coin). Bekannte Altlast: `MatchingModule` → `PaymentModule` direkt.

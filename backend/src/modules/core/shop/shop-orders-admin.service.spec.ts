@@ -1,6 +1,4 @@
 import 'reflect-metadata';
-// @nestjs/bullmq ist ESM, Jest laedt es nicht (kommt ueber ShopInvoiceService)
-jest.mock('@nestjs/bullmq', () => ({ InjectQueue: () => () => undefined }));
 import { BadGatewayException, ConflictException } from '@nestjs/common';
 import { ShopOrdersAdminService } from './shop-orders-admin.service';
 
@@ -27,11 +25,12 @@ function setup(order: { status: string; stripe_payment_intent_id: string | null 
         onApproved: jest.fn(async () => ({ status: 'approved', progress: 'accepted' })),
     };
     const invoices = { enqueue: jest.fn(async () => undefined) };
-    const service = new ShopOrdersAdminService(dataSource as any, { payments: () => intents } as any, fulfillment as any, invoices as any);
+    const buyerMail = { declined: jest.fn(async () => undefined) };
+    const service = new ShopOrdersAdminService(dataSource as any, { payments: () => intents } as any, fulfillment as any, invoices as any, buyerMail as any);
     // Typ steht als Parameter ($3) oder als Literal im SQL ('stripe_error')
     const events = () => calls.filter((c) => c.sql.includes('shop_order_events'))
         .map((c) => (c.sql.includes(`'stripe_error'`) ? 'stripe_error' : c.params[2]));
-    return { service, intents, calls, events, fulfillment, invoices };
+    return { service, intents, calls, events, fulfillment, invoices, buyerMail };
 }
 
 describe('ShopOrdersAdminService.decide', () => {
@@ -40,16 +39,17 @@ describe('ShopOrdersAdminService.decide', () => {
         await expect(service.approve(ADMIN, ORDER, '  passt  ')).resolves.toEqual({ id: ORDER, status: 'approved', progress: 'accepted' });
         expect(intents.capture).toHaveBeenCalledWith('pi_1', `shop-approve-${ORDER}`);
         const update = calls.find((c) => c.sql.startsWith('UPDATE'))!;
-        expect(update.sql).toContain(`status = 'held'`);
-        expect(update.params).toEqual([ORDER, 'approved', ADMIN, 'passt']);
+        expect(update.sql).toContain('status = $5');
+        expect(update.params).toEqual([ORDER, 'approved', ADMIN, 'passt', 'held']);
         expect(events()).toEqual(['approved']);
         expect(invoices.enqueue).toHaveBeenCalledWith({ kind: 'invoice', orderId: ORDER });
     });
 
     it('Ablehnen gibt die Reservierung frei und speichert die Begruendung', async () => {
-        const { service, intents, calls } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
+        const { service, intents, calls, buyerMail } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
         await service.reject(ADMIN, ORDER, 'Karte passt nicht zum Land');
         expect(intents.cancel).toHaveBeenCalledWith('pi_1', `shop-reject-${ORDER}`);
+        expect(buyerMail.declined).toHaveBeenCalledWith(ORDER, 'rejected');
         const event = calls.find((c) => c.sql.includes('shop_order_events'))!;
         expect(JSON.parse(event.params[3] as string)).toEqual({ note: 'Karte passt nicht zum Land' });
     });
@@ -94,5 +94,20 @@ describe('ShopOrdersAdminService.decide', () => {
     it('zwei Admins gleichzeitig: der zweite bekommt 409', async () => {
         const { service } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' }, { raced: true });
         await expect(service.approve(ADMIN, ORDER)).rejects.toThrow(/schon entschieden/);
+    });
+
+    it('System nimmt an: aus authorized, ohne Admin, gleicher Idempotency-Key, Rechnung', async () => {
+        const { service, intents, calls, invoices } = setup({ status: 'authorized', stripe_payment_intent_id: 'pi_1' });
+        await expect(service.approveBySystem(ORDER)).resolves.toMatchObject({ status: 'approved' });
+        expect(intents.capture).toHaveBeenCalledWith('pi_1', `shop-approve-${ORDER}`);
+        const update = calls.find((c) => c.sql.startsWith('UPDATE'))!;
+        expect(update.params).toEqual([ORDER, 'approved', null, null, 'authorized']);
+        expect(invoices.enqueue).toHaveBeenCalledWith({ kind: 'invoice', orderId: ORDER });
+    });
+
+    it('System nimmt nichts an, was schon angehalten ist', async () => {
+        const { service, intents } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
+        await expect(service.approveBySystem(ORDER)).rejects.toBeInstanceOf(ConflictException);
+        expect(intents.capture).not.toHaveBeenCalled();
     });
 });

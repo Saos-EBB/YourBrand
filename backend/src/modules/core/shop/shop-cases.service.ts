@@ -6,8 +6,9 @@ import { ShopAlertService } from './shop-alert.service';
 
 const CASE_PAGE_SIZE = 50;
 // Bis wann das Team reagieren soll — der Nachfass-Cron (ShopFollowUpService) meldet sich danach
-const DUE = { problem: '24 hours', report: '72 hours', not_met: '2 hours' } as const;
-const PRIORITY = { problem: 'normal', report: 'normal', not_met: 'urgent' } as const;
+// Rueckbuchung: Stripe gibt meist 7–21 Tage fuer Beweise, das Team soll trotzdem schnell draufschauen
+const DUE = { problem: '24 hours', report: '72 hours', not_met: '2 hours', dispute: '48 hours' } as const;
+const PRIORITY = { problem: 'normal', report: 'normal', not_met: 'urgent', dispute: 'urgent' } as const;
 // Abgebrochene Kassen sind keine Bestellung, dazu gibt es nichts zu melden
 const NO_CASE_STATUS = ['pending', 'cancelled'];
 
@@ -140,8 +141,8 @@ export class ShopCasesService {
         const [c] = await this.dataSource.query('SELECT status, kind FROM shop_cases WHERE id = $1', [caseId]);
         if (!c) throw new NotFoundException('Fall nicht gefunden');
         if (c.status === 'resolved') throw new ConflictException('Fall ist abgeschlossen');
-        // Meldungen gegen Kaeufer sind intern — dort gibt es niemanden, der antwortet
-        const isInternal = internal || c.kind === 'report' || c.kind === 'not_met';
+        // Meldungen gegen Kaeufer und Rueckbuchungen sind intern — dort gibt es niemanden, der antwortet
+        const isInternal = internal || ['report', 'not_met', 'dispute'].includes(c.kind);
         await this.dataSource.transaction(async (m) => {
             await this.insertMessage(m, caseId, adminId, body.trim(), isInternal);
             if (!isInternal) await m.query(`UPDATE shop_cases SET status = 'waiting' WHERE id = $1 AND status = 'open'`, [caseId]);
@@ -179,8 +180,32 @@ export class ShopCasesService {
         return id;
     }
 
+    // Stripe meldet eine Rueckbuchung (Webhook ueber den Broker). Einmal pro Dispute.
+    async openDispute(orderId: string, disputeId: string, reason: string, amountCents: number): Promise<string | null> {
+        const [existing] = await this.dataSource.query('SELECT id FROM shop_cases WHERE stripe_dispute_id = $1', [disputeId]);
+        if (existing) return null;
+        return this.dataSource.transaction(async (m) => {
+            const [order] = await m.query('SELECT user_id FROM shop_orders WHERE id = $1', [orderId]);
+            if (!order) return null;
+            const id = await this.insertCase(m, { orderId, openedBy: null, againstUserId: order.user_id, kind: 'dispute', reason: reason.slice(0, 30) });
+            await m.query('UPDATE shop_cases SET stripe_dispute_id = $2 WHERE id = $1', [id, disputeId]);
+            await this.insertMessage(m, id, null,
+                `Stripe: Rückbuchung über ${(amountCents / 100).toFixed(2).replace('.', ',')} € eröffnet (Grund: ${reason}). Beweise im Stripe-Dashboard einreichen.`, true);
+            return id;
+        });
+    }
+
+    // Ausgang der Rueckbuchung als interne Notiz; abschliessen macht ein Mensch
+    async noteDisputeClosed(disputeId: string, status: string): Promise<string | null> {
+        const [c] = await this.dataSource.query('SELECT id FROM shop_cases WHERE stripe_dispute_id = $1', [disputeId]);
+        if (!c) return null;
+        const outcome = status === 'won' ? 'gewonnen — das Geld bleibt' : status === 'lost' ? 'verloren — das Geld ist zurückgebucht' : status;
+        await this.dataSource.transaction((m) => this.insertMessage(m, c.id, null, `Stripe: Rückbuchung abgeschlossen, ${outcome}.`, true));
+        return c.id;
+    }
+
     private async insertCase(m: EntityManager, c: {
-        orderId: string; openedBy: string; againstUserId: string | null; kind: keyof typeof DUE; reason: string;
+        orderId: string; openedBy: string | null; againstUserId: string | null; kind: keyof typeof DUE; reason: string;
     }): Promise<string> {
         const [row] = await m.query(
             `INSERT INTO shop_cases (order_id, opened_by, against_user_id, kind, reason, priority, due_at)
@@ -194,7 +219,8 @@ export class ShopCasesService {
         return row.id;
     }
 
-    private async insertMessage(m: EntityManager, caseId: string, authorId: string, body: string, internal: boolean) {
+    // authorId null = System (Stripe)
+    private async insertMessage(m: EntityManager, caseId: string, authorId: string | null, body: string, internal: boolean) {
         await m.query(
             'INSERT INTO shop_case_messages (case_id, author_id, body, internal) VALUES ($1, $2, $3, $4)',
             [caseId, authorId, body, internal],

@@ -1,6 +1,4 @@
 import 'reflect-metadata';
-// @nestjs/bullmq ist ESM, Jest laedt es nicht (kommt ueber ShopInvoiceService)
-jest.mock('@nestjs/bullmq', () => ({ InjectQueue: () => () => undefined }));
 import { BadGatewayException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { ShopRefundService } from './shop-refund.service';
 
@@ -98,5 +96,51 @@ describe('ShopRefundService.refund', () => {
         expect(invoices.enqueue).not.toHaveBeenCalled();
         expect(committed.some((c) => c.sql.startsWith('UPDATE'))).toBe(false);
         expect(events()).toEqual([{ type: 'stripe_error', data: { action: 'refund', message: 'Charge already refunded' } }]);
+    });
+
+    describe('applyExternal (Stripe-Dashboard)', () => {
+        function ext(order: { status: string; total_cents: number; refunded_cents: number }, known: string[] = [], revocable = 0) {
+            const calls: { sql: string; params: unknown[] }[] = [];
+            const query = jest.fn(async (sql: string, params: unknown[] = []) => {
+                calls.push({ sql, params });
+                if (sql.startsWith('SELECT status')) return [order];
+                if (sql.includes(`data->>'refund_id'`)) return known.map((id) => ({ id }));
+                if (sql.startsWith('UPDATE shop_codes')) return [Array.from({ length: revocable }, (_, i) => ({ id: i })), revocable];
+                return [];
+            });
+            const invoices = { enqueue: jest.fn(async () => undefined) };
+            const service = new ShopRefundService({ query, transaction: (fn: (m: unknown) => unknown) => fn({ query }) } as any, {} as any, invoices as any);
+            return { service, calls, invoices };
+        }
+
+        it('neue Erstattung: verbuchen, Protokoll als extern, Stornorechnung', async () => {
+            const { service, calls, invoices } = ext({ status: 'fulfilled', total_cents: 5000, refunded_cents: 0 });
+            await service.applyExternal(ORDER, [{ id: 're_x', amountCents: 1200 }]);
+            expect(calls.find((c) => c.sql.startsWith('UPDATE shop_orders'))!.params).toEqual([ORDER, 1200, 'partially_refunded']);
+            const ev = calls.find((c) => c.sql.startsWith('INSERT INTO shop_order_events'))!;
+            expect(JSON.parse(ev.params[1] as string)).toMatchObject({ amount_cents: 1200, refund_id: 're_x', external: true });
+            expect(invoices.enqueue).toHaveBeenCalledWith({ kind: 'credit_note', orderId: ORDER, refundId: 're_x', amountCents: 1200 });
+        });
+
+        it('eigene Erstattung (ID schon im Protokoll): nichts doppelt', async () => {
+            const { service, calls, invoices } = ext({ status: 'partially_refunded', total_cents: 5000, refunded_cents: 1200 }, ['re_1']);
+            await service.applyExternal(ORDER, [{ id: 're_1', amountCents: 1200 }]);
+            expect(calls.some((c) => c.sql.startsWith('UPDATE'))).toBe(false);
+            expect(invoices.enqueue).not.toHaveBeenCalled();
+        });
+
+        it('voll: refunded, offene Codes gesperrt; nie mehr als der Gesamtbetrag', async () => {
+            const { service, calls } = ext({ status: 'partially_refunded', total_cents: 5000, refunded_cents: 4000 }, ['re_1'], 2);
+            await service.applyExternal(ORDER, [{ id: 're_1', amountCents: 4000 }, { id: 're_2', amountCents: 3000 }]);
+            expect(calls.find((c) => c.sql.startsWith('UPDATE shop_orders'))!.params).toEqual([ORDER, 5000, 'refunded']);
+            const ev = calls.find((c) => c.sql.startsWith('INSERT INTO shop_order_events'))!;
+            expect(JSON.parse(ev.params[1] as string)).toMatchObject({ amount_cents: 1000, refund_id: 're_2', revoked: 2 });
+        });
+
+        it('nicht abgebucht (z. B. angehalten): ignorieren', async () => {
+            const { service, calls } = ext({ status: 'held', total_cents: 5000, refunded_cents: 0 });
+            await service.applyExternal(ORDER, [{ id: 're_x', amountCents: 100 }]);
+            expect(calls.some((c) => c.sql.startsWith('UPDATE'))).toBe(false);
+        });
     });
 });

@@ -115,4 +115,37 @@ export class MailService {
         });
         if (error) throw new Error(error.message);
     }
+
+    // § 312i BGB: Eingang bestaetigen — ausdruecklich noch keine Annahme
+    async sendShopOrderReceivedEmail(to: string, orderNo: string, total: string, link: string) {
+        const { error } = await this.resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to,
+            subject: `Bestellung #${orderNo} eingegangen`,
+            html: `
+        <h2>Danke, deine Bestellung ist eingegangen</h2>
+        <p>Bestellung #${orderNo} über ${total}. Der Betrag ist auf deiner Karte nur reserviert.</p>
+        <p>Das ist eine Eingangsbestätigung, noch keine Annahme. Sobald wir deine Bestellung annehmen, wird abgebucht und du bekommst die Rechnung.</p>
+        <a href="${link}">Bestellung ansehen</a>
+      `,
+        });
+        if (error) throw new Error(error.message);
+    }
+
+    async sendShopOrderDeclinedEmail(to: string, orderNo: string, reason: 'rejected' | 'expired', link: string) {
+        const text = reason === 'rejected'
+            ? 'Wir können deine Bestellung leider nicht annehmen.'
+            : 'Wir konnten deine Bestellung leider nicht rechtzeitig bestätigen.';
+        const { error } = await this.resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to,
+            subject: `Bestellung #${orderNo} nicht angenommen`,
+            html: `
+        <h2>${text}</h2>
+        <p>Die Reservierung auf deiner Karte ist aufgehoben, es wurde nichts abgebucht.</p>
+        <a href="${link}">Bestellung ansehen</a>
+      `,
+        });
+        if (error) throw new Error(error.message);
+    }
 }

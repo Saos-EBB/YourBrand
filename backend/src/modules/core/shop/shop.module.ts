@@ -17,6 +17,10 @@ import { MailModule } from '../../../common/mail/mail.module';
 import { BullModule } from '@nestjs/bullmq';
 import { DEFAULT_JOB_OPTIONS, SHOP_INVOICE_QUEUE } from '../../../common/queue/queue.constants';
 import { ShopInvoiceService } from './shop-invoice.service';
+import { ShopBuyerMailService } from './shop-buyer-mail.service';
+import { ShopRiskService } from './shop-risk.service';
+import { ShopIntakeService } from './shop-intake.service';
+import { ShopPaymentEventsService } from './shop-payment-events.service';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
 // Shop (Mandanten-Modul "shop"), nur geladen, wenn tenant.json es
@@ -29,6 +33,7 @@ import { SystemSettingsModule } from '../system-settings/system-settings.module'
         BullModule.registerQueue({ name: SHOP_INVOICE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
     ],
     controllers: [ShopController, ShopAdminController],
-    providers: [ShopService, ShopCheckoutService, ShopAdminService, ShopOrdersAdminService, ShopFulfillmentService, ShopOrdersService, ShopRedeemService, ShopCasesService, ShopRefundService, ShopAlertService, ShopFollowUpService, ShopInvoiceService, JwtGuard],
+    providers: [ShopService, ShopCheckoutService, ShopAdminService, ShopOrdersAdminService, ShopFulfillmentService, ShopOrdersService, ShopRedeemService, ShopCasesService, ShopRefundService, ShopAlertService, ShopFollowUpService, ShopInvoiceService, ShopBuyerMailService, ShopRiskService,
+        ShopIntakeService, ShopPaymentEventsService, JwtGuard],
 })
 export class ShopModule { }

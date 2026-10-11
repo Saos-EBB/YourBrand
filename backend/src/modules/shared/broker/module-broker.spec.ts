@@ -21,4 +21,15 @@ describe('ModuleBroker', () => {
         expect(broker.payments()).toBe(gw);
         expect(() => broker.providePayments(gw)).toThrow(/schon angemeldet/);
     });
+
+    it('Zahlungs-Events gehen an das Modul, das sich fuer kind angemeldet hat', async () => {
+        const broker = new ModuleBroker();
+        const handler = jest.fn(async () => undefined);
+        const event = { type: 'canceled' as const, paymentIntentId: 'pi_1', metadata: { kind: 'shop', orderId: 'o1' } };
+        await expect(broker.dispatchPaymentEvent('shop', event)).resolves.toBe(false);
+        broker.handlePaymentEvents('shop', handler);
+        await expect(broker.dispatchPaymentEvent('shop', event)).resolves.toBe(true);
+        expect(handler).toHaveBeenCalledWith(event);
+        expect(() => broker.handlePaymentEvents('shop', handler)).toThrow(/schon angemeldet/);
+    });
 });

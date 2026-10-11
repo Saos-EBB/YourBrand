@@ -1,8 +1,6 @@
 import 'reflect-metadata';
 import { ShopInvoiceProcessor, buyerOf, type ShopInvoiceJob } from './shop-invoice.processor';
 
-// @nestjs/bullmq ist ESM, Jest laedt es nicht — fuer die Logik reichen Attrappen
-jest.mock('@nestjs/bullmq', () => ({ Processor: () => () => undefined, OnWorkerEvent: () => () => undefined, WorkerHost: class { } }));
 jest.mock('../../../common/crypto/crypto.helper', () => ({ decryptField: (b: Buffer | null) => (b ? b.toString() : null) }));
 
 const SELLER = { name: 'Kiez GmbH', address: 'Kiezstraße 12, 10999 Berlin', email: 'shop@kiez.example', vatId: 'DE123456789' };

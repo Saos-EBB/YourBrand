@@ -1,3 +1,30 @@
+## 2026-10-12 — feat(shop): Stripe-Webhook + Risiko-Regeln, automatische Annahme — Shop Schritt 5
+**Was:** Vertrag im `ModuleBroker` (vom User freigegeben): neutrale `PaymentEvent`s (authorized mit Radar/Karte/
+Rechnungsadresse, canceled, checkout_expired, refunded, dispute_opened/closed), `handlePaymentEvents(kind, handler)` /
+`dispatchPaymentEvent`. `PaymentService.handleWebhook` prueft die Signatur, uebersetzt in `payment-events.ts`
+(`toPaymentEvent`: Charge/PaymentIntent/Refunds nachschlagen, Events ohne `metadata.kind` laufen wie bisher in den
+Abo-Zweig) und reicht ueber den Broker weiter; wirft der Empfaenger, antwortet der Webhook mit Fehler (Stripe stellt neu zu).
+Shop: `ShopPaymentEventsService` meldet sich fuer `shop` an und verteilt. `ShopIntakeService`: reserviert → Zahlungsdaten
+speichern, Risiko-Regeln (`shop-risk.ts`, Fakten aus `ShopRiskService`, Schwellen als Systemeinstellungen
+`shop_hold_*`/`shop_decide_minutes_*`, Standard: ab 150 €, erste Bestellung ab 50 €, ≥3/Std., Karte bei ≥2 anderen
+Konten in 30 Tagen, fruehere Rueckbuchung/Meldung, Radar erhoeht/hoch; Betrag ≠ reserviert immer anhalten) → anhalten
+(Frist Essen 30 Min., sonst 24 Std., Alarm `order_held` mit Mail) oder das System nimmt an (`approveBySystem`: gleicher
+Weg wie der Mensch aus `authorized`, decided_by NULL). Scheitert die Annahme (Stripe, Keys fehlen, sonstiges) → anhalten
+mit Grund. Cron haelt Reservierungen an, die 5 Min. haengen. Stripe hebt Reservierung auf → `expired` (eigene Aufhebungen
+sind schon abgelehnt/verfallen → nichts). Kasse abgelaufen → `cancelled`. Erstattungen aus dem Stripe-Dashboard →
+`applyExternal` (eigene erkennt das Protokoll an der Refund-ID, Zeilensperre wartet auf laufende eigene Erstattung),
+Stornorechnung. Rueckbuchung → dringender interner Fall `dispute` (einmal pro Dispute, Frist 48 Std., Alarm + Mail),
+Ausgang als interne Notiz. Kaeufer-Mails: Eingangsbestaetigung (§ 312i, noch keine Annahme), Ablehnung, Verfall.
+Unit-Tests: `@nestjs/bullmq` (ESM) per `moduleNameMapper` auf `test/stubs/nestjs-bullmq.ts`, statt Mocks pro Spec.
+168 Tests gruen (shop/shared/payment/tenant). Im Gesamtlauf scheitern `demo-seed-path.spec` und
+`tictactoe.handler.spec` — auch ohne diese Aenderungen, nicht angefasst.
+Geprueft im Demo-Stack mit signierten Webhooks an den echten Endpunkt: unauffaellig → System will abbuchen → Stripe-
+Platzhalter → angehalten „Abbuchen fehlgeschlagen“; doppeltes Event → nichts; 220 € erste Bestellung → angehalten
+(hoher Betrag, erste Bestellung); Kasse abgelaufen → abgebrochen; Stripe hebt auf → verfallen (doppelt → einmal);
+Abo-Event ohne kind → alter Zweig; Panel zeigt Gruende und „System“.
+**Nicht gebaut:** eigene Scores/ML, Regeln in der Oberflaeche, automatisches Ablehnen, Beweise zur Rueckbuchung
+einreichen (Stripe-Dashboard), Kaeufer-Mails in anderen Sprachen, Erfolgsweg mit echtem Stripe (Zahlungstests am Schluss).
+
 ## 2026-10-11 — feat(shop): Rechnungen + Stornorechnungen — Shop Schritt 8
 **Was:** Rechnung entsteht bei der Annahme (Entscheidung des User: Vertrag + Abbuchung), Stornorechnung je Erstattung.
 API reiht nach dem Commit einen Job in `shop-invoice` ein (`ShopInvoiceService.enqueue`, Fehler dort brechen Annahme/

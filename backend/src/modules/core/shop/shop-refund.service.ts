@@ -96,6 +96,56 @@ export class ShopRefundService {
         return result;
     }
 
+    // Erstattungen aus dem Stripe-Dashboard (Webhook). Eigene erkennt das Protokoll an der
+    // Refund-ID — die Zeilensperre wartet, bis eine laufende eigene Erstattung committet ist.
+    async applyExternal(orderId: string, refunds: { id: string; amountCents: number }[]): Promise<void> {
+        const created = await this.dataSource.transaction(async (m) => {
+            const [order] = await m.query(
+                'SELECT status, total_cents, refunded_cents FROM shop_orders WHERE id = $1 FOR UPDATE', [orderId],
+            );
+            if (!order || ![...REFUNDABLE, 'refunded'].includes(order.status)) return [];
+            const known = new Set((await m.query(
+                `SELECT data->>'refund_id' AS id FROM shop_order_events WHERE order_id = $1 AND type = 'refunded'`, [orderId],
+            )).map((r: { id: string }) => r.id));
+            let refunded = order.refunded_cents;
+            const fresh: { id: string; amountCents: number }[] = [];
+            for (const r of refunds) {
+                if (known.has(r.id)) continue;
+                const amount = Math.min(r.amountCents, order.total_cents - refunded);
+                if (amount <= 0) continue;
+                refunded += amount;
+                fresh.push({ id: r.id, amountCents: amount });
+            }
+            if (!fresh.length) return [];
+            const full = refunded >= order.total_cents;
+            await m.query(
+                'UPDATE shop_orders SET refunded_cents = $2, status = $3 WHERE id = $1', [orderId, refunded, full ? 'refunded' : 'partially_refunded'],
+            );
+            // Wie bei der vollen Erstattung im Admin: offene Keys/Codes sperren
+            let revoked = 0;
+            if (full) {
+                const rows = await m.query(
+                    `UPDATE shop_codes SET revoked_at = now()
+                      WHERE order_item_id IN (SELECT id FROM shop_order_items WHERE order_id = $1)
+                        AND revoked_at IS NULL AND redeemed_at IS NULL RETURNING id`,
+                    [orderId],
+                );
+                revoked = (Array.isArray(rows[0]) ? rows[0] : rows).length;
+            }
+            for (const [i, r] of fresh.entries()) {
+                await m.query(
+                    `INSERT INTO shop_order_events (order_id, type, data) VALUES ($1, 'refunded', $2)`,
+                    [orderId, JSON.stringify({
+                        amount_cents: r.amountCents, refund_id: r.id, note: 'Erstattet im Stripe-Dashboard', external: true,
+                        ...(i === fresh.length - 1 && revoked ? { revoked } : {}),
+                    })],
+                );
+            }
+            return fresh;
+        });
+        for (const r of created) await this.invoices.enqueue({ kind: 'credit_note', orderId, refundId: r.id, amountCents: r.amountCents });
+    }
+
     // Sperrt nur den Shop (nicht den Account). Nochmal sperren ersetzt die alte Sperre.
     async block(adminId: string, userId: string, reason: string, days?: number) {
         const [user] = await this.dataSource.query('SELECT 1 FROM users WHERE id = $1', [userId]);

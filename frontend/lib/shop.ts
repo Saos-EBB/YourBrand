@@ -138,7 +138,12 @@ export const HOLD_REASON_LABEL: Record<string, string> = {
   card_reuse: 'Karte bei mehreren Konten',
   velocity: 'Viele Bestellungen in kurzer Zeit',
   radar_elevated: 'Stripe Radar: erhöhtes Risiko',
-  previous_dispute: 'Frühere Rückbuchung',
+  radar_highest: 'Stripe Radar: hohes Risiko',
+  previous_dispute: 'Frühere Rückbuchung oder Meldung',
+  amount_mismatch: 'Reservierter Betrag weicht ab',
+  capture_failed: 'Abbuchen fehlgeschlagen',
+  keys_missing: 'Keys fehlen',
+  system_error: 'Automatische Annahme hängt',
 }
 
 export interface AdminShopOrder {
@@ -308,6 +313,10 @@ export const CASE_STATUS_LABEL: Record<ShopCaseStatus, string> = { open: 'Offen'
 export const CASE_REASON_LABEL: Record<string, string> = {
   not_received: 'Nicht angekommen', wrong_item: 'Falscher Artikel', damaged: 'Beschädigt', code_invalid: 'Key/Code geht nicht',
   other: 'Sonstiges', no_show: 'Nicht angetroffen', abuse: 'Missbrauch', fraud_suspect: 'Betrugsverdacht',
+  // Rueckbuchungsgruende von Stripe
+  fraudulent: 'Karte missbraucht', product_not_received: 'Ware nicht erhalten', product_unacceptable: 'Ware mangelhaft',
+  duplicate: 'Doppelt bezahlt', credit_not_processed: 'Erstattung fehlt', unrecognized: 'Zahlung nicht erkannt',
+  subscription_canceled: 'Abo gekündigt', general: 'Allgemein', unknown: 'Unbekannt',
 }
 export const REPORT_REASONS = ['no_show', 'abuse', 'fraud_suspect', 'other'] as const
 

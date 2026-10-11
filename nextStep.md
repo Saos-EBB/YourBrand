@@ -104,6 +104,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 4. ✅ **Checkout**: `POST /shop/checkout` legt die Bestellung `pending` an (Preise aus der DB, Pflichtfelder je Lieferart, Bestand/freie Keys) und öffnet eine Stripe-Session mit Reservierung (`capture_method: manual`). Stripe-Fehler → Bestellung `cancelled` + `stripe_error` im Protokoll + 503. Eingangsbestätigung → Schritt 5 (rechtlich erst nach Zahlung, also im Webhook)
    - **Als Nächstes: Schritt 10 (Frontend) vorgezogen** — erst soll der Shop stehen und sich gut anfühlen, Zahlungstests danach
 5. Risiko-Regeln, Anhalten, Protokoll, Stripe-Webhooks (Zahlung, Rückbuchung, Erstattung), Schwellen in `SystemSettingsService`
+   - ✅ Webhook über den Broker (neutrale Zahlungs-Events), Regeln mit Schwellen als Systemeinstellungen, System nimmt Unauffälliges an, sonst anhalten + Alarm; Stripe-Erstattungen, Rückbuchungen als Fall, Käufer-Mails (Eingang, Ablehnung, Verfall)
 6. Admin-Konsole `/admin/shop`: Eingang, Zeitstrahl, annehmen/ablehnen/erstatten/sperren, Alarme (Socket + Mail), Nachfass-Cron
    - ✅ **Teil 1** Eingang mit Status-Chips und Frist, Detail mit Käufer-Vorgeschichte und Zeitstrahl, annehmen (capture) / ablehnen (cancel, Begründung Pflicht). Artikelpflege jetzt unter `/admin/shop/products`
    - ✅ **6b** Erstatten (ganz/teilweise über `ModuleBroker.payments().refund`, volle Erstattung sperrt offene Keys/Codes) und Shop-Sperre (7/30 Tage/unbefristet) im Bestell-Panel

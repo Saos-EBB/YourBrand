@@ -1,3 +1,9 @@
+## 2026-10-12 — feat(shop): Haltegruende + Rueckbuchungen anzeigen — Shop Schritt 5
+**Was:** Neue Haltegruende (Radar hoch, Betrag weicht ab, Abbuchen fehlgeschlagen, Keys fehlen, automatische Annahme
+haengt), Rueckbuchungsgruende von Stripe als deutsche Labels, Zeitstrahl kennt „Kasse abgebrochen“ und zeigt Radar beim
+Reservieren. Rueckbuchungs-Faelle sind wie Meldungen nur intern (`CaseSheet`). `tsc` + ESLint sauber, Panel im
+Demo-Stack angesehen.
+
 ## 2026-10-11 — feat(shop): Belege herunterladen — Shop Schritt 8
 **Was:** `downloadApiFile` in `lib/api.ts` (gleicher Weg wie `fetchApi` inkl. Token-Refresh, `fetchApi` nutzt jetzt
 das gemeinsame `request`). Kaeufer: Abschnitt „Belege“ auf der Bestellseite nach der Annahme (Rechnung/Stornorechnung

@@ -17,8 +17,10 @@ function setup(answers: Record<string, Answer>, opts: { stripeFails?: boolean } 
     const ds = { query, transaction: (fn: (m: unknown) => unknown) => fn({ query }) };
     const payments = { cancel: jest.fn(async () => { if (opts.stripeFails) throw new Error('No such payment_intent'); }) };
     const alerts = { send: jest.fn(async () => undefined) };
-    const service = new ShopFollowUpService(ds as any, { payments: () => payments } as any, alerts as any);
-    return { service, calls, payments, alerts };
+    const buyerMail = { declined: jest.fn(async () => undefined) };
+    const intake = { hold: jest.fn(async () => undefined) };
+    const service = new ShopFollowUpService(ds as any, { payments: () => payments } as any, alerts as any, buyerMail as any, intake as any);
+    return { service, calls, payments, alerts, buyerMail, intake };
 }
 
 describe('ShopFollowUpService', () => {
@@ -32,11 +34,12 @@ describe('ShopFollowUpService', () => {
     });
 
     it('Frist abgelaufen: Reservierung aufheben, expired, Protokoll, Alarm', async () => {
-        const { service, calls, payments, alerts } = setup({
+        const { service, calls, payments, alerts, buyerMail } = setup({
             'SELECT id, stripe_payment_intent_id': [{ id: 'o1', stripe_payment_intent_id: 'pi_1' }],
             "SET status = 'expired'": [[{ id: 'o1' }], 1],
         });
         await service.expireHeld();
+        expect(buyerMail.declined).toHaveBeenCalledWith('o1', 'expired');
         expect(payments.cancel).toHaveBeenCalledWith('pi_1', 'shop-expire-o1');
         expect(calls.find((c) => c.sql.includes("SET status = 'expired'"))!.sql).toContain(`status = 'held'`);
         expect(calls.some((c) => c.sql.includes(`'expired', '{}'`))).toBe(true);
@@ -63,6 +66,13 @@ describe('ShopFollowUpService', () => {
         expect(err.sql).toContain(`data->>'action' = 'expire'`);
         expect(JSON.parse(err.params[1] as string)).toEqual({ action: 'expire', message: 'No such payment_intent' });
         expect(alerts.send).not.toHaveBeenCalled();
+    });
+
+    it('haengen gebliebene Reservierung (5 Min.) wird angehalten', async () => {
+        const { service, calls, intake } = setup({ "status = 'authorized'": [{ id: 'o1' }] });
+        await service.holdStuck();
+        expect(calls[0].sql).toContain(`interval '5 minutes'`);
+        expect(intake.hold).toHaveBeenCalledWith('o1', ['system_error']);
     });
 
     it('ueberfaellige Faelle: nur open, mit Pause je nach Dringlichkeit', async () => {

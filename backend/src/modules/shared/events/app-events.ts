@@ -65,7 +65,7 @@ export interface BeefGameBoardUpdateEvent {
 }
 
 // Shop braucht einen Menschen: geht an alle Admins (Socket-Raum "admin")
-export type ShopAlertKind = 'case_opened' | 'case_reply' | 'not_met' | 'case_overdue' | 'decide_soon' | 'expired';
+export type ShopAlertKind = 'case_opened' | 'case_reply' | 'not_met' | 'case_overdue' | 'decide_soon' | 'expired' | 'order_held' | 'dispute';
 export interface ShopAlertEvent {
     kind: ShopAlertKind;
     orderId?: string;

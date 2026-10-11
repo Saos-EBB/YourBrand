@@ -88,4 +88,28 @@ describe('ShopCasesService', () => {
         expect(errs(OpenProblemDto, problem)).toEqual([]);
         expect(errs(ReportBuyerDto, { reason: 'damaged', note: 'Dritte Abholung verpasst' })).toEqual(['reason']);
     });
+
+    it('Rueckbuchung: dringender interner Fall gegen den Kaeufer, einmal pro Dispute', async () => {
+        const { service, calls } = setup({ 'SELECT user_id FROM shop_orders': [{ user_id: USER }], 'INSERT INTO shop_cases': [{ id: 'c9' }] });
+        await expect(service.openDispute('o1', 'dp_1', 'fraudulent', 990)).resolves.toBe('c9');
+        const insert = calls.find((c) => c.sql.includes('INSERT INTO shop_cases'))!;
+        expect(insert.params.slice(0, 7)).toEqual(['o1', null, USER, 'dispute', 'fraudulent', 'urgent', '48 hours']);
+        expect(calls.find((c) => c.sql.includes('stripe_dispute_id = $2'))!.params).toEqual(['c9', 'dp_1']);
+        const msg = calls.find((c) => c.sql.includes('INSERT INTO shop_case_messages'))!;
+        expect(msg.params[1]).toBeNull();
+        expect(msg.params[3]).toBe(true);
+        const again = setup({ 'WHERE stripe_dispute_id = $1': [{ id: 'c9' }] });
+        await expect(again.service.openDispute('o1', 'dp_1', 'fraudulent', 990)).resolves.toBeNull();
+    });
+
+    it('Rueckbuchung geschlossen: interne Notiz mit Ausgang', async () => {
+        const { service, calls } = setup({ 'WHERE stripe_dispute_id = $1': [{ id: 'c9' }] });
+        await expect(service.noteDisputeClosed('dp_1', 'lost')).resolves.toBe('c9');
+        expect(calls.find((c) => c.sql.includes('INSERT INTO shop_case_messages'))!.params[2]).toMatch(/verloren/);
+    });
+
+    it('Team-Antwort in einer Rueckbuchung ist immer intern', async () => {
+        const { service } = setup({ 'SELECT status, kind FROM shop_cases': [{ status: 'open', kind: 'dispute' }] });
+        await expect(service.adminReply(ADMIN, 'c9', 'Beweise hochgeladen', false)).resolves.toEqual({ ok: true, internal: true });
+    });
 });
