@@ -1,3 +1,24 @@
+## 2026-10-11 — feat(shop): Rechnungen + Stornorechnungen — Shop Schritt 8
+**Was:** Rechnung entsteht bei der Annahme (Entscheidung des User: Vertrag + Abbuchung), Stornorechnung je Erstattung.
+API reiht nach dem Commit einen Job in `shop-invoice` ein (`ShopInvoiceService.enqueue`, Fehler dort brechen Annahme/
+Erstattung nie ab). `ShopInvoiceProcessor` (nur im WorkerModule): in einer Transaktion Bestellung sperren, Nummer aus
+`shop_invoice_counters` (pro Jahr, Berlin, `RE-`/`ST-` teilen sich den Zaehler — keine Luecken, weil Nummer, PDF und
+Zeile zusammen committen), PDF mit pdfkit (`shop-invoice-pdf.ts`, § 14 UStG: Verkaeufer aus `tenant.json` legal inkl.
+USt-IdNr./Steuernummer, Empfaenger, Nummer, Datum, Leistungsdatum bzw. Kalendermonat, Positionen, Netto/MwSt je Satz),
+Zeile in `shop_invoices` + Protokoll `invoice_issued`. Danach Mail mit PDF-Anhang (Stripe-Mail, sonst Konto-Mail),
+`sent_at`; scheitert die Mail, wiederholt BullMQ (Beleg wird nicht neu erzeugt), Fehlschlaege stehen im Worker-Log.
+Rechnen in `shop-invoice.ts`: MwSt aus brutto je Satz, Versand anteilig auf die Saetze, Storno anteilig wie die
+Rechnung (groesster Rest, Summen auf den Cent), Positionen ≠ Gesamt → Fehler statt falscher Rechnung. Storno ohne
+Rechnung legt die Rechnung zuerst an; Refund-ID macht Stornos idempotent. Endpunkte: Kaeufer `GET orders/:id/invoices`,
+`GET invoices/:id/pdf` (nur eigene); Admin `GET invoices/:id/pdf`, `POST orders/:id/invoices` (anlegen falls fehlt +
+erneut senden); Bestell-Detail liefert `invoices`. Keine Migration. 133 Tests gruen (shop/shared/tenant).
+Specs mit `ShopInvoiceService` im Import mocken `@nestjs/bullmq` (ESM, Jest laedt es nicht).
+Geprueft im Demo-Stack (jetzt mit Worker): 4 Rechnungen RE-2026-000001…4 ueber den Admin-Endpunkt, `held` → 409,
+Resend-Platzhalter → 3 Versuche, „aufgegeben“ im Log, `sent_at` bleibt leer; Stornorechnung mit echtem Code gegen die
+Demo-DB (zweimal → eine), PDFs gerendert und angesehen.
+**Nicht gebaut:** EU-OSS/Reverse Charge/Kleinunternehmer, Rechnungen in anderen Sprachen, USt-ID von Firmenkunden,
+Layout/Logo pro Mandant, DATEV-Export. Erstattungen von vor diesem Schritt haben keine Stornorechnung (Demo).
+
 ## 2026-10-11 — feat(shop): Alarme + Nachfass-Cron — Shop Schritt 6c
 **Was:** Neues typisiertes Event `shop.alert` (`AppEvents.shopAlert`, Arten case_opened/case_reply/not_met/case_overdue/
 decide_soon/expired), `ChatGateway` leitet es an den Socket-Raum `admin` weiter (Vertrag vom User freigegeben).

@@ -8,6 +8,7 @@ import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { useShopCartStore } from '@/lib/store/shopCartStore'
 import { OrderCases } from '@/components/shop/OrderCases'
+import { OrderInvoices } from '@/components/shop/OrderInvoices'
 import { ProgressTracker, TONE_BADGE, buyerStatus, redeemMessage } from '@/components/shop/OrderStatus'
 import { formatDate, formatPrice, orderNumber, type MyShopOrderDetail, type RedeemResult } from '@/lib/shop'
 
@@ -64,6 +65,8 @@ function Order({ id }: { id: string }) {
       ) : (
         <Detail order={order} locale={locale} headline={!placed} onRedeemed={() => setReload((n) => n + 1)} />
       )}
+      {/* Belege erst nach der Annahme (dann ist abgebucht) */}
+      {order && ['approved', 'fulfilled', 'partially_refunded', 'refunded'].includes(order.status) && <OrderInvoices orderId={order.id} />}
       {/* Abgebrochene Kasse ist keine Bestellung — dazu gibt es nichts zu melden */}
       {order && !['pending', 'cancelled'].includes(order.status) && <OrderCases orderId={order.id} />}
       {order && (

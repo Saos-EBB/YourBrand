@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { ModuleBroker } from '../../shared/broker/module-broker';
 import { AdminListOrdersQuery } from './dto/admin-order.dto';
 import { ShopFulfillmentService } from './shop-fulfillment.service';
+import { ShopInvoiceService } from './shop-invoice.service';
 
 const ORDER_PAGE_SIZE = 50;
 
@@ -19,6 +20,7 @@ export class ShopOrdersAdminService {
         @InjectDataSource() private readonly dataSource: DataSource,
         private readonly broker: ModuleBroker,
         private readonly fulfillment: ShopFulfillmentService,
+        private readonly invoices: ShopInvoiceService,
     ) { }
 
     async listOrders(query: AdminListOrdersQuery) {
@@ -71,7 +73,7 @@ export class ShopOrdersAdminService {
         );
         if (!order) throw new NotFoundException('Bestellung nicht gefunden');
 
-        const [items, events, [history], cases, [block]] = await Promise.all([
+        const [items, events, [history], cases, [block], invoices] = await Promise.all([
             this.dataSource.query(
                 `SELECT i.id, i.product_id, i.sku, i.title, i.fulfillment, i.quantity, i.unit_price_cents, i.vat_rate::float AS vat_rate,
                         (SELECT count(*)::int FROM shop_codes c WHERE c.order_item_id = i.id) AS codes_assigned
@@ -106,8 +108,9 @@ export class ShopOrdersAdminService {
                     [order.user_id],
                 )
                 : Promise.resolve([null]),
+            this.invoices.listForOrder(id),
         ]);
-        return { ...order, items, events, buyer_history: history, cases, buyer_block: block ?? null };
+        return { ...order, items, events, buyer_history: history, cases, buyer_block: block ?? null, invoices };
     }
 
     // Annehmen = Vertrag: reservierten Betrag abbuchen
@@ -153,7 +156,7 @@ export class ShopOrdersAdminService {
         }
 
         // Nur von 'held' aus — wer zuerst kommt, entscheidet
-        return this.dataSource.transaction(async (m) => {
+        const result = await this.dataSource.transaction(async (m) => {
             const updated = await m.query(
                 `UPDATE shop_orders SET status = $2, decided_by = $3, decided_at = now(), decision_note = $4
                   WHERE id = $1 AND status = '${DECIDABLE}' RETURNING id, status, decided_at`,
@@ -169,5 +172,8 @@ export class ShopOrdersAdminService {
             if (status === 'rejected') return { ...row, progress: null };
             return { ...row, ...(await this.fulfillment.onApproved(m, id, order.delivery_mode)) };
         });
+        // Annahme = Vertrag + abgebucht: Rechnung (erzeugt und versendet der Worker)
+        if (status === 'approved') await this.invoices.enqueue({ kind: 'invoice', orderId: id });
+        return result;
     }
 }

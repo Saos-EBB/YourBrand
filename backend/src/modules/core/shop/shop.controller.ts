@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
@@ -13,6 +14,8 @@ import { ShopRedeemService } from './shop-redeem.service';
 import { RedeemCodeDto } from './dto/redeem.dto';
 import { ShopCasesService } from './shop-cases.service';
 import { CaseMessageDto, OpenProblemDto } from './dto/case.dto';
+import { ShopInvoiceService } from './shop-invoice.service';
+import { pdfFile } from './shop-admin.controller';
 
 @RequiresModule('shop')
 @UseGuards(JwtGuard)
@@ -24,6 +27,7 @@ export class ShopController {
         private readonly orders: ShopOrdersService,
         private readonly redeemService: ShopRedeemService,
         private readonly cases: ShopCasesService,
+        private readonly invoices: ShopInvoiceService,
     ) { }
 
     // Was der Kaeufer vor der Bestellung sehen muss (Versandkosten, PAngV)
@@ -63,6 +67,17 @@ export class ShopController {
     @Get('orders/:id')
     myOrder(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
         return this.orders.getMine(req.user.sub, id);
+    }
+
+    @Get('orders/:id/invoices')
+    myInvoices(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+        return this.invoices.listMine(req.user.sub, id);
+    }
+
+    @Get('invoices/:id/pdf')
+    async myInvoicePdf(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Res({ passthrough: true }) res: Response) {
+        const { number, pdf } = await this.invoices.pdf(id, req.user.sub);
+        return pdfFile(res, number, pdf);
     }
 
     // Raten bremsen: 60 Bit pro Code, trotzdem wenige Versuche pro Stunde

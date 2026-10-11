@@ -1,3 +1,13 @@
+## 2026-10-11 — feat(shop): Belege herunterladen — Shop Schritt 8
+**Was:** `downloadApiFile` in `lib/api.ts` (gleicher Weg wie `fetchApi` inkl. Token-Refresh, `fetchApi` nutzt jetzt
+das gemeinsame `request`). Kaeufer: Abschnitt „Belege“ auf der Bestellseite nach der Annahme (Rechnung/Stornorechnung
+mit Datum und Betrag, PDF-Button; solange noch nichts da ist ein Hinweis), 5 neue Texte in 9 Sprachen. Admin-Panel:
+„Belege“ mit Versandstatus („nicht gesendet“ rot), PDF, „Rechnung erstellen & senden“ bzw. „erneut senden“; Zeitstrahl
+kennt „Beleg erstellt“.
+Verifiziert mit Playwright (Desktop dunkel, Handy hell): Download beim Kaeufer und im Admin liefert echte PDFs,
+erneut senden zeigt die Meldung. `tsc` + ESLint sauber.
+**Nicht gebaut:** PDF-Vorschau im Browser.
+
 ## 2026-10-11 — feat(shop): Shop-Alarme live — Shop Schritt 6c
 **Was:** Socket-Event `shop.alert` → Ton (wie Tickets) + `shopAlertTick` im `notificationStore`. Admin-Badge zaehlt
 angehaltene Bestellungen und Faelle beim Team mit (`/admin/shop/attention`, nur mit Modul) und zaehlt bei jedem Alarm

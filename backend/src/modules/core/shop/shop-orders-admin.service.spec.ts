@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+// @nestjs/bullmq ist ESM, Jest laedt es nicht (kommt ueber ShopInvoiceService)
+jest.mock('@nestjs/bullmq', () => ({ InjectQueue: () => () => undefined }));
 import { BadGatewayException, ConflictException } from '@nestjs/common';
 import { ShopOrdersAdminService } from './shop-orders-admin.service';
 
@@ -24,22 +26,24 @@ function setup(order: { status: string; stripe_payment_intent_id: string | null 
         checkKeys: jest.fn(async () => undefined),
         onApproved: jest.fn(async () => ({ status: 'approved', progress: 'accepted' })),
     };
-    const service = new ShopOrdersAdminService(dataSource as any, { payments: () => intents } as any, fulfillment as any);
+    const invoices = { enqueue: jest.fn(async () => undefined) };
+    const service = new ShopOrdersAdminService(dataSource as any, { payments: () => intents } as any, fulfillment as any, invoices as any);
     // Typ steht als Parameter ($3) oder als Literal im SQL ('stripe_error')
     const events = () => calls.filter((c) => c.sql.includes('shop_order_events'))
         .map((c) => (c.sql.includes(`'stripe_error'`) ? 'stripe_error' : c.params[2]));
-    return { service, intents, calls, events, fulfillment };
+    return { service, intents, calls, events, fulfillment, invoices };
 }
 
 describe('ShopOrdersAdminService.decide', () => {
     it('Annehmen bucht ab, setzt approved und schreibt das Protokoll', async () => {
-        const { service, intents, calls, events } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
+        const { service, intents, calls, events, invoices } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
         await expect(service.approve(ADMIN, ORDER, '  passt  ')).resolves.toEqual({ id: ORDER, status: 'approved', progress: 'accepted' });
         expect(intents.capture).toHaveBeenCalledWith('pi_1', `shop-approve-${ORDER}`);
         const update = calls.find((c) => c.sql.startsWith('UPDATE'))!;
         expect(update.sql).toContain(`status = 'held'`);
         expect(update.params).toEqual([ORDER, 'approved', ADMIN, 'passt']);
         expect(events()).toEqual(['approved']);
+        expect(invoices.enqueue).toHaveBeenCalledWith({ kind: 'invoice', orderId: ORDER });
     });
 
     it('Ablehnen gibt die Reservierung frei und speichert die Begruendung', async () => {
@@ -59,8 +63,9 @@ describe('ShopOrdersAdminService.decide', () => {
     });
 
     it('Ablehnen liefert nichts aus', async () => {
-        const { service, fulfillment } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
+        const { service, fulfillment, invoices } = setup({ status: 'held', stripe_payment_intent_id: 'pi_1' });
         await service.reject(ADMIN, ORDER, 'Verdacht auf Betrug');
+        expect(invoices.enqueue).not.toHaveBeenCalled();
         expect(fulfillment.checkKeys).not.toHaveBeenCalled();
         expect(fulfillment.onApproved).not.toHaveBeenCalled();
     });

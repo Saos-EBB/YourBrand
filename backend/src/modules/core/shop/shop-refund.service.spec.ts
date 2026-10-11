@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+// @nestjs/bullmq ist ESM, Jest laedt es nicht (kommt ueber ShopInvoiceService)
+jest.mock('@nestjs/bullmq', () => ({ InjectQueue: () => () => undefined }));
 import { BadGatewayException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { ShopRefundService } from './shop-refund.service';
 
@@ -32,17 +34,18 @@ function setup(order: Order | null, opts: { stripeFails?: boolean; revocable?: n
             return { refundId: 're_1' };
         }),
     };
-    const service = new ShopRefundService(dataSource as any, { payments: () => payments } as any);
+    const invoices = { enqueue: jest.fn(async () => undefined) };
+    const service = new ShopRefundService(dataSource as any, { payments: () => payments } as any, invoices as any);
     const events = () => committed.filter((c) => c.sql.includes('shop_order_events'))
         .map((c) => ({ type: c.sql.includes(`'stripe_error'`) ? 'stripe_error' : 'refunded', data: JSON.parse(c.params[2] as string) }));
-    return { service, payments, committed, events };
+    return { service, payments, committed, events, invoices };
 }
 
 const paid: Order = { status: 'fulfilled', total_cents: 5000, refunded_cents: 0, stripe_payment_intent_id: 'pi_1' };
 
 describe('ShopRefundService.refund', () => {
     it('voll erstatten: Status refunded, offene Codes gesperrt, Protokoll mit Refund-ID', async () => {
-        const { service, payments, committed, events } = setup(paid, { revocable: 2, redeemed: 1 });
+        const { service, payments, committed, events, invoices } = setup(paid, { revocable: 2, redeemed: 1 });
         await expect(service.refund(ADMIN, ORDER, 5000, '  Ware nie angekommen  ')).resolves.toEqual({
             id: ORDER, status: 'refunded', refunded_cents: 5000, revoked: 2, already_redeemed: 1,
         });
@@ -51,6 +54,8 @@ describe('ShopRefundService.refund', () => {
         expect(update.params).toEqual([ORDER, 5000, 'refunded']);
         expect(committed.find((c) => c.sql.startsWith('UPDATE shop_codes'))!.sql).toContain('redeemed_at IS NULL');
         expect(events()).toEqual([{ type: 'refunded', data: { amount_cents: 5000, note: 'Ware nie angekommen', refund_id: 're_1', revoked: 2, already_redeemed: 1 } }]);
+        // Stornorechnung erst nach dem Commit
+        expect(invoices.enqueue).toHaveBeenCalledWith({ kind: 'credit_note', orderId: ORDER, refundId: 're_1', amountCents: 5000 });
     });
 
     it('teilweise ohne Haekchen: Codes bleiben gueltig', async () => {
@@ -88,8 +93,9 @@ describe('ShopRefundService.refund', () => {
     });
 
     it('Stripe-Fehler: nichts geaendert, Fehler bleibt im Protokoll', async () => {
-        const { service, committed, events } = setup(paid, { stripeFails: true });
+        const { service, committed, events, invoices } = setup(paid, { stripeFails: true });
         await expect(service.refund(ADMIN, ORDER, 5000, 'nochmal')).rejects.toBeInstanceOf(BadGatewayException);
+        expect(invoices.enqueue).not.toHaveBeenCalled();
         expect(committed.some((c) => c.sql.startsWith('UPDATE'))).toBe(false);
         expect(events()).toEqual([{ type: 'stripe_error', data: { action: 'refund', message: 'Charge already refunded' } }]);
     });

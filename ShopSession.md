@@ -7,7 +7,7 @@ stehen und wie gearbeitet wird**.
 ## Stand (2026-10-11)
 
 - **Branch:** `feat/shop-module`, zweigt von `main` ab (`f3cce38`).
-- **Schritte 1–4, 6, 7, 9, 10a, 10b und 11 sind fertig.** Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen dazwischen: Schritt 5 (Webhook, Risiko-Regeln — ändert den Vertrag von `PaymentService`, vorher fragen), 8 (Rechnungen).
+- **Schritte 1–4, 6–11 sind fertig.** Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen: Schritt 5 (Webhook, Risiko-Regeln — ändert den Vertrag von `PaymentService`, vorher fragen), 12 (Doku + Tests).
 - Gepusht ist alles bis `5a24df5`. Danach sind lokale Commits dazugekommen (siehe unten). Seit workmode an ist, wird **nicht gepusht**.
 
 | Commit | Schritt |
@@ -52,7 +52,7 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
 
 - Eigener Stack, getrennt von Haupt-Stack und Mandanten: Postgres `shop_demo_db` (:55432), Redis `shop_demo_redis`
   (:56379), Frontend `shop_demo_fe` (`next dev` :3911, eigene Volumes für `node_modules` und `.next`), Backend auf dem
-  Host (:3900), Auto-Login-Proxy (:3901, `scripts/shop-demo/autologin-proxy.js`). Container mit
+  Host (:3900), Worker auf dem Host (Rechnungen, Log `.shop-demo/worker.log`), Auto-Login-Proxy (:3901, `scripts/shop-demo/autologin-proxy.js`). Container mit
   `--restart unless-stopped`; nach einem Neustart des Rechners braucht es nur nochmal `up` für Backend und Proxy.
 - `up` ist idempotent: neue Migrationen werden nachgezogen (`shop_demo_migrations`), Seeds überspringen Vorhandenes.
   Seeds: `demo-seed.ts` (Demo-User), `seed-shop.ts` (1000 Artikel), `scripts/shop-demo/seed-orders.ts`

@@ -103,4 +103,16 @@ export class MailService {
         });
         if (error) throw new Error(error.message);
     }
+
+    // Rechnung als Anhang (nicht als Link: der Bucket ist public-read)
+    async sendShopInvoiceEmail(to: string, subject: string, text: string, filename: string, pdf: Buffer) {
+        const { error } = await this.resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to,
+            subject,
+            html: `<p>${text}</p>`,
+            attachments: [{ filename, content: pdf, contentType: 'application/pdf' }],
+        });
+        if (error) throw new Error(error.message);
+    }
 }

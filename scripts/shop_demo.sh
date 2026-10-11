@@ -12,7 +12,7 @@
 # DB/Redis/Frontend von selbst wieder an, Backend + Proxy brauchen ein "up".
 # Frisch anfangen: down, dann docker volume rm shop_demo_pgdata.
 #
-# Ports: 3901 Shop (Proxy mit Auto-Login) · 3911 Frontend · 3900 Backend
+# Ports: 3901 Shop (Proxy mit Auto-Login) · 3911 Frontend · 3900 Backend (+ Worker ohne Port)
 #        55432 Postgres · 56379 Redis. Zustand/Logs: .shop-demo/ (gitignored).
 # Stripe ist nicht angebunden (Platzhalter-Key): Kasse und "Annehmen" zeigen
 # den Fehlerweg; die Testbestellungen sind deshalb direkt angenommen.
@@ -122,6 +122,17 @@ start_backend() {
   die "Backend antwortet nicht — $STATE/backend.log"
 }
 
+# Worker: Rechnungen (BullMQ), wie im Haupt-Stack ein eigener Prozess
+start_worker() {
+  echo "== Worker (Rechnungen)"
+  if running "$STATE/worker.pid"; then echo "   laeuft schon"; return; fi
+  (cd backend && exec setsid nohup env $(backend_env) TS_NODE_TRANSPILE_ONLY=1 \
+    npx ts-node -r tsconfig-paths/register src/worker.ts >"$STATE/worker.log" 2>&1) &
+  echo $! >"$STATE/worker.pid"
+  sleep 3
+  running "$STATE/worker.pid" || die "Worker abgestuerzt — $STATE/worker.log"
+}
+
 # node_modules und .next in eigenen Volumes: der Bind-Mount von frontend/
 # bleibt sauber, der Haupt-Stack teilt nichts mit diesem Container
 start_frontend() {
@@ -166,6 +177,7 @@ cmd_up() {
   migrate
   seed
   start_backend
+  start_worker
   start_frontend
   write_auth
   start_proxy
@@ -177,6 +189,7 @@ cmd_up() {
 cmd_down() {
   stop_pid "$STATE/proxy.pid" Proxy
   stop_pid "$STATE/backend.pid" Backend
+  stop_pid "$STATE/worker.pid" Worker
   docker stop $FE $REDIS $DB >/dev/null 2>&1 || true
   echo "   Container gestoppt (Daten bleiben in shop_demo_pgdata)"
 }

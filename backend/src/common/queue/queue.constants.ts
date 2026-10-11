@@ -13,3 +13,6 @@ export const DEFAULT_JOB_OPTIONS = {
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 500 },
 };
+
+// Shop: Rechnungen/Stornorechnungen als PDF erzeugen und per Mail senden (nur mit Modul shop)
+export const SHOP_INVOICE_QUEUE = 'shop-invoice';

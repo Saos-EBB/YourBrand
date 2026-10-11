@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Clock } from 'lucide-react'
-import { fetchApi } from '@/lib/api'
+import { AlertTriangle, Clock, Download } from 'lucide-react'
+import { downloadApiFile, fetchApi } from '@/lib/api'
 import {
   CASE_KIND_LABEL, CASE_REASON_LABEL, CASE_STATUS_LABEL, REPORT_REASONS, DELIVERY_MODE_LABEL, HOLD_REASON_LABEL, NOT_MET_FROM, ORDER_STATUS_LABEL, PROGRESS_FLOW, PROGRESS_LABEL, centsToEuroInput, euroToCents, formatPrice, orderNumber,
-  type AdminShopOrderDetail, type AdminShopOrderEvent, type PhysicalMode, type ShopCaseKind, type ShopOrderStatus, type ShopProgress,
+  type AdminShopOrderDetail, type AdminShopOrderEvent, type ShopInvoice, type PhysicalMode, type ShopCaseKind, type ShopOrderStatus, type ShopProgress,
 } from '@/lib/shop'
 import { Sheet, adminField, primaryBtn, secondaryBtn } from './Sheet'
 import { formatDateTime, timeLeft, useNow } from './time'
@@ -25,6 +25,7 @@ const EVENT_LABEL: Record<string, string> = {
   case_opened: 'Fall eröffnet',
   refunded: 'Erstattet',
   reminder: 'Erinnerung: Frist läuft bald ab',
+  invoice_issued: 'Beleg erstellt',
 }
 
 // Schnellauswahl beim Ablehnen — landet als Text im Feld, Begruendung bleibt Pflicht
@@ -202,6 +203,9 @@ export function OrderSheet({ id, onClose, onDecided, onChanged }: {
           <Cases order={order} onReported={() => { setReload((n) => n + 1); onChanged('Käufer gemeldet — steht unter Fälle') }} />
           <Delivery order={order} />
           <Items order={order} />
+          {REFUNDABLE.includes(order.status) || order.status === 'refunded'
+            ? <Invoices order={order} onQueued={(msg) => { onChanged(msg); setTimeout(() => setReload((n) => n + 1), 3000) }} />
+            : null}
           <Timeline events={order.events} />
         </div>
       )}
@@ -357,6 +361,9 @@ function Items({ order }: { order: AdminShopOrderDetail }) {
 
 function eventDetail(e: AdminShopOrderEvent): string | null {
   const d = e.data
+  if (e.type === 'invoice_issued' && typeof d.number === 'string') {
+    return typeof d.amount_cents === 'number' ? `${d.number} · ${formatPrice(d.amount_cents, 'de')}` : d.number
+  }
   if (e.type === 'refunded' && typeof d.amount_cents === 'number') {
     return [
       formatPrice(d.amount_cents, 'de'),
@@ -662,5 +669,70 @@ function BlockBuyer({ userId, blocked, onChanged }: { userId: string; blocked: b
         </button>
       </div>
     </div>
+  )
+}
+
+// Rechnung + Stornorechnungen; der Worker erzeugt und versendet sie
+function Invoices({ order, onQueued }: { order: AdminShopOrderDetail; onQueued: (message: string) => void }) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const hasInvoice = order.invoices.some((i) => i.kind === 'invoice')
+
+  async function download(inv: ShopInvoice) {
+    setBusy(inv.id)
+    setError('')
+    try {
+      await downloadApiFile(`/admin/shop/invoices/${inv.id}/pdf`, `${inv.invoice_number}.pdf`)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function send() {
+    setBusy('send')
+    setError('')
+    try {
+      await fetchApi(`/admin/shop/orders/${order.id}/invoices`, { method: 'POST' })
+      onQueued(hasInvoice ? 'Rechnung wird erneut gesendet' : 'Rechnung wird erstellt und gesendet')
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <Section title="Belege">
+      {order.invoices.length > 0 ? (
+        <ul role="list" className="divide-y divide-outline-variant/50 rounded-xl bg-surface-container px-4 text-sm">
+          {order.invoices.map((inv) => (
+            <li key={inv.id} className="flex items-center gap-3 py-2.5">
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-on-surface">
+                  {inv.kind === 'invoice' ? 'Rechnung' : 'Stornorechnung'} <span className="font-mono">{inv.invoice_number}</span>
+                </span>
+                <span className="text-xs text-on-surface-variant">
+                  {formatPrice(inv.amount_cents, 'de')} · {formatDateTime(inv.issued_at)} · {inv.sent_at
+                    ? `gesendet ${formatDateTime(inv.sent_at)}`
+                    : <span className="font-semibold text-error">nicht gesendet</span>}
+                </span>
+              </span>
+              <button onClick={() => download(inv)} disabled={busy === inv.id} aria-label={`${inv.invoice_number} als PDF laden`}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface disabled:opacity-50">
+                <Download size={15} aria-hidden /> PDF
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-xl bg-surface-container px-4 py-3 text-sm text-on-surface-variant">Noch keine Rechnung — entsteht kurz nach der Annahme im Hintergrund.</p>
+      )}
+      {error && <p className="text-sm text-error" role="alert">{error}</p>}
+      <button onClick={send} disabled={busy === 'send'} className="text-sm font-semibold text-on-surface-variant hover:text-on-surface disabled:opacity-50">
+        {busy === 'send' ? 'Wird eingereiht …' : hasInvoice ? 'Rechnung erneut senden' : 'Rechnung erstellen & senden'}
+      </button>
+    </Section>
   )
 }

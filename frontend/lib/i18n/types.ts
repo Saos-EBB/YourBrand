@@ -1212,6 +1212,11 @@ export interface Translations {
     stRefunded: string
     stPartiallyRefunded: string
     refundedAmount: string
+    invoicesTitle: string
+    invoiceLabel: string
+    creditNoteLabel: string
+    downloadPdf: string
+    invoiceComing: string
     trackingNumber: string
     codeLicense: string
     codeUnlock: string

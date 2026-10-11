@@ -2,6 +2,7 @@ import { BadGatewayException, BadRequestException, ConflictException, Injectable
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ModuleBroker } from '../../shared/broker/module-broker';
+import { ShopInvoiceService } from './shop-invoice.service';
 
 // Erstatten geht nur, wenn schon abgebucht ist
 const REFUNDABLE = ['approved', 'fulfilled', 'partially_refunded'];
@@ -18,15 +19,19 @@ export class ShopRefundService {
     constructor(
         @InjectDataSource() private readonly dataSource: DataSource,
         private readonly broker: ModuleBroker,
+        private readonly invoices: ShopInvoiceService,
     ) { }
 
     // Volle Erstattung sperrt alle noch nicht eingeloesten Keys/Codes, bei
     // Teil-Erstattung nur auf Wunsch. Eingeloeste Codes bleiben (Coins sind gutgeschrieben).
     async refund(adminId: string, id: string, amountCents: number, note: string, revokeCodes = false) {
         note = note.trim();
+        // in der Transaktion gesetzt (Objekt statt let: TS verfolgt Zuweisungen in Closures nicht)
+        const refunded: { refundId: string | null } = { refundId: null };
+        let result;
         try {
             // FOR UPDATE ueber den Stripe-Aufruf hinweg: zwei Admins erstatten nicht doppelt
-            return await this.dataSource.transaction(async (m) => {
+            result = await this.dataSource.transaction(async (m) => {
                 const [order] = await m.query(
                     'SELECT status, total_cents, refunded_cents, stripe_payment_intent_id FROM shop_orders WHERE id = $1 FOR UPDATE', [id],
                 );
@@ -72,6 +77,7 @@ export class ShopRefundService {
                     `INSERT INTO shop_order_events (order_id, actor_id, type, data) VALUES ($1, $2, 'refunded', $3)`,
                     [id, adminId, JSON.stringify({ amount_cents: amountCents, note, refund_id: refundId, revoked, already_redeemed: redeemed })],
                 );
+                refunded.refundId = refundId;
                 return { id, status, refunded_cents: order.refunded_cents + amountCents, revoked, already_redeemed: redeemed };
             });
         } catch (err) {
@@ -85,6 +91,9 @@ export class ShopRefundService {
             );
             throw new BadGatewayException(`Stripe: ${message} — nichts erstattet`);
         }
+        // Stornorechnung je Erstattung (Refund-ID macht es idempotent)
+        if (refunded.refundId) await this.invoices.enqueue({ kind: 'credit_note', orderId: id, refundId: refunded.refundId, amountCents });
+        return result;
     }
 
     // Sperrt nur den Shop (nicht den Account). Nochmal sperren ersetzt die alte Sperre.

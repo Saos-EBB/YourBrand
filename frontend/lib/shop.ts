@@ -200,6 +200,7 @@ export interface AdminShopOrderDetail extends Omit<AdminShopOrder, 'item_count' 
   cases: { id: string; kind: ShopCaseKind; reason: string; status: ShopCaseStatus; priority: string; created_at: string }[]
   // Aktive Shop-Sperre des Kaeufers, until null = unbefristet
   buyer_block: { reason: string; until: string | null; created_at: string; blocked_by_nickname: string | null } | null
+  invoices: ShopInvoice[]
 }
 
 // Kurze Bestellnummer fuer Anzeige und Suche
@@ -348,4 +349,14 @@ export interface ShopAttention {
   held: number
   cases_open: number
   urgent: number
+}
+
+// Rechnungen und Stornorechnungen einer Bestellung; Storno-Betraege negativ
+export interface ShopInvoice {
+  id: string
+  kind: 'invoice' | 'credit_note'
+  invoice_number: string
+  amount_cents: number
+  issued_at: string
+  sent_at: string | null
 }

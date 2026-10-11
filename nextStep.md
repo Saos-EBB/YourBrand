@@ -112,6 +112,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
    - ✅ **7a** Keys zuteilen/Codes erzeugen bei der Annahme (vorher Prüfung: genug Keys, sonst kein Abbuchen), Lieferstand für Essen/Versand im Admin, Käufer: „Meine Bestellungen“ mit Fortschritt und Keys/Codes
    - ✅ **7b** `/shop/redeem` + „Jetzt einlösen“: Coins über die neue Vermittlung `ModuleBroker` (shared). Premium-Codes vorerst „bleibt gültig“ (Premium-Modell offen)
 8. Rechnungen + Stornorechnungen (BullMQ-Worker wie GDPR-Export, pdfkit, Resend mit Anhang)
+   - ✅ Rechnung bei der Annahme, Stornorechnung je Erstattung (Worker, pdfkit, Mail mit Anhang), Belege für Käufer und Admin zum Herunterladen, „Rechnung erneut senden“
 9. Fälle: Melden in beide Richtungen, Support, Nachrichtenverlauf
    - ✅ Käufer meldet Problem (Verlauf, Antworten), Team meldet Käufer (intern), „nicht angetroffen“ öffnet dringenden Fall, Admin-Tab „Fälle“. Offen: Alarme, Nachfass-Cron, Stripe-Disputes, Shop-Sperre
 10. Frontend Käufer: Liste mit Filtern, Warenkorb, Checkout, Bestellungen, Problem melden

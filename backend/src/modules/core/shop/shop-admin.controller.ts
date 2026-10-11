@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Res, StreamableFile, ParseUUIDPipe, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -9,6 +10,7 @@ import { ShopOrdersAdminService } from './shop-orders-admin.service';
 import { AdminListOrdersQuery, ApproveOrderDto, BlockBuyerDto, RefundOrderDto, RejectOrderDto, SetProgressDto } from './dto/admin-order.dto';
 import { ShopRefundService } from './shop-refund.service';
 import { ShopAlertService } from './shop-alert.service';
+import { ShopInvoiceService } from './shop-invoice.service';
 import { ShopFulfillmentService } from './shop-fulfillment.service';
 import { ShopCasesService } from './shop-cases.service';
 import { AdminCaseMessageDto, AdminListCasesQuery, ReportBuyerDto, ResolveCaseDto } from './dto/case.dto';
@@ -28,6 +30,7 @@ export class ShopAdminController {
         private readonly cases: ShopCasesService,
         private readonly refunds: ShopRefundService,
         private readonly alerts: ShopAlertService,
+        private readonly invoices: ShopInvoiceService,
     ) { }
 
     @Get('attention')
@@ -92,6 +95,19 @@ export class ShopAdminController {
         return this.refunds.refund(req.user.sub, id, dto.amountCents, dto.note, dto.revokeCodes);
     }
 
+    // Rechnung anlegen falls sie fehlt, und (erneut) senden
+    @Throttle({ default: { ttl: 60_000, limit: 10 } })
+    @Post('orders/:id/invoices')
+    resendInvoice(@Param('id', ParseUUIDPipe) id: string) {
+        return this.invoices.resend(id);
+    }
+
+    @Get('invoices/:id/pdf')
+    async invoicePdf(@Param('id', ParseUUIDPipe) id: string, @Res({ passthrough: true }) res: Response) {
+        const { number, pdf } = await this.invoices.pdf(id, null);
+        return pdfFile(res, number, pdf);
+    }
+
     @Put('blocks/:userId')
     block(@Req() req: any, @Param('userId', ParseUUIDPipe) userId: string, @Body() dto: BlockBuyerDto) {
         return this.refunds.block(req.user.sub, userId, dto.reason, dto.days);
@@ -126,4 +142,10 @@ export class ShopAdminController {
     resolveCase(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ResolveCaseDto) {
         return this.cases.resolve(req.user.sub, id, dto.resolution);
     }
+}
+
+// PDF als Download, nie im Cache (Rechnungen enthalten Name und Adresse)
+export function pdfFile(res: Response, number: string, pdf: Buffer): StreamableFile {
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${number}.pdf"`, 'Cache-Control': 'private, no-store' });
+    return new StreamableFile(pdf);
 }

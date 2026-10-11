@@ -44,10 +44,8 @@ function buildHeaders(token: string | null, init?: HeadersInit, rawBody?: boolea
   return headers
 }
 
-export async function fetchApi<T>(
-  path: string,
-  options: FetchApiOptions = {}
-): Promise<T> {
+// Gemeinsamer Weg fuer JSON und Dateien: Token, einmal Refresh bei 401, Fehlertext aus dem Body
+async function request(path: string, options: FetchApiOptions = {}): Promise<Response> {
   const { rawBody, ...fetchOptions } = options
   const { accessToken } = useAuthStore.getState()
   const skipContentType = rawBody || fetchOptions.body instanceof FormData
@@ -78,7 +76,27 @@ export async function fetchApi<T>(
     const body = await res.json().catch(() => ({})) as { message?: string }
     throw new Error(body.message ?? 'Request failed')
   }
+  return res
+}
 
+export async function fetchApi<T>(
+  path: string,
+  options: FetchApiOptions = {}
+): Promise<T> {
+  const res = await request(path, options)
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T
   return res.json() as Promise<T>
+}
+
+// Datei mit Login laden und als Download speichern (z. B. Rechnungs-PDF)
+export async function downloadApiFile(path: string, filename: string): Promise<void> {
+  const blob = await (await request(path)).blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
