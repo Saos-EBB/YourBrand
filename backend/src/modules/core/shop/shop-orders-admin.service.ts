@@ -71,7 +71,7 @@ export class ShopOrdersAdminService {
         );
         if (!order) throw new NotFoundException('Bestellung nicht gefunden');
 
-        const [items, events, [history]] = await Promise.all([
+        const [items, events, [history], cases] = await Promise.all([
             this.dataSource.query(
                 `SELECT i.id, i.product_id, i.sku, i.title, i.fulfillment, i.quantity, i.unit_price_cents, i.vat_rate::float AS vat_rate,
                         (SELECT count(*)::int FROM shop_codes c WHERE c.order_item_id = i.id) AS codes_assigned
@@ -89,13 +89,17 @@ export class ShopOrdersAdminService {
                 ? this.dataSource.query(
                     `SELECT count(*) FILTER (WHERE status IN ('approved', 'fulfilled'))::int AS completed,
                             count(*) FILTER (WHERE status = 'rejected')::int AS rejected,
-                            count(*) FILTER (WHERE status IN ('refunded', 'partially_refunded'))::int AS refunded
+                            count(*) FILTER (WHERE status IN ('refunded', 'partially_refunded'))::int AS refunded,
+                            (SELECT count(*)::int FROM shop_cases c WHERE c.against_user_id = $1 AND c.kind IN ('report', 'not_met')) AS reports
                        FROM shop_orders WHERE user_id = $1 AND id <> $2`,
                     [order.user_id, id],
                 )
                 : Promise.resolve([null]),
+            this.dataSource.query(
+                `SELECT id, kind, reason, status, priority, created_at FROM shop_cases WHERE order_id = $1 ORDER BY created_at`, [id],
+            ),
         ]);
-        return { ...order, items, events, buyer_history: history };
+        return { ...order, items, events, buyer_history: history, cases };
     }
 
     // Annehmen = Vertrag: reservierten Betrag abbuchen

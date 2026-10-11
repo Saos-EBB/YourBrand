@@ -11,6 +11,8 @@ import { MyOrdersQuery } from './dto/my-orders.query';
 import { ShopOrdersService } from './shop-orders.service';
 import { ShopRedeemService } from './shop-redeem.service';
 import { RedeemCodeDto } from './dto/redeem.dto';
+import { ShopCasesService } from './shop-cases.service';
+import { CaseMessageDto, OpenProblemDto } from './dto/case.dto';
 
 @RequiresModule('shop')
 @UseGuards(JwtGuard)
@@ -21,6 +23,7 @@ export class ShopController {
         private readonly checkoutService: ShopCheckoutService,
         private readonly orders: ShopOrdersService,
         private readonly redeemService: ShopRedeemService,
+        private readonly cases: ShopCasesService,
     ) { }
 
     // Was der Kaeufer vor der Bestellung sehen muss (Versandkosten, PAngV)
@@ -67,5 +70,22 @@ export class ShopController {
     @Post('redeem')
     redeem(@Req() req: any, @Body() dto: RedeemCodeDto) {
         return this.redeemService.redeem(req.user.sub, dto.code);
+    }
+
+    @Get('orders/:id/cases')
+    myCases(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+        return this.cases.buyerCases(req.user.sub, id);
+    }
+
+    @Throttle({ default: { ttl: 3_600_000, limit: 10 } })
+    @Post('orders/:id/cases')
+    openProblem(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: OpenProblemDto) {
+        return this.cases.openProblem(req.user.sub, id, dto);
+    }
+
+    @Throttle({ default: { ttl: 3_600_000, limit: 60 } })
+    @Post('cases/:id/messages')
+    replyCase(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CaseMessageDto) {
+        return this.cases.buyerReply(req.user.sub, id, dto.body);
     }
 }

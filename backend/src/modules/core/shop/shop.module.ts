@@ -9,6 +9,7 @@ import { ShopOrdersAdminService } from './shop-orders-admin.service';
 import { ShopFulfillmentService } from './shop-fulfillment.service';
 import { ShopOrdersService } from './shop-orders.service';
 import { ShopRedeemService } from './shop-redeem.service';
+import { ShopCasesService } from './shop-cases.service';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
 // Shop (Mandanten-Modul "shop"), nur geladen, wenn tenant.json es
@@ -17,6 +18,6 @@ import { SystemSettingsModule } from '../system-settings/system-settings.module'
 @Module({
     imports: [SystemSettingsModule],
     controllers: [ShopController, ShopAdminController],
-    providers: [ShopService, ShopCheckoutService, ShopAdminService, ShopOrdersAdminService, ShopFulfillmentService, ShopOrdersService, ShopRedeemService, JwtGuard],
+    providers: [ShopService, ShopCheckoutService, ShopAdminService, ShopOrdersAdminService, ShopFulfillmentService, ShopOrdersService, ShopRedeemService, ShopCasesService, JwtGuard],
 })
 export class ShopModule { }

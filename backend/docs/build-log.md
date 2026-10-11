@@ -1,3 +1,20 @@
+## 2026-10-11 — feat(shop): Faelle — Problem melden, Kaeufer melden — Shop Schritt 9 (Backend)
+**Was:** `ShopCasesService` auf den Tabellen aus 007. Kaeufer: `POST /shop/orders/:id/cases` (Grund aus
+`PROBLEM_REASONS`, Beschreibung 10–2000 Zeichen, nur eigene Bestellung, nicht bei abgebrochener Kasse, eine offene
+Meldung pro Bestellung — sonst 409), `GET /shop/orders/:id/cases` (Verlauf ohne interne Notizen),
+`POST /shop/cases/:id/messages` (Antwort; Fall geht von „wartet“ zurueck auf „offen“). Team unter `/admin/shop`:
+`GET cases` (aktiv/offen/wartet/erledigt, dringend zuerst, dann nach Frist), `GET cases/:id`, `POST cases/:id/messages`
+(oeffentlich → Kaeufer ist dran, oder interne Notiz; Meldungen gegen Kaeufer sind immer intern),
+`POST cases/:id/resolve` (Ergebnis Pflicht), `POST orders/:id/report` (Kaeufer melden: nicht angetroffen, Missbrauch,
+Betrugsverdacht — intern). Lieferstand „nicht angetroffen“ oeffnet in derselben Transaktion einen dringenden Fall
+(Frist 2 Std.). Jeder neue Fall steht im Bestell-Protokoll (`case_opened`); Bestell-Detail im Admin zeigt die Faelle
+und in der Vorgeschichte die Meldungen gegen den Kaeufer. 60 Tests gruen.
+Gegen den neuen Demo-Stack per curl: zweite Meldung 409, oeffentliche Antwort → wartet, interne Notiz fuer den Kaeufer
+unsichtbar, Kaeufer antwortet → offen, nicht angetroffen → dringender Fall, Meldung, abschliessen, danach keine
+Antwort mehr (409), fremde Bestellung 404.
+**Nicht gebaut:** Shop-Sperre, Alarme (Socket/Mail, `admin_tickets`), Nachfass-Cron fuer `due_at`, Stripe-Disputes,
+Anhaenge. Frontend folgt im naechsten Commit.
+
 ## 2026-10-11 — feat(shared): Vermittlung zwischen Modulen + Codes einloesen — Shop Schritt 7b
 **Was:** Wunsch des Users: Module reden nur ueber einen Vermittler, nie direkt, damit man sie leichter an- und
 abstecken kann. `ModuleBroker` in `shared/` (global): Anbieter melden sich beim Start an, Nutzer fragen dort nach;

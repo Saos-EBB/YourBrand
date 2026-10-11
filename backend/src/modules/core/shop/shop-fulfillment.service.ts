@@ -4,6 +4,7 @@ import { DataSource, EntityManager } from 'typeorm';
 import { encryptField } from '../../../common/crypto/crypto.helper';
 import { hashShopCode } from './shop-admin.service';
 import { generateUnlockCode, progressError, type ShopProgress } from './shop-fulfillment';
+import { ShopCasesService } from './shop-cases.service';
 
 interface DigitalItem { id: string; product_id: string; fulfillment: string; quantity: number; title: string }
 
@@ -11,7 +12,10 @@ interface DigitalItem { id: string; product_id: string; fulfillment: string; qua
 // und spaeter auch von der automatischen Annahme (Schritt 5).
 @Injectable()
 export class ShopFulfillmentService {
-    constructor(@InjectDataSource() private readonly dataSource: DataSource) { }
+    constructor(
+        @InjectDataSource() private readonly dataSource: DataSource,
+        private readonly cases: ShopCasesService,
+    ) { }
 
     // Vor dem Abbuchen: reichen die freien Keys? Sonst gar nicht erst Geld nehmen.
     async checkKeys(orderId: string): Promise<void> {
@@ -106,6 +110,8 @@ export class ShopFulfillmentService {
                 `INSERT INTO shop_order_events (order_id, actor_id, type, data) VALUES ($1, $2, 'progress', $3)`,
                 [orderId, adminId, JSON.stringify({ progress: next, ...(tracking ? { tracking_number: tracking } : {}) })],
             );
+            // Nicht angetroffen: ein Mensch klaert das (Annahmeverzug), daher sofort ein dringender Fall
+            if (next === 'not_met') await this.cases.openNotMet(m, adminId, orderId);
             return { id: orderId, status: done ? 'fulfilled' : 'approved', progress: next };
         });
     }
