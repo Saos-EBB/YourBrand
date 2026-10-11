@@ -7,7 +7,7 @@ stehen und wie gearbeitet wird**.
 ## Stand (2026-10-11)
 
 - **Branch:** `feat/shop-module`, zweigt von `main` ab (`f3cce38`).
-- **Schritte 1–11 sind fertig.** Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen: 12 (Doku + Tests), dann Stripe-Keys und Zahlungstests.
+- **Schritte 1–12 sind fertig.** Überblick über das ganze Modul: [`backend/docs/shop.md`](backend/docs/shop.md). Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen: Stripe-Keys und Zahlungstests.
 - Gepusht ist alles bis `5a24df5`. Danach sind lokale Commits dazugekommen (siehe unten). Seit workmode an ist, wird **nicht gepusht**.
 
 | Commit | Schritt |
@@ -63,7 +63,8 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
   über der Frist bleiben deshalb angehalten (der Cron schreibt einmal `stripe_error`), Alarm-Mails scheitern am
   Resend-Platzhalter (steht als Warnung im Log `.shop-demo/backend.log`).
 - In der Demo ist `gutz` Admin und Käufer zugleich — Team-Antworten in einem Fall erscheinen daher beim Käufer als „eigene“.
-- **Unit-Tests:** `cd backend && npx jest src/modules/core/shop src/modules/shared src/common/tenant`
+- **Unit-Tests:** `cd backend && npx jest src/modules/core/shop src/modules/shared src/modules/core/payment src/common/tenant`
+- **Integrationstest:** `scripts/shop_test.sh` (frische DB `yb_shoptest` im Demo-Container, ganzer Ablauf mit echtem SQL)
 - **Typecheck:** `npx tsc --noEmit -p tsconfig.json --incremental false`. Die Fehler in `rps.handler.spec.ts` gab es vorher schon.
 - **Frontend-Typecheck/Lint:** `docker exec shop_demo_fe sh -c 'npx tsc --noEmit && npx eslint <pfade>'`
 - Playwright liegt in `/home/silence/instantJobbot/node_modules/playwright`.

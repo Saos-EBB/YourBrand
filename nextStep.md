@@ -121,7 +121,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
     - ✅ **10b** Warenkorb (eine Lieferart pro Bestellung), Kasse mit Feldern je Lieferart, Stripe eingebettet, Dankeseite; `GET /shop/settings` für die Versandpauschale
     - ✅ Bestellungen (mit 7a), Problem melden (mit 9)
 11. ✅ **Admin-Pflege** `/admin/shop`: Artikel anlegen/bearbeiten mit Vorschau, aus-/einblenden, CSV-Import mit Probelauf (alles oder nichts), Keys verschlüsselt hinzufügen
-12. Doku + Tests
+12. ✅ Doku + Tests: `backend/docs/shop.md`, Integrationstest gegen echtes Postgres (`scripts/shop_test.sh`)
 
 ## Offen / nicht gebaut
 - **Regel: Feature-Module nur über `ModuleBroker`** (Wunsch des Users, damit Module pro Mandant sauber an/aus gehen). Shop ist umgestellt. Offen: `MatchingModule` → `PaymentModule` direkt

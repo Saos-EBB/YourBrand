@@ -1,3 +1,15 @@
+## 2026-10-12 — docs/test(shop): Modul-Doku + Integrationstest — Shop Schritt 12
+**Was:** `docs/shop.md` fasst das Modul an einer Stelle zusammen (Ablauf, Status, Regeln + Einstellungen,
+Broker-Vertraege, Auslieferung, Erstatten/Sperren/Faelle, Alarme/Cron, Rechnungen, Endpunkte, Demo/Tests).
+`shop.integration.spec.ts` spielt mit den echten Services gegen echtes Postgres durch: Kasse → Webhook → System nimmt
+an (Key, Code, Rechnung, Code einloesen) · ueber 150 € angehalten → Mensch nimmt an → Bestand 0 → Kasse abgewiesen →
+Lieferstand → zugestellt · Erstattung im Admin + im Dashboard (nichts doppelt, Nummern 1–4 ohne Luecke) · Rueckbuchung
+doppelt gemeldet → ein Fall · Kaeufer mit Rueckbuchung → angehalten → Erinnerung einmal → verfallen → Stripe-Aufhebung
+danach aendert nichts · abgebrochene Kasse unsichtbar. Ersetzt: Stripe, Mail, Socket, Queue. `scripts/shop_test.sh`
+legt dafuer jedes Mal `yb_shoptest` frisch an (Demo-Container, alle Migrationen); ohne `SHOP_IT_DB` wird uebersprungen.
+6/6 gruen, zweimal hintereinander.
+**Nicht gebaut:** Browser-Tests als feste Suite, Lasttests, Controller-/Routing-Tests.
+
 ## 2026-10-12 — fix(shop): Bestand beim Annehmen herunterzaehlen
 **Was:** Luecke aus Schritt 5: Bestand (Essen/Merch) wurde nie verringert. `checkAvailability` (vorher `checkKeys`)
 prueft vor dem Abbuchen Keys und Bestand (gleiche Artikel ueber Positionen summiert, NULL = unbegrenzt) → Admin 409,
