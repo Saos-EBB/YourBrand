@@ -40,4 +40,12 @@ export class StripePaymentGateway implements PaymentGateway, OnModuleInit {
     async cancel(paymentIntentId: string, idempotencyKey: string) {
         await this.stripeService.stripe.paymentIntents.cancel(paymentIntentId, {}, { idempotencyKey });
     }
+
+    async refund(paymentIntentId: string, amountCents: number, idempotencyKey: string) {
+        const refund = await this.stripeService.stripe.refunds.create(
+            { payment_intent: paymentIntentId, amount: amountCents },
+            { idempotencyKey },
+        );
+        return { refundId: refund.id };
+    }
 }

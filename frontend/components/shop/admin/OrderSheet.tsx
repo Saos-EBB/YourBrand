@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { AlertTriangle, Clock } from 'lucide-react'
 import { fetchApi } from '@/lib/api'
 import {
-  CASE_KIND_LABEL, CASE_REASON_LABEL, CASE_STATUS_LABEL, REPORT_REASONS, DELIVERY_MODE_LABEL, HOLD_REASON_LABEL, NOT_MET_FROM, ORDER_STATUS_LABEL, PROGRESS_FLOW, PROGRESS_LABEL, formatPrice, orderNumber,
+  CASE_KIND_LABEL, CASE_REASON_LABEL, CASE_STATUS_LABEL, REPORT_REASONS, DELIVERY_MODE_LABEL, HOLD_REASON_LABEL, NOT_MET_FROM, ORDER_STATUS_LABEL, PROGRESS_FLOW, PROGRESS_LABEL, centsToEuroInput, euroToCents, formatPrice, orderNumber,
   type AdminShopOrderDetail, type AdminShopOrderEvent, type PhysicalMode, type ShopCaseKind, type ShopOrderStatus, type ShopProgress,
 } from '@/lib/shop'
 import { Sheet, adminField, primaryBtn, secondaryBtn } from './Sheet'
@@ -23,6 +23,7 @@ const EVENT_LABEL: Record<string, string> = {
   progress: 'Lieferstand',
   redeemed: 'Code eingelöst',
   case_opened: 'Fall eröffnet',
+  refunded: 'Erstattet',
 }
 
 // Schnellauswahl beim Ablehnen — landet als Text im Feld, Begruendung bleibt Pflicht
@@ -33,6 +34,13 @@ const REJECT_REASONS = [
   'Käufer nicht erreichbar',
 ]
 
+const REFUND_REASONS = ['Ware nicht angekommen', 'Artikel fehlte', 'Beschädigt', 'Kulanz']
+const BLOCK_REASONS = ['Rückbuchung', 'Mehrfach nicht angetroffen', 'Betrugsverdacht', 'Beleidigend']
+const BLOCK_DAYS: { label: string; days: number | null }[] = [
+  { label: '7 Tage', days: 7 }, { label: '30 Tage', days: 30 }, { label: 'Unbefristet', days: null },
+]
+const REFUNDABLE: ShopOrderStatus[] = ['approved', 'fulfilled', 'partially_refunded']
+
 // Stripe Radar risk_level
 const RADAR_LABEL: Record<string, string> = { normal: 'normal', elevated: 'erhöht', highest: 'hoch' }
 
@@ -40,6 +48,8 @@ const BADGE: Partial<Record<ShopOrderStatus, string>> = {
   held: 'bg-error-container/50 text-error',
   approved: 'bg-primary-fixed-dim/15 text-primary-fixed-dim',
   fulfilled: 'bg-primary-fixed-dim/15 text-primary-fixed-dim',
+  refunded: 'bg-error-container/50 text-error',
+  partially_refunded: 'bg-error-container/50 text-error',
 }
 
 export function StatusBadge({ status }: { status: ShopOrderStatus }) {
@@ -62,7 +72,7 @@ export function ReasonChips({ reasons }: { reasons: string[] }) {
   )
 }
 
-type Mode = 'idle' | 'approve' | 'reject'
+type Mode = 'idle' | 'approve' | 'reject' | 'refund'
 
 export function OrderSheet({ id, onClose, onDecided, onChanged }: {
   id: string
@@ -90,7 +100,11 @@ export function OrderSheet({ id, onClose, onDecided, onChanged }: {
 
   const order = detail?.id === id ? detail : null
   const held = order?.status === 'held'
-  const shipping = order?.status === 'approved' && order.delivery_mode !== 'digital' && order.progress !== 'not_met'
+  // Teil-Erstattung haelt die Lieferung nicht auf
+  const shipping = !!order && (order.status === 'approved' || (order.status === 'partially_refunded' && !order.fulfilled_at))
+    && order.delivery_mode !== 'digital' && order.progress !== 'not_met'
+  const refundable = !!order && REFUNDABLE.includes(order.status) && !!order.stripe_payment_intent_id && order.refunded_cents < order.total_cents
+  const changed = (msg: string) => { setReload((n) => n + 1); onChanged(msg) }
 
   async function decide() {
     if (!order) return
@@ -118,8 +132,15 @@ export function OrderSheet({ id, onClose, onDecided, onChanged }: {
     setError('')
   }
 
-  const footer = shipping ? (
-    <ProgressFooter key={order.progress} order={order} onDone={(msg) => { setReload((n) => n + 1); onChanged(msg) }} />
+  const refundLink = refundable
+    ? <button onClick={() => choose('refund')} className="text-sm font-semibold text-on-surface-variant hover:text-error">Erstatten …</button>
+    : null
+  const footer = order && mode === 'refund' ? (
+    <RefundFooter order={order} onCancel={() => choose('idle')} onDone={(msg) => { choose('idle'); changed(msg) }} />
+  ) : shipping ? (
+    <ProgressFooter key={order.progress} order={order} onDone={changed} extra={refundLink} />
+  ) : refundLink ? (
+    <div className="flex justify-end">{refundLink}</div>
   ) : !held ? undefined : (
     <div className="space-y-3">
       {error && <p className="rounded-lg bg-error-container/40 px-3 py-2 text-sm text-error" role="alert">{error}</p>}
@@ -176,7 +197,7 @@ export function OrderSheet({ id, onClose, onDecided, onChanged }: {
       ) : (
         <div className="space-y-6">
           <Status order={order} now={now} />
-          <Buyer order={order} />
+          <Buyer order={order} onChanged={changed} />
           <Cases order={order} onReported={() => { setReload((n) => n + 1); onChanged('Käufer gemeldet — steht unter Fälle') }} />
           <Delivery order={order} />
           <Items order={order} />
@@ -226,7 +247,10 @@ function Status({ order, now }: { order: AdminShopOrderDetail; now: number }) {
           {formatDateTime(order.decided_at)}{order.decided_by_nickname ? ` von ${order.decided_by_nickname}` : ' vom System'}
         </span>
       )}
-      {order.progress && order.status === 'approved' && (
+      {order.refunded_cents > 0 && (
+        <span className="font-semibold text-error">{formatPrice(order.refunded_cents, 'de')} von {formatPrice(order.total_cents, 'de')} erstattet</span>
+      )}
+      {order.progress && (order.status === 'approved' || order.status === 'partially_refunded') && (
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${order.progress === 'not_met' ? 'bg-error-container/50 text-error' : 'bg-surface-container-highest text-on-surface'}`}>
           {PROGRESS_LABEL[order.progress]}
         </span>
@@ -246,7 +270,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
-function Buyer({ order }: { order: AdminShopOrderDetail }) {
+function Buyer({ order, onChanged }: { order: AdminShopOrderDetail; onChanged: (message: string) => void }) {
   const h = order.buyer_history
   const history = !h ? 'Konto gelöscht'
     : h.completed + h.rejected + h.refunded === 0 ? 'Erste Bestellung'
@@ -268,7 +292,18 @@ function Buyer({ order }: { order: AdminShopOrderDetail }) {
             <span className={order.radar_risk === 'normal' ? '' : 'font-semibold text-error'}>{RADAR_LABEL[order.radar_risk] ?? order.radar_risk}</span>
           </Row>
         )}
+        {order.buyer_block && (
+          <Row label="Shop-Sperre">
+            <span className="font-semibold text-error">
+              {order.buyer_block.until ? `bis ${formatDateTime(order.buyer_block.until)}` : 'unbefristet'}
+            </span>
+            <span className="block text-on-surface-variant">
+              „{order.buyer_block.reason}“ · {formatDateTime(order.buyer_block.created_at)}{order.buyer_block.blocked_by_nickname ? ` von ${order.buyer_block.blocked_by_nickname}` : ''}
+            </span>
+          </Row>
+        )}
       </dl>
+      {order.user_id && <BlockBuyer userId={order.user_id} blocked={!!order.buyer_block} onChanged={onChanged} />}
     </Section>
   )
 }
@@ -321,6 +356,14 @@ function Items({ order }: { order: AdminShopOrderDetail }) {
 
 function eventDetail(e: AdminShopOrderEvent): string | null {
   const d = e.data
+  if (e.type === 'refunded' && typeof d.amount_cents === 'number') {
+    return [
+      formatPrice(d.amount_cents, 'de'),
+      typeof d.note === 'string' ? `„${d.note}“` : '',
+      d.revoked ? `${d.revoked} Keys/Codes gesperrt` : '',
+      d.already_redeemed ? `${d.already_redeemed} schon eingelöst` : '',
+    ].filter(Boolean).join(' · ')
+  }
   if (typeof d.note === 'string') return `„${d.note}“`
   if (Array.isArray(d.reasons)) return d.reasons.map((r) => HOLD_REASON_LABEL[String(r)] ?? String(r)).join(', ')
   if (typeof d.message === 'string') return d.message
@@ -342,7 +385,7 @@ function Timeline({ events }: { events: AdminShopOrderEvent[] }) {
       <ol className="relative ml-1.5 space-y-4 border-l border-outline-variant pl-5">
         {events.map((e) => {
           const detail = eventDetail(e)
-          const bad = e.type === 'stripe_error' || e.type === 'held' || e.type === 'rejected'
+          const bad = ['stripe_error', 'held', 'rejected', 'refunded'].includes(e.type)
           return (
             <li key={e.id} className="relative">
               <span className={`absolute -left-[1.6rem] top-1 h-2.5 w-2.5 rounded-full ring-4 ring-background ${bad ? 'bg-error' : 'bg-primary-fixed-dim'}`} aria-hidden />
@@ -360,7 +403,7 @@ function Timeline({ events }: { events: AdminShopOrderEvent[] }) {
 }
 
 // Lieferstand weiterschalten: naechster Schritt gross, "nicht angetroffen" klein daneben
-function ProgressFooter({ order, onDone }: { order: AdminShopOrderDetail; onDone: (message: string) => void }) {
+function ProgressFooter({ order, onDone, extra }: { order: AdminShopOrderDetail; onDone: (message: string) => void; extra?: React.ReactNode }) {
   const mode = order.delivery_mode as PhysicalMode
   const flow = PROGRESS_FLOW[mode]
   const current = order.progress ?? 'accepted'
@@ -402,6 +445,7 @@ function ProgressFooter({ order, onDone }: { order: AdminShopOrderDetail; onDone
           </button>
         )}
       </div>
+      {extra && <div className="flex justify-end">{extra}</div>}
     </div>
   )
 }
@@ -467,5 +511,155 @@ function Cases({ order, onReported }: { order: AdminShopOrderDetail; onReported:
         <button onClick={() => setOpen(true)} className="text-sm font-semibold text-on-surface-variant hover:text-on-surface">Käufer melden …</button>
       ))}
     </Section>
+  )
+}
+
+// Ganz oder teilweise zurueckzahlen. Volle Erstattung sperrt offene Keys/Codes immer.
+function RefundFooter({ order, onCancel, onDone }: { order: AdminShopOrderDetail; onCancel: () => void; onDone: (message: string) => void }) {
+  const left = order.total_cents - order.refunded_cents
+  const [amount, setAmount] = useState(centsToEuroInput(left))
+  const [note, setNote] = useState('')
+  const [revoke, setRevoke] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const cents = euroToCents(amount)
+  const valid = cents !== null && cents >= 1 && cents <= left
+  const full = cents === left
+  const hasCodes = order.items.some((i) => i.codes_assigned > 0)
+
+  async function submit() {
+    if (!valid) return
+    setBusy(true)
+    setError('')
+    try {
+      const r = await fetchApi<{ revoked: number; already_redeemed: number }>(`/admin/shop/orders/${order.id}/refund`, {
+        method: 'POST',
+        body: JSON.stringify({ amountCents: cents, note: note.trim(), ...(hasCodes && !full ? { revokeCodes: revoke } : {}) }),
+      })
+      onDone([
+        `${formatPrice(cents, 'de')} erstattet`,
+        r.revoked ? `${r.revoked} Keys/Codes gesperrt` : '',
+        r.already_redeemed ? `${r.already_redeemed} schon eingelöst` : '',
+      ].filter(Boolean).join(' · '))
+    } catch (e) {
+      setError((e as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {error && <p className="rounded-lg bg-error-container/40 px-3 py-2 text-sm text-error" role="alert">{error}</p>}
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="block flex-1 space-y-1.5 text-sm font-semibold text-on-surface">
+          <span>Betrag <span className="font-normal text-on-surface-variant">(noch offen: {formatPrice(left, 'de')})</span></span>
+          <span className="relative block">
+            <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className={`${adminField} pr-8`} aria-invalid={!valid} />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant" aria-hidden>€</span>
+          </span>
+        </label>
+        {!full && (
+          <button type="button" onClick={() => setAmount(centsToEuroInput(left))} className={secondaryBtn}>Alles</button>
+        )}
+      </div>
+      {cents !== null && cents > left && <p className="text-sm text-error">Höchstens {formatPrice(left, 'de')}</p>}
+      <div className="flex flex-wrap gap-1.5">
+        {REFUND_REASONS.map((r) => (
+          <button key={r} type="button" onClick={() => setNote(r)}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${note === r ? 'border-on-surface bg-on-surface text-background' : 'border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
+            {r}
+          </button>
+        ))}
+      </div>
+      <label className="block space-y-1.5 text-sm font-semibold text-on-surface">
+        <span>Begründung <span className="font-normal text-on-surface-variant">(Pflicht, steht im Protokoll)</span></span>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} className={adminField} />
+      </label>
+      {hasCodes && (full
+        ? <p className="text-xs text-on-surface-variant">Volle Erstattung: alle noch nicht eingelösten Keys und Codes werden gesperrt.</p>
+        : (
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-on-surface">
+            <input type="checkbox" checked={revoke} onChange={(e) => setRevoke(e.target.checked)} className="h-4 w-4 accent-[var(--color-primary-fixed-dim)]" />
+            Noch nicht eingelöste Keys/Codes sperren
+          </label>
+        ))}
+      <div className="flex gap-3">
+        <button onClick={onCancel} disabled={busy} className={`${secondaryBtn} flex-1`}>Zurück</button>
+        <button onClick={submit} disabled={busy || !valid || note.trim().length < 5}
+          className="inline-flex flex-1 items-center justify-center rounded-xl bg-error px-4 py-2.5 text-sm font-bold text-background hover:opacity-90 disabled:opacity-40">
+          {busy ? 'Erstattet …' : valid ? `${formatPrice(cents, 'de')} erstatten` : 'Erstatten'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Shop-Sperre: der Kaeufer kann nicht mehr bestellen, sein Konto bleibt
+function BlockBuyer({ userId, blocked, onChanged }: { userId: string; blocked: boolean; onChanged: (message: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [days, setDays] = useState<number | null>(30)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function send(method: 'PUT' | 'DELETE') {
+    setBusy(true)
+    setError('')
+    try {
+      await fetchApi(`/admin/shop/blocks/${userId}`, method === 'PUT'
+        ? { method, body: JSON.stringify({ reason: reason.trim(), ...(days ? { days } : {}) }) }
+        : { method })
+      setOpen(false)
+      setReason('')
+      onChanged(method === 'PUT' ? 'Käufer im Shop gesperrt' : 'Shop-Sperre aufgehoben')
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (blocked) {
+    return (
+      <div className="space-y-1">
+        <button onClick={() => send('DELETE')} disabled={busy} className="text-sm font-semibold text-on-surface-variant hover:text-on-surface">
+          {busy ? 'Hebt auf …' : 'Sperre aufheben'}
+        </button>
+        {error && <p className="text-sm text-error" role="alert">{error}</p>}
+      </div>
+    )
+  }
+  if (!open) {
+    return <button onClick={() => setOpen(true)} className="text-sm font-semibold text-on-surface-variant hover:text-error">Im Shop sperren …</button>
+  }
+  return (
+    <div className="space-y-3 rounded-xl border border-outline-variant p-4">
+      <p className="text-sm text-on-surface">Der Käufer kann nicht mehr bestellen. Sein Konto, offene Bestellungen und Fälle bleiben.</p>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Dauer">
+        {BLOCK_DAYS.map((d) => (
+          <button key={d.label} type="button" aria-pressed={days === d.days} onClick={() => setDays(d.days)}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${days === d.days ? 'border-on-surface bg-on-surface text-background' : 'border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
+            {d.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {BLOCK_REASONS.map((r) => (
+          <button key={r} type="button" onClick={() => setReason(r)}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${reason === r ? 'border-on-surface bg-on-surface text-background' : 'border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
+            {r}
+          </button>
+        ))}
+      </div>
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={1000} placeholder="Begründung (Pflicht)" className={adminField} />
+      {error && <p className="text-sm text-error" role="alert">{error}</p>}
+      <div className="flex gap-3">
+        <button onClick={() => setOpen(false)} disabled={busy} className={`${secondaryBtn} flex-1`}>Abbrechen</button>
+        <button onClick={() => send('PUT')} disabled={busy || reason.trim().length < 5}
+          className="inline-flex flex-1 items-center justify-center rounded-xl bg-error px-4 py-2.5 text-sm font-bold text-background hover:opacity-90 disabled:opacity-40">
+          {busy ? 'Sperrt …' : 'Sperren'}
+        </button>
+      </div>
+    </div>
   )
 }

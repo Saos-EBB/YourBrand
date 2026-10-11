@@ -89,10 +89,12 @@ export class ShopFulfillmentService {
     async setProgress(adminId: string, orderId: string, next: ShopProgress, trackingNumber?: string) {
         return this.dataSource.transaction(async (m) => {
             const [order] = await m.query(
-                'SELECT status, delivery_mode, progress FROM shop_orders WHERE id = $1 FOR UPDATE', [orderId],
+                'SELECT status, delivery_mode, progress, fulfilled_at FROM shop_orders WHERE id = $1 FOR UPDATE', [orderId],
             );
             if (!order) throw new NotFoundException('Bestellung nicht gefunden');
-            if (order.status !== 'approved') throw new ConflictException('Nur angenommene Bestellungen haben einen Lieferfortschritt');
+            // Teil-Erstattung (z. B. eine Pizza fehlt) haelt die Lieferung nicht auf
+            const partly = order.status === 'partially_refunded' && !order.fulfilled_at;
+            if (order.status !== 'approved' && !partly) throw new ConflictException('Nur angenommene Bestellungen haben einen Lieferfortschritt');
             const problem = progressError(order.delivery_mode, order.progress, next);
             if (problem) throw new BadRequestException(problem);
 
@@ -101,7 +103,7 @@ export class ShopFulfillmentService {
             await m.query(
                 `UPDATE shop_orders SET progress = $2,
                         tracking_number = COALESCE($3, tracking_number),
-                        status = CASE WHEN $4 THEN 'fulfilled' ELSE status END,
+                        status = CASE WHEN $4 AND status = 'approved' THEN 'fulfilled' ELSE status END,
                         fulfilled_at = CASE WHEN $4 THEN now() ELSE fulfilled_at END
                   WHERE id = $1`,
                 [orderId, next, tracking, done],
@@ -112,7 +114,7 @@ export class ShopFulfillmentService {
             );
             // Nicht angetroffen: ein Mensch klaert das (Annahmeverzug), daher sofort ein dringender Fall
             if (next === 'not_met') await this.cases.openNotMet(m, adminId, orderId);
-            return { id: orderId, status: done ? 'fulfilled' : 'approved', progress: next };
+            return { id: orderId, status: done && !partly ? 'fulfilled' : order.status, progress: next };
         });
     }
 }

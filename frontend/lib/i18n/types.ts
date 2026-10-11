@@ -1211,6 +1211,7 @@ export interface Translations {
     stExpiredText: string
     stRefunded: string
     stPartiallyRefunded: string
+    refundedAmount: string
     trackingNumber: string
     codeLicense: string
     codeUnlock: string

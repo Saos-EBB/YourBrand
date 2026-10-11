@@ -16,7 +16,7 @@ describe('ModuleBroker', () => {
         await broker.unlock('coins', { userId: 'u', amount: 500, idempotencyKey: 'k' });
         expect(handler).toHaveBeenCalledWith({ userId: 'u', amount: 500, idempotencyKey: 'k' });
         expect(() => broker.provideUnlock('coins', handler)).toThrow(/schon angemeldet/);
-        const gw = { createReservedCheckout: jest.fn(), capture: jest.fn(), cancel: jest.fn() };
+        const gw = { createReservedCheckout: jest.fn(), capture: jest.fn(), cancel: jest.fn(), refund: jest.fn() };
         broker.providePayments(gw);
         expect(broker.payments()).toBe(gw);
         expect(() => broker.providePayments(gw)).toThrow(/schon angemeldet/);

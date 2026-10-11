@@ -1196,6 +1196,7 @@ export const deEasy = {
     stExpiredText: "Die Zeit ist um. Du bezahlst nichts.",
     stRefunded: "Geld zurück",
     stPartiallyRefunded: "Teil vom Geld zurück",
+    refundedAmount: "Geld zurück",
     trackingNumber: "Paket-Nummer",
     codeLicense: "Dein Schlüssel",
     codeUnlock: "Dein Code",

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
 import { SHOP_PROGRESS, type ShopProgress } from '../shop-fulfillment';
 
 export const SHOP_ORDER_STATUSES = [
@@ -38,4 +38,25 @@ export class SetProgressDto {
     // Nur bei "versendet"
     @IsOptional() @IsString() @MaxLength(80)
     trackingNumber?: string;
+}
+
+export class RefundOrderDto {
+    @IsInt() @Min(1) @Max(10_000_000)
+    amountCents!: number;
+
+    @IsString() @Length(5, 1000, { message: 'Begründung: 5–1000 Zeichen' })
+    note!: string;
+
+    // Nur bei Teil-Erstattung wirksam, volle Erstattung sperrt immer
+    @IsOptional() @IsBoolean()
+    revokeCodes?: boolean;
+}
+
+// Ohne days: unbefristet
+export class BlockBuyerDto {
+    @IsString() @Length(5, 1000, { message: 'Begründung: 5–1000 Zeichen' })
+    reason!: string;
+
+    @IsOptional() @IsInt() @Min(1) @Max(3650)
+    days?: number;
 }

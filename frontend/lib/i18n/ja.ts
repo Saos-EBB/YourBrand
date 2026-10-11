@@ -1197,6 +1197,7 @@ export const ja = {
     stExpiredText: "期限内に確認されませんでした。請求は発生していません。",
     stRefunded: "返金済み",
     stPartiallyRefunded: "一部返金済み",
+    refundedAmount: "返金額",
     trackingNumber: "追跡番号",
     codeLicense: "ライセンスキー",
     codeUnlock: "コード",

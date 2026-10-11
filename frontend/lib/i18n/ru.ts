@@ -1197,6 +1197,7 @@ export const ru = {
     stExpiredText: "Заказ не подтвердили вовремя. Деньги не списаны.",
     stRefunded: "Возвращён",
     stPartiallyRefunded: "Частично возвращён",
+    refundedAmount: "Возвращено",
     trackingNumber: "Трек-номер",
     codeLicense: "Ваш лицензионный ключ",
     codeUnlock: "Ваш код",

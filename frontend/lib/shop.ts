@@ -190,6 +190,7 @@ export interface AdminShopOrderDetail extends Omit<AdminShopOrder, 'item_count' 
   withdrawal_waiver_at: string | null
   stripe_payment_intent_id: string | null
   tracking_number: string | null
+  fulfilled_at: string | null
   decided_at: string | null
   decided_by_nickname: string | null
   decision_note: string | null
@@ -197,6 +198,8 @@ export interface AdminShopOrderDetail extends Omit<AdminShopOrder, 'item_count' 
   events: AdminShopOrderEvent[]
   buyer_history: { completed: number; rejected: number; refunded: number; reports: number } | null
   cases: { id: string; kind: ShopCaseKind; reason: string; status: ShopCaseStatus; priority: string; created_at: string }[]
+  // Aktive Shop-Sperre des Kaeufers, until null = unbefristet
+  buyer_block: { reason: string; until: string | null; created_at: string; blocked_by_nickname: string | null } | null
 }
 
 // Kurze Bestellnummer fuer Anzeige und Suche

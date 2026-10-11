@@ -17,6 +17,8 @@ export interface PaymentGateway {
     createReservedCheckout(input: ReservedCheckoutInput): Promise<{ sessionId: string; clientSecret: string }>;
     capture(paymentIntentId: string, idempotencyKey: string): Promise<void>;
     cancel(paymentIntentId: string, idempotencyKey: string): Promise<void>;
+    // Nach dem Abbuchen ganz oder teilweise zurueckzahlen
+    refund(paymentIntentId: string, amountCents: number, idempotencyKey: string): Promise<{ refundId: string }>;
 }
 
 // Etwas in der App gutschreiben ("coins:500"). idempotencyKey: zweimal

@@ -121,6 +121,9 @@ function Detail({ order, locale, headline, onRedeemed }: { order: MyShopOrderDet
             </>
           )}
           <div className="flex justify-between font-bold text-on-surface"><dt>{t.shop.total}</dt><dd>{formatPrice(order.total_cents, locale)}</dd></div>
+          {order.refunded_cents > 0 && (
+            <div className="flex justify-between font-semibold text-primary-fixed-dim"><dt>{t.shop.refundedAmount}</dt><dd>−{formatPrice(order.refunded_cents, locale)}</dd></div>
+          )}
           <p className="text-xs text-on-surface-variant">{t.shop.vatIncluded}</p>
         </dl>
       </section>

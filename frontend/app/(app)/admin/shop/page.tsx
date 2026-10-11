@@ -14,7 +14,7 @@ import {
 
 type Filter = ShopOrderStatus | 'all'
 // Reihenfolge der Chips: was ein Mensch tun muss zuerst
-const FILTERS: Filter[] = ['held', 'approved', 'fulfilled', 'rejected', 'expired', 'cancelled', 'refunded', 'all']
+const FILTERS: Filter[] = ['held', 'approved', 'fulfilled', 'rejected', 'expired', 'cancelled', 'refunded', 'partially_refunded', 'all']
 
 export default function AdminShopOrdersPage() {
   return <AdminShopShell active="orders"><Orders /></AdminShopShell>
@@ -161,7 +161,7 @@ function OrderRow({ o, now, onOpen }: { o: AdminShopOrder; now: number; onOpen: 
           <span className="flex items-center gap-2">
             <span className="font-mono text-xs text-on-surface-variant">#{orderNumber(o.id)}</span>
             <StatusBadge status={o.status} />
-            {o.status === 'approved' && o.progress && (
+            {(o.status === 'approved' || o.status === 'partially_refunded') && o.progress && (
               <span className={`text-[11px] font-semibold ${o.progress === 'not_met' ? 'text-error' : 'text-on-surface-variant'}`}>{PROGRESS_LABEL[o.progress]}</span>
             )}
           </span>

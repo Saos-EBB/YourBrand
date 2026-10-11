@@ -1197,6 +1197,7 @@ export const es = {
     stExpiredText: "El pedido no se confirmó a tiempo. No se ha cobrado nada.",
     stRefunded: "Reembolsado",
     stPartiallyRefunded: "Reembolsado en parte",
+    refundedAmount: "Reembolsado",
     trackingNumber: "Número de seguimiento",
     codeLicense: "Tu clave de licencia",
     codeUnlock: "Tu código",

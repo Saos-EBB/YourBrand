@@ -1,3 +1,22 @@
+## 2026-10-11 — feat(shop): Erstatten + Shop-Sperre — Shop Schritt 6b
+**Was:** Vertrag im `ModuleBroker` erweitert (vom User freigegeben): `PaymentGateway.refund(paymentIntent, betragCent,
+idempotencyKey) → { refundId }`, `StripePaymentGateway` ruft `stripe.refunds.create`. `ShopRefundService`:
+`POST /admin/shop/orders/:id/refund { amountCents, note, revokeCodes? }` nur aus approved/fulfilled/partially_refunded,
+hoechstens der noch offene Betrag, Begruendung Pflicht. Zeilensperre (`FOR UPDATE`) ueber den Stripe-Aufruf, damit zwei
+Admins nicht doppelt erstatten; Idempotency-Key `shop-refund-<id>-<erstattet vorher>-<betrag>` (Wiederholung nach Absturz
+erstattet nicht nochmal). Voll → `refunded` und alle noch nicht eingeloesten Keys/Codes gesperrt; teilweise →
+`partially_refunded`, Codes nur mit Haekchen (Entscheidung des Users). Eingeloeste Codes bleiben, die Zahl steht im
+Protokoll (`refunded` mit Betrag, Grund, Refund-ID). Stripe-Fehler: nichts geaendert, `stripe_error` bleibt im Protokoll
+(ausserhalb der zurueckgerollten Transaktion), 502. Lieferstand laeuft nach Teil-Erstattung weiter (Status bleibt
+`partially_refunded`). Shop-Sperre: `PUT /admin/shop/blocks/:userId { reason, days? }` (ohne days unbefristet, nochmal
+sperren ersetzt), `DELETE` hebt auf (setzt `until = now()`, Zeile bleibt). Bestell-Detail liefert `buyer_block`.
+Kasse prueft die Sperre schon seit Schritt 4 (403). Keine Migration. 73 Tests gruen (12 neu).
+Geprueft im Demo-Stack: curl (zu viel 400, ohne Grund 400, held 409, Stripe-Platzhalter 502 + Protokoll, Sperre →
+Kasse 403, doppelt aufheben 404) und der echte Service gegen die Demo-DB mit Stripe-Attrappe (voll: Key gesperrt;
+teilweise: Versand → zugestellt, Status bleibt teilerstattet).
+**Nicht gebaut:** Stornorechnung (Schritt 8), Coins zurueckbuchen bei schon eingeloesten Codes, Erstattungen/Rueckbuchungen
+aus dem Stripe-Dashboard (Webhook, Schritt 5), Teil-Erstattung pro Artikel, Liste aller Sperren, wer eine Sperre aufhob.
+
 ## 2026-10-11 — chore(scripts): Shop-Demo mit einem Befehl — scripts/shop_demo.sh
 **Was:** Wunsch des Users nach dem Verlust der Wegwerf-Testumgebung (Neustart, `/tmp` + `--rm`-Container weg):
 `scripts/shop_demo.sh up|down` wie `demo.sh`. Eigener Stack (Postgres/Redis/Frontend als Container mit festem Volume

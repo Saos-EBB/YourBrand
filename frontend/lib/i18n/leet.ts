@@ -1207,6 +1207,7 @@ export const leetspeak = {
     stExpiredText: "70 L473. N0 CH4R63.",
     stRefunded: "R3FUND3D",
     stPartiallyRefunded: "P4R71AL R3FUND",
+    refundedAmount: "R3FUND3D",
     trackingNumber: "7R4CK1N6 #",
     codeLicense: "L1C3N53 K3Y",
     codeUnlock: "C0D3",

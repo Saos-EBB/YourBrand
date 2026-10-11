@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -6,7 +6,8 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
 import { ShopAdminService } from './shop-admin.service';
 import { ShopOrdersAdminService } from './shop-orders-admin.service';
-import { AdminListOrdersQuery, ApproveOrderDto, RejectOrderDto, SetProgressDto } from './dto/admin-order.dto';
+import { AdminListOrdersQuery, ApproveOrderDto, BlockBuyerDto, RefundOrderDto, RejectOrderDto, SetProgressDto } from './dto/admin-order.dto';
+import { ShopRefundService } from './shop-refund.service';
 import { ShopFulfillmentService } from './shop-fulfillment.service';
 import { ShopCasesService } from './shop-cases.service';
 import { AdminCaseMessageDto, AdminListCasesQuery, ReportBuyerDto, ResolveCaseDto } from './dto/case.dto';
@@ -24,6 +25,7 @@ export class ShopAdminController {
         private readonly orders: ShopOrdersAdminService,
         private readonly fulfillment: ShopFulfillmentService,
         private readonly cases: ShopCasesService,
+        private readonly refunds: ShopRefundService,
     ) { }
 
     @Get('products')
@@ -76,6 +78,21 @@ export class ShopAdminController {
     @Post('orders/:id/progress')
     progress(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SetProgressDto) {
         return this.fulfillment.setProgress(req.user.sub, id, dto.progress, dto.trackingNumber);
+    }
+
+    @Post('orders/:id/refund')
+    refund(@Req() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RefundOrderDto) {
+        return this.refunds.refund(req.user.sub, id, dto.amountCents, dto.note, dto.revokeCodes);
+    }
+
+    @Put('blocks/:userId')
+    block(@Req() req: any, @Param('userId', ParseUUIDPipe) userId: string, @Body() dto: BlockBuyerDto) {
+        return this.refunds.block(req.user.sub, userId, dto.reason, dto.days);
+    }
+
+    @Delete('blocks/:userId')
+    unblock(@Param('userId', ParseUUIDPipe) userId: string) {
+        return this.refunds.unblock(userId);
     }
 
     @Post('orders/:id/report')

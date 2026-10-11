@@ -1235,6 +1235,7 @@ export const de = {
     stExpiredText: "Die Bestellung wurde nicht rechtzeitig bestätigt. Es wurde nichts abgebucht.",
     stRefunded: "Erstattet",
     stPartiallyRefunded: "Teilweise erstattet",
+    refundedAmount: "Erstattet",
     trackingNumber: "Sendungsnummer",
     codeLicense: "Dein Lizenz-Key",
     codeUnlock: "Dein Code",

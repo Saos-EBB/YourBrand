@@ -1224,6 +1224,7 @@ export const en = {
     stExpiredText: "The order wasn't confirmed in time. You haven't been charged.",
     stRefunded: "Refunded",
     stPartiallyRefunded: "Partially refunded",
+    refundedAmount: "Refunded",
     trackingNumber: "Tracking number",
     codeLicense: "Your license key",
     codeUnlock: "Your code",

@@ -1,3 +1,14 @@
+## 2026-10-11 — feat(shop): Erstatten + Shop-Sperre im Bestell-Panel — Shop Schritt 6b
+**Was:** `OrderSheet`: „Erstatten …“ bei abgebuchten Bestellungen (auch neben dem Lieferstand): Betrag vorbelegt mit
+dem offenen Rest, „Alles“, Schnellgruende, Begruendung Pflicht, bei Teil-Erstattung Haekchen „Keys/Codes sperren“,
+bei voller Erstattung der Hinweis, dass gesperrt wird. Status zeigt „x von y erstattet“, Zeitstrahl den Eintrag
+„Erstattet“ mit Betrag, Grund und gesperrten Codes. Abschnitt Käufer: „Im Shop sperren …“ (7 Tage / 30 Tage /
+unbefristet, Gruende, Begruendung Pflicht), aktive Sperre als rote Zeile mit „Sperre aufheben“. Eingang: Filter
+„Teilerstattet“. Kaeufer-Bestellseite: Zeile „Erstattet −x €“ (neuer Text in 9 Sprachen).
+Verifiziert mit Playwright (Desktop dunkel, Handy hell): Erfolg mit gemockter Antwort, echter Weg zeigt den
+Stripe-Fehler im Panel, sperren/aufheben, teilerstattete Bestellung, Kaeuferseite. `tsc` + ESLint sauber.
+**Nicht gebaut:** Rueckfrage vor „Sperre aufheben“, Sperren-Uebersicht, Sperr-Hinweis schon im Warenkorb (Kasse sagt 403).
+
 ## 2026-10-11 — feat(shop): Faelle im Frontend — Shop Schritt 9
 **Was:** Kaeufer: auf der Bestellseite „Problem melden“ (Grund als Auswahl, Beschreibung), danach der Verlauf als
 Chat (eigene Nachrichten rechts, Shop-Team links), Status („Wir kümmern uns darum“ / „Wir haben dir geantwortet“ /
