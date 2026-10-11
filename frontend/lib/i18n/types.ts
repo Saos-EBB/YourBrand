@@ -1226,5 +1226,23 @@ export interface Translations {
     redeemedLabel: string
     redeemSuccessCoins: string
     redeemSuccess: string
+    reportProblem: string
+    problemQuestion: string
+    reasonNotReceived: string
+    reasonWrongItem: string
+    reasonDamaged: string
+    reasonCodeInvalid: string
+    reasonOther: string
+    problemPlaceholder: string
+    send: string
+    cancel: string
+    caseTitle: string
+    caseOpen: string
+    caseWaiting: string
+    caseResolved: string
+    caseResolution: string
+    shopTeam: string
+    replyPlaceholder: string
+    problemSent: string
   }
 }

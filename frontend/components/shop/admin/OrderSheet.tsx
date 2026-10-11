@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, Clock } from 'lucide-react'
 import { fetchApi } from '@/lib/api'
 import {
-  DELIVERY_MODE_LABEL, HOLD_REASON_LABEL, NOT_MET_FROM, ORDER_STATUS_LABEL, PROGRESS_FLOW, PROGRESS_LABEL, formatPrice, orderNumber,
-  type AdminShopOrderDetail, type AdminShopOrderEvent, type PhysicalMode, type ShopOrderStatus, type ShopProgress,
+  CASE_KIND_LABEL, CASE_REASON_LABEL, CASE_STATUS_LABEL, REPORT_REASONS, DELIVERY_MODE_LABEL, HOLD_REASON_LABEL, NOT_MET_FROM, ORDER_STATUS_LABEL, PROGRESS_FLOW, PROGRESS_LABEL, formatPrice, orderNumber,
+  type AdminShopOrderDetail, type AdminShopOrderEvent, type PhysicalMode, type ShopCaseKind, type ShopOrderStatus, type ShopProgress,
 } from '@/lib/shop'
 import { Sheet, adminField, primaryBtn, secondaryBtn } from './Sheet'
 import { formatDateTime, timeLeft, useNow } from './time'
@@ -21,6 +22,7 @@ const EVENT_LABEL: Record<string, string> = {
   fulfilled: 'Ausgeliefert',
   progress: 'Lieferstand',
   redeemed: 'Code eingelöst',
+  case_opened: 'Fall eröffnet',
 }
 
 // Schnellauswahl beim Ablehnen — landet als Text im Feld, Begruendung bleibt Pflicht
@@ -175,6 +177,7 @@ export function OrderSheet({ id, onClose, onDecided, onChanged }: {
         <div className="space-y-6">
           <Status order={order} now={now} />
           <Buyer order={order} />
+          <Cases order={order} onReported={() => { setReload((n) => n + 1); onChanged('Käufer gemeldet — steht unter Fälle') }} />
           <Delivery order={order} />
           <Items order={order} />
           <Timeline events={order.events} />
@@ -248,6 +251,7 @@ function Buyer({ order }: { order: AdminShopOrderDetail }) {
   const history = !h ? 'Konto gelöscht'
     : h.completed + h.rejected + h.refunded === 0 ? 'Erste Bestellung'
       : `${h.completed} abgeschlossen · ${h.rejected} abgelehnt · ${h.refunded} erstattet`
+  const reports = h?.reports ?? 0
   return (
     <Section title="Käufer">
       <dl className="rounded-xl bg-surface-container px-4 py-2">
@@ -257,6 +261,7 @@ function Buyer({ order }: { order: AdminShopOrderDetail }) {
         {order.contact_phone && <Row label="Telefon"><a href={`tel:${order.contact_phone}`} className="hover:underline">{order.contact_phone}</a></Row>}
         <Row label="Vorgeschichte">
           <span className={h && (h.rejected > 0 || h.refunded > 0) ? 'font-semibold text-error' : ''}>{history}</span>
+          {reports > 0 && <span className="block font-semibold text-error">{reports} {reports === 1 ? 'Meldung' : 'Meldungen'} gegen den Käufer</span>}
         </Row>
         {order.radar_risk && (
           <Row label="Stripe Radar">
@@ -320,6 +325,7 @@ function eventDetail(e: AdminShopOrderEvent): string | null {
   if (Array.isArray(d.reasons)) return d.reasons.map((r) => HOLD_REASON_LABEL[String(r)] ?? String(r)).join(', ')
   if (typeof d.message === 'string') return d.message
   if (typeof d.kind === 'string' && typeof d.amount === 'number') return `${d.amount} ${d.kind}`
+  if (typeof d.case_id === 'string') return `${CASE_KIND_LABEL[d.kind as ShopCaseKind] ?? d.kind} · ${CASE_REASON_LABEL[String(d.reason)] ?? d.reason}`
   if (typeof d.progress === 'string') {
     const label = PROGRESS_LABEL[d.progress as ShopProgress] ?? d.progress
     return typeof d.tracking_number === 'string' ? `${label} · Sendung ${d.tracking_number}` : label
@@ -397,5 +403,69 @@ function ProgressFooter({ order, onDone }: { order: AdminShopOrderDetail; onDone
         )}
       </div>
     </div>
+  )
+}
+
+// Faelle zur Bestellung + Kaeufer melden (intern, zaehlt in der Vorgeschichte)
+function Cases({ order, onReported }: { order: AdminShopOrderDetail; onReported: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState<(typeof REPORT_REASONS)[number] | null>(null)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  if (!order.user_id && order.cases.length === 0) return null
+
+  async function report() {
+    setBusy(true)
+    setError('')
+    try {
+      await fetchApi(`/admin/shop/orders/${order.id}/report`, { method: 'POST', body: JSON.stringify({ reason, note: note.trim() }) })
+      setOpen(false)
+      setReason(null)
+      setNote('')
+      onReported()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title="Fälle">
+      {order.cases.length > 0 && (
+        <ul role="list" className="space-y-1.5">
+          {order.cases.map((c) => (
+            <li key={c.id}>
+              <Link href="/admin/shop/cases" className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-container px-4 py-2.5 text-sm hover:bg-surface-container-high">
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${c.priority === 'urgent' && c.status !== 'resolved' ? 'bg-error-container/50 text-error' : 'bg-surface-container-highest text-on-surface'}`}>{CASE_KIND_LABEL[c.kind]}</span>
+                <span className="text-on-surface">{CASE_REASON_LABEL[c.reason] ?? c.reason}</span>
+                <span className="ml-auto text-xs text-on-surface-variant">{CASE_STATUS_LABEL[c.status]} · {formatDateTime(c.created_at)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {order.user_id && (open ? (
+        <div className="space-y-3 rounded-xl border border-outline-variant p-4">
+          <div className="flex flex-wrap gap-1.5">
+            {REPORT_REASONS.map((r) => (
+              <button key={r} type="button" aria-pressed={reason === r} onClick={() => setReason(r)}
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium ${reason === r ? 'border-on-surface bg-on-surface text-background' : 'border-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
+                {CASE_REASON_LABEL[r]}
+              </button>
+            ))}
+          </div>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={2000} placeholder="Was ist passiert? (intern, mindestens 10 Zeichen)" className={adminField} />
+          {error && <p className="text-sm text-error" role="alert">{error}</p>}
+          <div className="flex gap-3">
+            <button onClick={() => setOpen(false)} disabled={busy} className={`${secondaryBtn} flex-1`}>Abbrechen</button>
+            <button onClick={report} disabled={busy || !reason || note.trim().length < 10} className={`${primaryBtn} flex-1`}>{busy ? 'Speichert …' : 'Käufer melden'}</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setOpen(true)} className="text-sm font-semibold text-on-surface-variant hover:text-on-surface">Käufer melden …</button>
+      ))}
+    </Section>
   )
 }

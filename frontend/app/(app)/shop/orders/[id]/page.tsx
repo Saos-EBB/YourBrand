@@ -7,6 +7,7 @@ import { ArrowLeft, Check, CheckCircle2, Copy, KeyRound, Ticket } from 'lucide-r
 import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { useShopCartStore } from '@/lib/store/shopCartStore'
+import { OrderCases } from '@/components/shop/OrderCases'
 import { ProgressTracker, TONE_BADGE, buyerStatus, redeemMessage } from '@/components/shop/OrderStatus'
 import { formatDate, formatPrice, orderNumber, type MyShopOrderDetail, type RedeemResult } from '@/lib/shop'
 
@@ -63,6 +64,8 @@ function Order({ id }: { id: string }) {
       ) : (
         <Detail order={order} locale={locale} headline={!placed} onRedeemed={() => setReload((n) => n + 1)} />
       )}
+      {/* Abgebrochene Kasse ist keine Bestellung — dazu gibt es nichts zu melden */}
+      {order && !['pending', 'cancelled'].includes(order.status) && <OrderCases orderId={order.id} />}
       {order && (
         <Link href="/shop" className="inline-block text-sm font-semibold text-primary-fixed-dim hover:underline">{t.shop.continueShopping}</Link>
       )}

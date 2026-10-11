@@ -10,6 +10,7 @@ import { useHydrated } from '@/components/shop/Cart'
 
 const TABS = [
   { key: 'orders', href: '/admin/shop', label: 'Bestellungen' },
+  { key: 'cases', href: '/admin/shop/cases', label: 'Fälle' },
   { key: 'products', href: '/admin/shop/products', label: 'Artikel' },
 ] as const
 

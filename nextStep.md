@@ -112,10 +112,11 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
    - ✅ **7b** `/shop/redeem` + „Jetzt einlösen“: Coins über die neue Vermittlung `ModuleBroker` (shared). Premium-Codes vorerst „bleibt gültig“ (Premium-Modell offen)
 8. Rechnungen + Stornorechnungen (BullMQ-Worker wie GDPR-Export, pdfkit, Resend mit Anhang)
 9. Fälle: Melden in beide Richtungen, Support, Nachrichtenverlauf
+   - ✅ Käufer meldet Problem (Verlauf, Antworten), Team meldet Käufer (intern), „nicht angetroffen“ öffnet dringenden Fall, Admin-Tab „Fälle“. Offen: Alarme, Nachfass-Cron, Stripe-Disputes, Shop-Sperre
 10. Frontend Käufer: Liste mit Filtern, Warenkorb, Checkout, Bestellungen, Problem melden
     - ✅ **10a** `/shop` (Filter in der URL, Filter-Sheet auf dem Handy, Kategorie-Kacheln) und `/shop/[id]` (Bewertungen, Formular für Käufer)
     - ✅ **10b** Warenkorb (eine Lieferart pro Bestellung), Kasse mit Feldern je Lieferart, Stripe eingebettet, Dankeseite; `GET /shop/settings` für die Versandpauschale
-    - ✅ Bestellungen (mit 7a). Problem melden braucht Schritt 9
+    - ✅ Bestellungen (mit 7a), Problem melden (mit 9)
 11. ✅ **Admin-Pflege** `/admin/shop`: Artikel anlegen/bearbeiten mit Vorschau, aus-/einblenden, CSV-Import mit Probelauf (alles oder nichts), Keys verschlüsselt hinzufügen
 12. Doku + Tests
 

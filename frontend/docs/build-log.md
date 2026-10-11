@@ -1,3 +1,16 @@
+## 2026-10-11 — feat(shop): Faelle im Frontend — Shop Schritt 9
+**Was:** Kaeufer: auf der Bestellseite „Problem melden“ (Grund als Auswahl, Beschreibung), danach der Verlauf als
+Chat (eigene Nachrichten rechts, Shop-Team links), Status („Wir kümmern uns darum“ / „Wir haben dir geantwortet“ /
+„Erledigt“ mit Ergebnis), Antwortfeld solange offen; eine offene Meldung pro Bestellung (`components/shop/OrderCases.tsx`).
+18 neue Texte in allen 9 Sprachen. Admin: Tab „Fälle“ (`/admin/shop/cases`) mit Filtern Zu tun/Offen/Wartet/Erledigt/
+Alle, dringende zuerst, Restzeit bis zur Frist; `CaseSheet` mit Verlauf (interne Notizen gestrichelt mit Schloss),
+Antwort an den Kaeufer oder „Nur intern“, „Abschließen …“ mit Pflicht-Ergebnis. Bestell-Panel: Abschnitt „Fälle“ mit
+den Faellen der Bestellung und „Käufer melden …“ (Grund + interne Notiz), Vorgeschichte zeigt Meldungen gegen den Kaeufer.
+Verifiziert mit Playwright im Demo-Stack (Desktop dunkel, Handy hell): Meldung → Fall in der Liste → oeffentliche
+Antwort + interne Notiz → abschliessen → Kaeufer sieht Antwort und Ergebnis, die interne Notiz nicht. `tsc` + ESLint sauber.
+**Nicht gebaut:** Sprung vom Fall direkt ins Bestell-Panel, Anhaenge, Live-Update. Im Demo-Stack ist `gutz` Admin und
+Kaeufer zugleich — Team-Nachrichten erscheinen dort als „Du“ bzw. „(Käufer)“; mit getrennten Konten stimmt die Zuordnung.
+
 ## 2026-10-11 — feat(shop): Codes einloesen — Shop Schritt 7b
 **Was:** `/shop/redeem` (Code eingeben, Gross/klein und Leerzeichen egal, Fehler vom Backend unter dem Feld) und auf
 der Bestellseite „Jetzt einlösen“ direkt am Code; danach ist der Code durchgestrichen mit „Eingelöst“ und die

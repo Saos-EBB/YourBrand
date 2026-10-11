@@ -195,7 +195,8 @@ export interface AdminShopOrderDetail extends Omit<AdminShopOrder, 'item_count' 
   decision_note: string | null
   items: { id: string; sku: string; title: string; fulfillment: ShopFulfillment; quantity: number; unit_price_cents: number; vat_rate: number; codes_assigned: number }[]
   events: AdminShopOrderEvent[]
-  buyer_history: { completed: number; rejected: number; refunded: number } | null
+  buyer_history: { completed: number; rejected: number; refunded: number; reports: number } | null
+  cases: { id: string; kind: ShopCaseKind; reason: string; status: ShopCaseStatus; priority: string; created_at: string }[]
 }
 
 // Kurze Bestellnummer fuer Anzeige und Suche
@@ -276,4 +277,65 @@ export interface MyShopOrderDetail {
 export interface RedeemResult {
   kind: string
   amount: number
+}
+
+// Faelle (Schritt 9)
+export type ShopCaseKind = 'problem' | 'report' | 'support' | 'dispute' | 'not_met'
+export type ShopCaseStatus = 'open' | 'waiting' | 'resolved'
+export const PROBLEM_REASONS = ['not_received', 'wrong_item', 'damaged', 'code_invalid', 'other'] as const
+export type ProblemReason = (typeof PROBLEM_REASONS)[number]
+
+// Kaeufersicht: nur eigene Problem-Meldungen, ohne interne Notizen
+export interface MyShopCase {
+  id: string
+  reason: ProblemReason
+  status: ShopCaseStatus
+  created_at: string
+  resolved_at: string | null
+  resolution: string | null
+  messages: { id: string; body: string; created_at: string; mine: boolean }[]
+}
+
+// Admin-Konsole (nur Deutsch)
+export const CASE_KIND_LABEL: Record<ShopCaseKind, string> = {
+  problem: 'Problem', report: 'Käufer gemeldet', support: 'Support', dispute: 'Rückbuchung', not_met: 'Nicht angetroffen',
+}
+export const CASE_STATUS_LABEL: Record<ShopCaseStatus, string> = { open: 'Offen', waiting: 'Wartet auf Käufer', resolved: 'Erledigt' }
+export const CASE_REASON_LABEL: Record<string, string> = {
+  not_received: 'Nicht angekommen', wrong_item: 'Falscher Artikel', damaged: 'Beschädigt', code_invalid: 'Key/Code geht nicht',
+  other: 'Sonstiges', no_show: 'Nicht angetroffen', abuse: 'Missbrauch', fraud_suspect: 'Betrugsverdacht',
+}
+export const REPORT_REASONS = ['no_show', 'abuse', 'fraud_suspect', 'other'] as const
+
+export interface AdminShopCase {
+  id: string
+  order_id: string | null
+  kind: ShopCaseKind
+  reason: string
+  status: ShopCaseStatus
+  priority: 'urgent' | 'high' | 'normal'
+  due_at: string
+  created_at: string
+  resolved_at: string | null
+  opened_by_nickname: string | null
+  against_nickname: string | null
+  last_message: string | null
+  message_count: number
+}
+
+export interface AdminShopCasePage {
+  items: AdminShopCase[]
+  total: number
+  page: number
+  limit: number
+  counts: Partial<Record<ShopCaseStatus, number>>
+}
+
+export interface AdminShopCaseDetail extends Omit<AdminShopCase, 'last_message' | 'message_count'> {
+  resolution: string | null
+  resolved_by_nickname: string | null
+  order_status: ShopOrderStatus | null
+  delivery_mode: ShopDeliveryMode | null
+  total_cents: number | null
+  messages: { id: string; body: string; internal: boolean; created_at: string; author_nickname: string | null; from_buyer: boolean }[]
 }
