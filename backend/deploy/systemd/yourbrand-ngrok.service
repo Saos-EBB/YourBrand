@@ -9,7 +9,7 @@ User=saosgone
 Environment=HOME=/home/saosgone
 # MANUELL: <your-static-domain> ersetzen (reservierte ngrok Static Domain),
 # siehe backend/docs/deployment/demo-hosting.md.
-ExecStart=/usr/bin/ngrok http 3000 --url=https://<your-static-domain>.ngrok-free.app
+ExecStart=/usr/bin/ngrok http 3000 --url=https://pushchair-tree-deliverer.ngrok-free.dev
 Restart=on-failure
 RestartSec=5
 

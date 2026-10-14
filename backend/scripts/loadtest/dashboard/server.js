@@ -37,7 +37,11 @@ const PORT = 4300;
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-const CONTAINERS = ['XXX_backend_load', 'XXX_db_load'];
+// XXX_backend_cluster_experiment is the ad hoc multi-worker target from
+// the 2026-09-13 capacity session (see docs/audit.html) — not always
+// running, hence pollDockerStats() filtering to whichever of these
+// actually exist rather than erroring out.
+const CONTAINERS = ['XXX_backend_load', 'XXX_backend_cluster_experiment', 'XXX_db_load'];
 // Bump to 2000ms if a very high NUM_USERS makes the per-tick readdir()
 // in lib/tailer.js the bottleneck (see that file's header comment).
 const CSV_POLL_MS = 1000;
@@ -75,7 +79,7 @@ setInterval(async () => {
 setInterval(async () => {
   const tick = await rateLiveState.pollTick();
   if (!tick) return;
-  broadcast('rate-tick', tick);
+  broadcast('rate-tick', { ...tick, docker: lastDockerStats });
 }, CSV_POLL_MS);
 
 runner.on('prefetch', ({ loaded, total }) => {
@@ -120,7 +124,7 @@ rateRunner.on('exit', async ({ code, hadLogDir }) => {
   broadcast('rate-finished', { ...final, rows: rateRunner.getState().rows });
 });
 
-resetRunner.on('step', (step) => broadcast('reset-step', { step }));
+resetRunner.on('step', (step) => broadcast('reset-step', { step, startedAt: resetRunner.startedAt }));
 resetRunner.on('line', (line) => broadcast('reset-line', { line }));
 resetRunner.on('done', () => broadcast('reset-done', {}));
 resetRunner.on('error', (info) => broadcast('reset-error', info));
@@ -328,7 +332,7 @@ function handleResetStart(req, res) {
 }
 
 function handleResetState(req, res) {
-  sendJson(res, 200, { active: resetRunner.isActive(), step: resetRunner.step });
+  sendJson(res, 200, { active: resetRunner.isActive(), step: resetRunner.step, startedAt: resetRunner.startedAt });
 }
 
 const MIME_TYPES = {

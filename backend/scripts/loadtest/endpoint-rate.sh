@@ -15,6 +15,15 @@
 # are reused round-robin across every fired request, same model as
 # loadtest.sh's NUM_USERS/10 pool).
 #
+# This script only does SETUP (endpoint selection, token pool bootstrap,
+# log dir creation) — the actual ramp is `exec`'d into rate-gen.js (Node),
+# not run here in bash. The original all-bash ramp (fork a curl process
+# per request) hit its own ceiling around 200-1500 r/s regardless of
+# backend capacity — process-fork overhead itself became the bottleneck
+# (see docs/audit.html, 2026-09-13 capacity session). rate-gen.js uses
+# keep-alive HTTP connections + async scheduling from a single Node
+# process instead, which is what's needed to reach five-figure rates.
+#
 # Per-request rows are written in the EXACT SAME CSV format loadtest.sh
 # uses (timestamp,method,path,status,duration_ms) into this run's
 # endpoint-rate-logs/<ts>/ directory, so the dashboard's existing
@@ -27,13 +36,14 @@
 #   ENDPOINTS=discover_deck ./endpoint-rate.sh             # one endpoint only
 #   ENDPOINTS=discover_deck,media_upload START_RATE=10 RATE_STEP=10 STEP_SEC=15 MAX_RATE=100 ./endpoint-rate.sh
 #   AUTO_STOP=true SUCCESS_THRESHOLD=95 ./endpoint-rate.sh
+#   START_RATE=200 RATE_STEP=200 STEP_SEC=5 MAX_RATE=10000 ./endpoint-rate.sh   # pushing for 10k r/s
 #
 set -uo pipefail   # bewusst KEIN -e: einzelne fehlgeschlagene Requests
                     # sollen gezaehlt werden, nicht das Script killen
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-source ./actions.sh   # do_request/do_upload/log_error_if_needed/action_*/ACTIONS, BASE_URL default
+source ./actions.sh   # do_request/do_upload/log_error_if_needed/action_*/ACTIONS, BASE_URL default, TEST_PHOTO default
 
 TOKEN_POOL_SIZE="${TOKEN_POOL_SIZE:-500}"
 USERS_FILE="${USERS_FILE:-./users.csv}"
@@ -88,8 +98,7 @@ if [ ! -f "$TOKENS_FILE" ] || [ "$(wc -l < "$TOKENS_FILE" 2>/dev/null || echo 0)
   BASE_URL="$BASE_URL" USERS_FILE="$USERS_FILE" TOKENS_FILE="$TOKENS_FILE" ./prefetch-tokens.sh
 fi
 
-mapfile -t TOKEN_LINES < "$TOKENS_FILE"
-AVAILABLE_TOKENS="${#TOKEN_LINES[@]}"
+AVAILABLE_TOKENS=$(wc -l < "$TOKENS_FILE")
 if [ "$AVAILABLE_TOKENS" -eq 0 ]; then
   echo "Fehler: ${TOKENS_FILE} ist leer."
   exit 1
@@ -102,175 +111,22 @@ fi
 TS="$(date +%s)"
 LOG_DIR="./endpoint-rate-logs/${TS}"
 mkdir -p "${LOG_DIR}"
-ERRORS_FILE="${LOG_DIR}/errors.log"   # von log_error_if_needed (actions.sh) benutzt
+ERRORS_FILE="${LOG_DIR}/errors.log"   # von rate-gen.js benutzt
 
 echo "Endpoint-Rate-Test gegen ${BASE_URL} (${AVAILABLE_TOKENS} Tokens im Pool, wiederverwendet)"
 echo "START_RATE=${START_RATE} RATE_STEP=${RATE_STEP} STEP_SEC=${STEP_SEC} MAX_RATE=${MAX_RATE} AUTO_STOP=${AUTO_STOP}"
 echo "Logs: ${LOG_DIR}"
 echo ""
 
-# Aggregiert eine Step-CSV-Datei (gleiches Format wie loadtest.sh) zu
-# attempts/successes/avg/p95/max. success = "kein echter Fehler", nicht
-# "2xx" — gleiche Definition wie actions.sh's log_error_if_needed() und
-# des Dashboards aggregator.js categorizeStatus(): nur 5xx und eine tote
-# Verbindung ("000") sind echte Fehler. Ein 4xx ist bei diesem Lastansatz
-# erwarteter Traffic (doppelte Anfrage, zu wenig Coins, Admin-Endpoint von
-# einem Nicht-Owner-Token, ...) und darf success%/AUTO_STOP nicht
-# verfaelschen — siehe auch actions.sh's eigener Kommentar dazu. Absichtlich
-# NICHT dieselbe Funktion wie login-capacity.sh's aggregate_step (die liest
-# pro-Request-Dateien, hier ist alles schon in einer gemeinsamen Step-CSV).
-aggregate_step_csv() {
-  local file="$1"
-  awk -F',' '
-    NR>1 {
-      n++
-      if ($4 == "000" || ($4 ~ /^[0-9]+$/ && $4+0 >= 500)) { err++ }
-      else { ok++; sum+=$5; dur[ok_n++]=$5; if ($5>max) max=$5 }
-    }
-    END {
-      printf "%d\t%d\n", n+0, ok+0
-      if (ok_n > 0) {
-        n_sorted = asort(dur)
-        p95idx = int(n_sorted*0.95); if (p95idx>=n_sorted) p95idx=n_sorted-1
-        printf "%.0f\t%d\t%d\n", sum/ok_n, dur[p95idx+1], max
-      } else {
-        printf "0\t0\t0\n"
-      }
-    }' "$file"
-}
-
-# Feuert EINEN Request: zufaellig gewaehlte Aktion aus der Auswahl, Token
-# per Round-Robin aus dem Pool. Mehrere fire_one laufen parallel (siehe
-# Haupt-Loop) und haengen alle an dieselbe Step-CSV an — auf Linux ist ein
-# einzelner append-Write < PIPE_BUF (4096 Bytes) atomar, eine CSV-Zeile
-# bleibt also unter gleichzeitigen Schreibern unbeschaedigt.
-fire_one() {
-  local logfile="$1" token_idx="$2"
-  local email token
-  IFS=',' read -r email token <<< "${TOKEN_LINES[$token_idx]}"
-  local action="${SELECTED_ACTIONS[$((RANDOM % ${#SELECTED_ACTIONS[@]}))]}"
-  "$action" "$logfile" "$token"
-}
-
-printf '%-6s %-12s %-10s %-10s %-10s %-8s %-8s %-8s\n' \
-  "step" "target/s" "attempts" "success" "success%" "avg_ms" "p95_ms" "max_ms"
-
-TOKEN_CURSOR=0
-RESULTS=()
-STEP_NUM=0
-RATE="$START_RATE"
-
-while [ "$RATE" -le "$MAX_RATE" ]; do
-  STEP_NUM=$((STEP_NUM + 1))
-  STEP_LOGFILE="${LOG_DIR}/step_${STEP_NUM}.csv"
-  echo "timestamp,method,path,status,duration_ms" > "$STEP_LOGFILE"
-
-  PIDS=()
-  for (( sec=0; sec<STEP_SEC; sec++ )); do
-    tick_start=$(date +%s%3N)
-    for (( r=0; r<RATE; r++ )); do
-      TOKEN_CURSOR=$((TOKEN_CURSOR + 1))
-      token_idx=$(( TOKEN_CURSOR % AVAILABLE_TOKENS ))
-      fire_one "$STEP_LOGFILE" "$token_idx" &
-      PIDS+=($!)
-    done
-    tick_end=$(date +%s%3N)
-    elapsed=$(( tick_end - tick_start ))
-    remaining=$(( 1000 - elapsed ))
-    if [ "$remaining" -gt 0 ]; then
-      sleep "$(awk -v ms="$remaining" 'BEGIN{printf "%.3f", ms/1000}')"
-    fi
-  done
-
-  # Step-Dauer ist um, aber einzelne Requests koennen laenger brauchen
-  # (das ist ja genau das, was wir hier messen wollen) — auf alle warten.
-  for pid in "${PIDS[@]}"; do wait "$pid" 2>/dev/null; done
-
-  mapfile -t stat_lines < <(aggregate_step_csv "$STEP_LOGFILE")
-  IFS=$'\t' read -r attempts successes <<< "${stat_lines[0]}"
-  IFS=$'\t' read -r avg_ms p95_ms max_ms <<< "${stat_lines[1]}"
-
-  success_pct="0.0"
-  if [ "$attempts" -gt 0 ]; then
-    success_pct=$(awk -v ok="$successes" -v n="$attempts" 'BEGIN{printf "%.1f", (ok/n)*100}')
-  fi
-
-  row=$(printf '%-6s %-12s %-10s %-10s %-10s %-8s %-8s %-8s' \
-    "$STEP_NUM" "${RATE}/s" "$attempts" "$successes" "${success_pct}%" "$avg_ms" "$p95_ms" "$max_ms")
-  echo "$row"
-  RESULTS+=("$row")
-
-  if [ "$AUTO_STOP" = "true" ]; then
-    below=$(awk -v p="$success_pct" -v t="$SUCCESS_THRESHOLD" 'BEGIN{print (p+0 < t+0) ? 1 : 0}')
-    if [ "$below" = "1" ]; then
-      echo ""
-      echo "AUTO_STOP: success% (${success_pct}) fiel unter SUCCESS_THRESHOLD (${SUCCESS_THRESHOLD}) bei ${RATE}/s — Ramp gestoppt."
-      break
-    fi
-  fi
-
-  RATE=$(( RATE + RATE_STEP ))
-done
-
-echo ""
-echo "Fertig. Aggregiere Ergebnisse..."
-
 # ─────────────────────────────────────────────────────────────
-# AUSWERTUNG — Step-Tabelle (wann bricht's ein) + Pfad-Breakdown (wo
-# bricht's ein), beides in summary.txt. _all_rows.csv im selben Format
-# wie loadtest.sh, damit dashboard/lib/aggregator.js unveraendert
-# funktioniert.
+# RAMP — handed off to rate-gen.js (Node). Setup above (endpoint
+# selection, token pool, log dir) stays in bash; the actual request
+# firing does not, since that's what needed the rewrite. `exec` replaces
+# this process image with node (same PID), so dashboard/lib/rateRunner.js
+# stopping the process group still works unchanged.
 # ─────────────────────────────────────────────────────────────
 
-SUMMARY_FILE="${LOG_DIR}/summary.txt"
-{
-  echo "=== YourBrand Endpoint-Rate Summary ==="
-  echo "Zeitpunkt: $(date -Iseconds)"
-  echo "ENDPOINTS=${ENDPOINT_KEYS} START_RATE=${START_RATE} RATE_STEP=${RATE_STEP} STEP_SEC=${STEP_SEC} MAX_RATE=${MAX_RATE} BASE_URL=${BASE_URL}"
-  echo ""
+export BASE_URL LOG_DIR ERRORS_FILE TOKENS_FILE TEST_PHOTO ENDPOINT_KEYS
+export START_RATE RATE_STEP STEP_SEC MAX_RATE AUTO_STOP SUCCESS_THRESHOLD
 
-  echo "-- Stufen --"
-  printf '%-6s %-12s %-10s %-10s %-10s %-8s %-8s %-8s\n' \
-    "step" "target/s" "attempts" "success" "success%" "avg_ms" "p95_ms" "max_ms"
-  for row in "${RESULTS[@]}"; do echo "$row"; done
-
-  ALL_ROWS="${LOG_DIR}/_all_rows.csv"
-  echo "timestamp,method,path,status,duration_ms" > "$ALL_ROWS"
-  for f in "${LOG_DIR}"/step_*.csv; do
-    [ -f "$f" ] && tail -n +2 "$f" >> "$ALL_ROWS"
-  done
-
-  TOTAL=$(($(wc -l < "$ALL_ROWS") - 0))
-  echo ""
-  echo "Requests gesamt: ${TOTAL}"
-
-  echo ""
-  echo "-- Status-Code-Verteilung --"
-  awk -F',' 'NR>1 {print $4}' "$ALL_ROWS" | sort | uniq -c | sort -rn
-
-  echo ""
-  echo "-- Requests pro Pfad --"
-  awk -F',' 'NR>1 {print $3}' "$ALL_ROWS" | sort | uniq -c | sort -rn
-
-  echo ""
-  echo "-- Latenz pro Pfad (avg / p95 / max, ms) --"
-  awk -F',' 'NR>1 {print $3","$5}' "$ALL_ROWS" | sort -t',' -k1,1 | \
-  awk -F',' '
-    {
-      path=$1; dur=$2+0
-      arr[path][n[path]++] = dur
-      sum[path] += dur
-      if (dur > max[path]) max[path] = dur
-    }
-    END {
-      for (p in arr) {
-        m = n[p]
-        m_sorted = asort(arr[p])
-        p95idx = int(m_sorted*0.95); if (p95idx>=m_sorted) p95idx=m_sorted-1
-        printf "%-30s avg=%.0f p95=%.0f max=%.0f n=%d\n", p, sum[p]/m, arr[p][p95idx+1], max[p], m
-      }
-    }'
-} | tee "$SUMMARY_FILE"
-
-echo ""
-echo "Zusammenfassung gespeichert in: ${SUMMARY_FILE}"
+exec node "${SCRIPT_DIR}/rate-gen.js"

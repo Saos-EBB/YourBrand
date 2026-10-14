@@ -55,18 +55,21 @@ if [ "$TOKEN_POOL_SIZE" -lt 1 ]; then
 fi
 
 echo "=== 1/6: Health-Check auf ${LOADTEST_BASE_URL} ==="
-# Kein dedizierter /health-Endpoint im Backend, und AppController (GET /) ist
-# nirgends registriert (curl liefert hier reproduzierbar 404). Jeder HTTP-
-# Statuscode beweist trotzdem, dass Nest antwortet — nur "000" (curl kommt
-# gar nicht durch: Connection refused/Timeout) zaehlt hier als "nicht da".
-status=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "${LOADTEST_BASE_URL}" 2>/dev/null)
-if [ "$status" = "000" ]; then
-  echo "Fehler: Loadtest-Stack unter ${LOADTEST_BASE_URL} nicht erreichbar."
+# AppController (GET /api/v1) ist jetzt registriert und liefert
+# {"status":"ok","uptime":N} — der healthcheckPath aus railway.json, per
+# @SkipThrottle von der globalen 100req/60s-Quote ausgenommen. Damit ist
+# HTTP 200 hier die eigentliche Erwartung, nicht mehr nur "irgendein Code
+# ungleich 000".
+response=$(curl -s -m 5 -w '\nHTTPSTATUS:%{http_code}' "${LOADTEST_BASE_URL}" 2>/dev/null)
+status=$(printf '%s' "$response" | grep -o 'HTTPSTATUS:[0-9]*$' | cut -d: -f2)
+body=$(printf '%s' "$response" | sed -e 's/HTTPSTATUS:[0-9]*$//')
+if [ "$status" != "200" ]; then
+  echo "Fehler: Loadtest-Stack unter ${LOADTEST_BASE_URL} nicht erreichbar (HTTP ${status:-000})."
   echo "Starten mit:"
   echo "  docker compose -f docker-compose.yml -f docker-compose.loadtest.yml up -d XXX_db_load XXX_backend_load"
   exit 1
 fi
-echo "OK (HTTP ${status})"
+echo "OK (HTTP ${status}, ${body})"
 
 # seed-extra-users.ts fills seed_user_0001..SEED_USERS CONTIGUOUSLY and only
 # ever tops up (never shrinks, see its own header comment) — so the last

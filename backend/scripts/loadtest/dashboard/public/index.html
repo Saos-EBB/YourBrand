@@ -21,6 +21,7 @@
        is open. -->
   <div class="controls reset-widget">
     <div class="state"><span id="reset-dot" class="dot"></span><span id="reset-state-text">Backend bereit</span>
+      <span id="reset-elapsed" class="elapsed"></span>
       <span class="hint" tabindex="0" data-tip="reset.info">ⓘ</span></div>
     <div class="controls-spacer"></div>
     <button id="reset-btn" class="btn btn-stop" type="button">⟳ Backend zurücksetzen</button>
@@ -44,7 +45,7 @@
     <div id="shortfall-banner" class="shortfall-banner hidden" tabindex="0" data-tip="mode2.shortfall"></div>
 
     <div id="prefetch-status" class="statusbar hidden">
-      <div class="state"><span class="dot running"></span><span>Vorbereitung läuft — logge User ein</span> <span class="hint" tabindex="0" data-tip="mode2.prefetch">ⓘ</span></div>
+      <div class="state"><span class="dot running"></span><span>Vorbereitung läuft — logge User ein</span> <span id="prefetch-elapsed" class="elapsed"></span> <span class="hint" tabindex="0" data-tip="mode2.prefetch">ⓘ</span></div>
       <div class="prefetch-progress">
         <div class="metric"><span id="prefetch-count" class="num">– / –</span><span class="lbl">Tokens geladen</span></div>
         <div class="bar-track prefetch-bar-track"><div id="prefetch-bar-fill" class="bar-fill" style="width:0%"></div></div>
@@ -104,7 +105,7 @@
         <div id="errors-clean" class="errors-clean">Keine echten Fehler — sauberer Lauf. Sobald ein 5xx auftritt, wird dieser Bereich rot und rückt nach oben.</div>
         <table id="errors-table" class="errors-table hidden">
           <thead>
-            <tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th><th>Body</th></tr>
+            <tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th><th>Body</th><th>Known Issue</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -125,7 +126,14 @@
       <div class="field"><label for="cap-max-rate">Max rate/s</label><input id="cap-max-rate" class="mono" type="number" min="1" value="50" data-tip="mode1.maxRate"></div>
       <div class="field checkbox"><label for="cap-auto-stop"><input id="cap-auto-stop" type="checkbox" data-tip="mode1.autoStop"> Auto-stop</label></div>
       <div class="field"><label for="cap-threshold">Threshold %</label><input id="cap-threshold" class="mono" type="number" min="1" max="100" value="95" data-tip="mode1.threshold"></div>
-      <div class="field"><label for="cap-base-url">Base URL</label><input id="cap-base-url" class="mono" type="text" value="http://localhost:3100/api/v1" data-tip="mode1.baseUrl"></div>
+      <div class="field"><label for="cap-target">Target</label>
+        <select id="cap-target" class="mono" data-tip="mode1.target">
+          <option value="http://localhost:3100/api/v1">1 Worker · :3100</option>
+          <option value="http://localhost:3102/api/v1">8-Worker Cluster · :3102</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div class="field" id="cap-base-url-field" hidden><label for="cap-base-url">Base URL</label><input id="cap-base-url" class="mono" type="text" value="http://localhost:3100/api/v1" data-tip="mode1.baseUrl"></div>
       <span class="hint" tabindex="0" data-tip="mode1.controlsInfo">ⓘ</span>
       <div class="controls-spacer"></div>
       <button id="cap-start-btn" class="btn btn-start" type="button">▶ Start</button>
@@ -134,7 +142,7 @@
     <span id="cap-control-error" class="error"></span>
 
     <div id="cap-statusbar" class="statusbar">
-      <div class="state"><span id="cap-state-dot" class="dot"></span><span id="cap-state-text">IDLE</span> <span class="hint" tabindex="0" data-tip="mode1.state">ⓘ</span></div>
+      <div class="state"><span id="cap-state-dot" class="dot"></span><span id="cap-state-text">IDLE</span> <span id="cap-elapsed" class="elapsed"></span> <span id="cap-worker-badge" class="worker-badge" data-tip="mode1.target">● 1 Worker</span> <span class="hint" tabindex="0" data-tip="mode1.state">ⓘ</span></div>
       <div class="metric"><span id="cap-stat-limit" class="num">–</span><span class="lbl">Login-Grenze <span class="hint" tabindex="0" data-tip="mode1.limit">ⓘ</span></span></div>
       <div class="metric"><span id="cap-stat-bcrypt" class="num">–</span><span class="lbl">Ø bcrypt ms <span class="hint" tabindex="0" data-tip="mode1.bcrypt">ⓘ</span></span></div>
       <div class="metric"><span id="cap-stat-knee" class="num">–</span><span class="lbl">Knick bei <span class="hint" tabindex="0" data-tip="mode1.knee">ⓘ</span></span></div>
@@ -183,6 +191,7 @@
         <button type="button" id="rate-select-none" class="btn-link">Keine</button>
         <button type="button" id="rate-select-one" class="btn-link">Nur eine (Zufall)</button>
       </div>
+      <div class="endpoint-warning" tabindex="0" data-tip="mode3.adminPendingWarning">⚠ <b>Admin: Pending</b> — bekannter Bug, keine Pagination (admin.service.ts:184). Brach in der 2026-09-13-Session schon bei 20 r/s zusammen (159k pending rows). Nur mit sehr niedrigem Max rate testen.</div>
     </div>
 
     <div class="controls">
@@ -193,7 +202,14 @@
       <div class="field checkbox"><label for="rate-auto-stop"><input id="rate-auto-stop" type="checkbox" data-tip="mode3.autoStop"> Auto-stop</label></div>
       <div class="field"><label for="rate-threshold">Threshold %</label><input id="rate-threshold" class="mono" type="number" min="1" max="100" value="95" data-tip="mode3.threshold"></div>
       <div class="field"><label for="rate-token-pool">Token-Pool</label><input id="rate-token-pool" class="mono" type="number" min="1" value="500" data-tip="mode3.tokenPool"></div>
-      <div class="field"><label for="rate-base-url">Base URL</label><input id="rate-base-url" class="mono" type="text" value="http://localhost:3100/api/v1" data-tip="mode3.baseUrl"></div>
+      <div class="field"><label for="rate-target">Target</label>
+        <select id="rate-target" class="mono" data-tip="mode3.target">
+          <option value="http://localhost:3100/api/v1">1 Worker · :3100</option>
+          <option value="http://localhost:3102/api/v1">8-Worker Cluster · :3102</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div class="field" id="rate-base-url-field" hidden><label for="rate-base-url">Base URL</label><input id="rate-base-url" class="mono" type="text" value="http://localhost:3100/api/v1" data-tip="mode3.baseUrl"></div>
       <span class="hint" tabindex="0" data-tip="mode3.controlsInfo">ⓘ</span>
       <div class="controls-spacer"></div>
       <button id="rate-start-btn" class="btn btn-start" type="button">▶ Start</button>
@@ -202,7 +218,7 @@
     <span id="rate-control-error" class="error"></span>
 
     <div id="rate-statusbar" class="statusbar">
-      <div class="state"><span id="rate-state-dot" class="dot"></span><span id="rate-state-text">IDLE</span> <span class="hint" tabindex="0" data-tip="mode3.state">ⓘ</span></div>
+      <div class="state"><span id="rate-state-dot" class="dot"></span><span id="rate-state-text">IDLE</span> <span id="rate-elapsed" class="elapsed"></span> <span id="rate-worker-badge" class="worker-badge" data-tip="mode3.target">● 1 Worker</span> <span class="hint" tabindex="0" data-tip="mode3.state">ⓘ</span></div>
       <div class="metric"><span id="rate-stat-throughput" class="num">–</span><span class="lbl">Requests / s <span class="hint" tabindex="0" data-tip="mode2.reqs">ⓘ</span></span></div>
       <div class="metric"><span id="rate-stat-success-rate" class="num">–</span><span class="lbl">Erfolgsrate <span class="hint" tabindex="0" data-tip="mode2.successRate">ⓘ</span></span></div>
       <div class="metric"><span id="rate-stat-real-errors" class="num">–</span><span class="lbl">Echte Fehler <span class="hint" tabindex="0" data-tip="mode2.realErrors">ⓘ</span></span></div>
@@ -253,11 +269,14 @@
       <div id="rate-errors-clean" class="errors-clean">Keine echten Fehler — sauberer Lauf.</div>
       <table id="rate-errors-table" class="errors-table hidden">
         <thead>
-          <tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th><th>Body</th></tr>
+          <tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th><th>Body</th><th>Known Issue</th></tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
+
+    <h2>Docker</h2>
+    <div id="rate-docker-stats" class="totals"></div>
 
     <h2>Console</h2>
     <pre id="rate-console" class="console"></pre>

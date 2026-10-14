@@ -109,7 +109,7 @@ services:
       DB_NAME:     ${DB_NAME}
       DB_USER:     ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_POOL_MAX: ${DB_POOL_MAX:-20}
+      DB_POOL_MAX: ${DB_POOL_MAX:-40}
       REDIS_HOST:  XXX_redis_load
       REDIS_PORT:  6379
       S3_ENDPOINT: http://minio-load:9000
@@ -153,7 +153,7 @@ services:
       DB_NAME:     ${DB_NAME}
       DB_USER:     ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_POOL_MAX: ${DB_POOL_MAX:-20}
+      DB_POOL_MAX: ${DB_POOL_MAX:-40}
       REDIS_HOST:  XXX_redis_load
       REDIS_PORT:  6379
       S3_ENDPOINT: http://minio-load:9000

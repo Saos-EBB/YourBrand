@@ -33,6 +33,7 @@ function parseParamsFromSummary(summaryText) {
   const rateStep = /RATE_STEP=(\d+)/.exec(summaryText);
   const stepSec = /STEP_SEC=(\d+)/.exec(summaryText);
   const maxRate = /MAX_RATE=(\d+)/.exec(summaryText);
+  const baseUrl = /BASE_URL=(\S+)/.exec(summaryText);
   if (!startRate || !rateStep || !stepSec || !maxRate) return null;
   return {
     endpoints: endpoints ? endpoints[1] : '',
@@ -40,6 +41,7 @@ function parseParamsFromSummary(summaryText) {
     rateStep: Number(rateStep[1]),
     stepSec: Number(stepSec[1]),
     maxRate: Number(maxRate[1]),
+    baseUrl: baseUrl ? baseUrl[1] : undefined,
   };
 }
 

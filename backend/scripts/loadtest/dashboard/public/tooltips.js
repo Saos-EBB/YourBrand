@@ -59,6 +59,7 @@ const TOOLTIPS = {
   'mode1.maxRate': "The highest login rate the test will try, in logins per second. The ramp stops here even if the server hasn't struggled yet.",
   'mode1.autoStop': "If checked, the test stops itself as soon as one step's success rate drops below the threshold, instead of always running every step up to Max rate.",
   'mode1.threshold': "The success rate (%) a step must reach to count as \"still working\". Used to work out the login limit and the knee below.",
+  'mode1.target': "Which backend process the requests are sent to. \"1 Worker\" is the normal single-process backend; \"8-Worker Cluster\" is the multi-process experiment from the 2026-09-13 capacity session (see docs/audit.html) — pick Custom… to type any other address.",
   'mode1.baseUrl': "The web address the login requests are sent to.",
 
   // Mode 1 — status bar
@@ -78,6 +79,7 @@ const TOOLTIPS = {
   // Mode 3 — controls
   'mode3.controlsInfo': "Fires a stepped ramp of requests/second — same ramp mechanism as Mode 1 — against whichever endpoints you tick below, instead of one fixed endpoint. Lets you isolate exactly which endpoint breaks first and at what rate, without a big user count muddying the picture.",
   'mode3.endpoints': "Which of the app's endpoints get hit. Tick one to test it in isolation, or several/all to see how they behave combined. Requests are split randomly across whichever ones are ticked.",
+  'mode3.adminPendingWarning': "Confirmed 2026-09-13: AdminService.getMediaPending() (admin.service.ts:184) has no LIMIT/pagination — it loads every pending media_uploads row on every call. With the loadtest DB's current backlog (~159k rows) it collapsed at just 20 r/s, ~9.2s average latency, 80% timeout. Test it alone, at a low Max rate, unless you're specifically trying to reproduce that.",
   'mode3.startRate': "How many requests per second the test starts at — its first, gentlest step.",
   'mode3.rateStep': "How much the rate increases with each step, in requests per second.",
   'mode3.stepSec': "How long each step lasts, in seconds, before the rate increases again.",
@@ -85,6 +87,7 @@ const TOOLTIPS = {
   'mode3.autoStop': "If checked, the test stops itself as soon as one step's success rate drops below the threshold, instead of always running every step up to Max rate.",
   'mode3.threshold': "The success rate (%) a step must reach to count as \"still working\" — only used if Auto-stop is on.",
   'mode3.tokenPool': "How many logged-in test accounts to prepare and reuse. User count doesn't matter here (this mode is about requests/second, not simulated people), so a small pool is enough even at a high rate — accounts just get reused across requests.",
+  'mode3.target': "Which backend process the requests are sent to. \"1 Worker\" is the normal single-process backend; \"8-Worker Cluster\" is the multi-process experiment from the 2026-09-13 capacity session (see docs/audit.html) — pick Custom… to type any other address.",
   'mode3.baseUrl': "The web address the requests are sent to.",
   'mode3.state': "Whether the rate ramp is running, has finished, or hasn't started.",
   'mode3.steps': "One row per rate step, same idea as Mode 1's table: shows exactly when (at what rate) things start to break.",

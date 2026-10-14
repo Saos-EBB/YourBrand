@@ -9,6 +9,58 @@
 
 const el = (id) => document.getElementById(id);
 
+// ── Known worker targets (2026-09-13 capacity session, see docs/audit.html)
+// The single biggest lever found that session was going from one Node
+// process to a multi-worker cluster — this maps a Base URL to how many
+// backend processes are actually behind it, so a run's throughput can be
+// read in context instead of as a bare, unexplained number.
+const TARGET_PRESETS = [
+  { url: 'http://localhost:3100/api/v1', label: '1 Worker · :3100', workers: 1, container: 'XXX_backend_load' },
+  { url: 'http://localhost:3102/api/v1', label: '8-Worker Cluster · :3102', workers: 8, container: 'XXX_backend_cluster_experiment' },
+];
+
+function findTargetPreset(url) {
+  return TARGET_PRESETS.find((t) => t.url === (url || '').trim()) || null;
+}
+
+// Keeps a target <select>, its (normally hidden) custom-URL field and a
+// worker-count badge in sync. Returns an apply(url) function so callers
+// that set the URL programmatically (loading a past run, restoring live
+// state on reconnect) can re-sync the same three elements from one place.
+function wireTargetControl(selectEl, urlFieldEl, badgeEl) {
+  const urlInputEl = urlFieldEl.querySelector('input');
+
+  function apply(url) {
+    const preset = findTargetPreset(url);
+    urlInputEl.value = url || '';
+    selectEl.value = preset ? preset.url : 'custom';
+    urlFieldEl.hidden = !!preset;
+    if (preset) {
+      badgeEl.textContent = `● ${preset.workers} Worker${preset.workers === 1 ? '' : 'n'}`;
+      badgeEl.className = 'worker-badge worker-badge--known';
+      badgeEl.title = `Container: ${preset.container}`;
+    } else {
+      badgeEl.textContent = url ? '● Custom Target' : '● 1 Worker';
+      badgeEl.className = 'worker-badge';
+      badgeEl.title = url || '';
+    }
+  }
+
+  selectEl.addEventListener('change', () => {
+    if (selectEl.value === 'custom') {
+      urlFieldEl.hidden = false;
+      urlInputEl.focus();
+      badgeEl.textContent = '● Custom Target';
+      badgeEl.className = 'worker-badge';
+    } else {
+      apply(selectEl.value);
+    }
+  });
+
+  apply(urlInputEl.value);
+  return apply;
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────
 
 const MODE_STORAGE_KEY = 'loadtest-dashboard-tab';
@@ -44,6 +96,30 @@ function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+// A pulsing dot doesn't prove anything's still moving through a long silent
+// stretch — a docker build with buffered output, the wait between
+// login-capacity.sh's step rows, run-loadtest.sh's health-check/seed-check/
+// users.csv steps before the first PREFETCH line — a number that keeps
+// ticking up does. One of these per widget; start(startedAt) (re)starts the
+// 1s tick from that timestamp (server-provided where the runner tracks one,
+// so a page reload mid-run resumes at the right count), stop() clears it.
+function makeElapsedTicker(targetEl) {
+  let intervalId = null;
+  return {
+    start(startedAt) {
+      clearInterval(intervalId);
+      const render = () => { targetEl.textContent = `· ${formatElapsed(Date.now() - startedAt)}`; };
+      render();
+      intervalId = setInterval(render, 1000);
+    },
+    stop() {
+      clearInterval(intervalId);
+      intervalId = null;
+      targetEl.textContent = '';
+    },
+  };
+}
+
 // "03.08. 13:54:35" — short German date, used by History rows.
 function formatHistDate(ts) {
   const d = new Date(Number(ts) * 1000);
@@ -64,6 +140,7 @@ const shortfallBanner = el('shortfall-banner');
 const prefetchStatusEl = el('prefetch-status');
 const prefetchCount = el('prefetch-count');
 const prefetchBarFill = el('prefetch-bar-fill');
+const prefetchTicker = makeElapsedTicker(el('prefetch-elapsed'));
 
 // Tokens are reused across workers (token_idx = i % AVAILABLE_TOKENS in
 // loadtest.sh) — NUM_USERS itself always runs in full now, never silently
@@ -119,6 +196,7 @@ function hidePrefetch() {
   statusbarEl.classList.remove('hidden');
   healthBarEl.classList.remove('hidden');
   healthLegendEl.classList.remove('hidden');
+  prefetchTicker.stop();
 }
 
 const chartHistoricalNote = el('chart-historical-note');
@@ -256,6 +334,25 @@ updateEndpointSortIndicators();
 // Built with textContent (not innerHTML) — unlike the other cells here,
 // the error body snippet is real backend response text, not one of our
 // own hardcoded strings, so it isn't safe to interpolate as markup.
+// Bugs confirmed during the 2026-09-13 capacity session (see
+// docs/audit.html) — surfaced here so a 500 in the errors table reads as
+// "already diagnosed, here's the file" instead of unexplained noise.
+// Both race conditions are check-then-insert without a lock, colliding on
+// a DB constraint under concurrent duplicate requests.
+function classifyKnownIssue(e) {
+  const status = Number(e.status);
+  if (status === 500 && e.method === 'POST' && e.path === '/chat/requests') {
+    return 'Race: sendContactRequest() — chat.service.ts:46';
+  }
+  if (status === 500 && e.method === 'PATCH' && /^\/chat\/requests\/[^/]+\/accept$/.test(e.path || '')) {
+    return 'Race: ConversationsService.getOrCreate() — conversations.service.ts:18';
+  }
+  if (e.path === '/admin/media/pending') {
+    return 'Known: no pagination — admin.service.ts:184';
+  }
+  return '';
+}
+
 function renderErrorRows(errors, tbody) {
   tbody.innerHTML = '';
   for (const e of [...errors].reverse()) { // newest first
@@ -268,6 +365,15 @@ function renderErrorRows(errors, tbody) {
       td.textContent = value;
       tr.appendChild(td);
     });
+    const issueTd = document.createElement('td');
+    const knownIssue = classifyKnownIssue(e);
+    if (knownIssue) {
+      const badge = document.createElement('span');
+      badge.className = 'known-issue-badge';
+      badge.textContent = knownIssue;
+      issueTd.appendChild(badge);
+    }
+    tr.appendChild(issueTd);
     tbody.appendChild(tr);
   }
 }
@@ -285,13 +391,13 @@ function renderErrorsPanel(errors) {
   (hasErrors ? errorsAnchorTop : errorsAnchorBottom).insertAdjacentElement('afterend', errorsBlock);
 }
 
-function renderDockerStats(docker) {
-  dockerStatsEl.innerHTML = '';
+function renderDockerStats(targetEl, docker) {
+  targetEl.innerHTML = '';
   for (const d of docker || []) {
     const div = document.createElement('div');
     div.className = 'stat';
     div.innerHTML = `<span class="stat__label">${d.name}</span><span class="stat__value">${d.cpu} / ${d.mem}</span>`;
-    dockerStatsEl.appendChild(div);
+    targetEl.appendChild(div);
   }
 }
 
@@ -319,6 +425,7 @@ startBtn.addEventListener('click', async () => {
     // läuft" state on screen immediately; real numbers land once the
     // first PREFETCH line arrives over SSE.
     showPrefetch(null, null);
+    prefetchTicker.start(Date.now());
   } catch (err) {
     controlError.textContent = String(err);
     setRunningUI(false);
@@ -467,7 +574,7 @@ function applyTick2(tick) {
 
   renderEndpointTable2(tick.perPath);
   renderErrorsPanel(tick.errors);
-  renderDockerStats(tick.docker || []);
+  renderDockerStats(dockerStatsEl, tick.docker || []);
 
   pushPoint('throughput', tick.throughput);
   pushPoint('p95', tick.overall ? tick.overall.p95 : 0);
@@ -521,6 +628,10 @@ const capMaxRate = el('cap-max-rate');
 const capAutoStop = el('cap-auto-stop');
 const capThreshold = el('cap-threshold');
 const capBaseUrl = el('cap-base-url');
+const capTarget = el('cap-target');
+const capBaseUrlField = el('cap-base-url-field');
+const capWorkerBadge = el('cap-worker-badge');
+const applyCapTarget = wireTargetControl(capTarget, capBaseUrlField, capWorkerBadge);
 const capStartBtn = el('cap-start-btn');
 const capStopBtn = el('cap-stop-btn');
 const capControlError = el('cap-control-error');
@@ -528,6 +639,7 @@ const capControlError = el('cap-control-error');
 const capStatusbarEl = el('cap-statusbar');
 const capStateDot = el('cap-state-dot');
 const capStateText = el('cap-state-text');
+const capTicker = makeElapsedTicker(el('cap-elapsed'));
 const capStatLimit = el('cap-stat-limit');
 const capStatBcrypt = el('cap-stat-bcrypt');
 const capStatKnee = el('cap-stat-knee');
@@ -538,7 +650,7 @@ const capConsole = el('cap-console');
 function setCapRunningUI(active) {
   capStartBtn.disabled = active;
   capStopBtn.disabled = !active;
-  for (const input of [capStartRate, capRateStep, capStepSec, capMaxRate, capAutoStop, capThreshold, capBaseUrl]) {
+  for (const input of [capStartRate, capRateStep, capStepSec, capMaxRate, capAutoStop, capThreshold, capBaseUrl, capTarget]) {
     input.disabled = active;
   }
 }
@@ -647,6 +759,7 @@ capStartBtn.addEventListener('click', async () => {
     capStatBcrypt.textContent = '–';
     capStatKnee.textContent = '–';
     setCapState('running', false);
+    capTicker.start(Date.now());
   } catch (err) {
     capControlError.textContent = String(err);
     setCapRunningUI(false);
@@ -672,19 +785,24 @@ fetch('/api/capacity/state')
   .then((state) => {
     capRowsByStep = new Map((state.rows || []).map((r) => [r.step, r]));
     setCapRunningUI(state.active);
+    if (state.params && state.params.baseUrl) applyCapTarget(state.params.baseUrl);
     const rows = state.rows || [];
     const hasError = renderCapSummary(rows);
     setCapState(state.active ? 'running' : (state.status || 'idle'), hasError);
     renderCapTable(rows, capTableBody);
     capConsole.textContent = (state.lines || []).join('\n');
     capConsole.scrollTop = capConsole.scrollHeight;
+    if (state.active && state.startedAt) capTicker.start(state.startedAt);
   })
   .catch(() => {});
 
-source.addEventListener('capacity-started', () => {
+source.addEventListener('capacity-started', (ev) => {
+  const state = JSON.parse(ev.data);
   capRowsByStep = new Map();
   setCapRunningUI(true);
   setCapState('running', false);
+  if (state.params && state.params.baseUrl) applyCapTarget(state.params.baseUrl);
+  capTicker.start(state.startedAt || Date.now());
 });
 source.addEventListener('capacity-line', (ev) => {
   const { line, row } = JSON.parse(ev.data);
@@ -708,6 +826,7 @@ source.addEventListener('capacity-finished', (ev) => {
   const hasError = renderCapSummary(rows);
   setCapState('finished', hasError);
   renderCapTable(rows, capTableBody);
+  capTicker.stop();
   if (!panels.history.hidden) loadHistoryList();
 });
 
@@ -734,6 +853,11 @@ const rateAutoStop = el('rate-auto-stop');
 const rateThreshold = el('rate-threshold');
 const rateTokenPool = el('rate-token-pool');
 const rateBaseUrl = el('rate-base-url');
+const rateTarget = el('rate-target');
+const rateBaseUrlField = el('rate-base-url-field');
+const rateWorkerBadge = el('rate-worker-badge');
+const applyRateTarget = wireTargetControl(rateTarget, rateBaseUrlField, rateWorkerBadge);
+const rateDockerStatsEl = el('rate-docker-stats');
 const rateStartBtn = el('rate-start-btn');
 const rateStopBtn = el('rate-stop-btn');
 const rateControlError = el('rate-control-error');
@@ -741,6 +865,7 @@ const rateControlError = el('rate-control-error');
 const rateStatusbarEl = el('rate-statusbar');
 const rateStateDot = el('rate-state-dot');
 const rateStateText = el('rate-state-text');
+const rateTicker = makeElapsedTicker(el('rate-elapsed'));
 const rateStatThroughput = el('rate-stat-throughput');
 const rateStatSuccessRate = el('rate-stat-success-rate');
 const rateStatRealErrors = el('rate-stat-real-errors');
@@ -779,7 +904,7 @@ rateSelectOneBtn.addEventListener('click', () => {
 function setRateRunningUI(active) {
   rateStartBtn.disabled = active;
   rateStopBtn.disabled = !active;
-  for (const input of [rateStartRate, rateRateStep, rateStepSec, rateMaxRate, rateAutoStop, rateThreshold, rateTokenPool, rateBaseUrl]) {
+  for (const input of [rateStartRate, rateRateStep, rateStepSec, rateMaxRate, rateAutoStop, rateThreshold, rateTokenPool, rateBaseUrl, rateTarget]) {
     input.disabled = active;
   }
   for (const cb of rateEndpointCheckboxes) cb.disabled = active;
@@ -941,6 +1066,7 @@ rateStartBtn.addEventListener('click', async () => {
     rateTableBody.innerHTML = '';
     rateConsole.textContent = '';
     setRateState('running', false);
+    rateTicker.start(Date.now());
   } catch (err) {
     rateControlError.textContent = String(err);
     setRateRunningUI(false);
@@ -971,18 +1097,23 @@ fetch('/api/rate/state')
     rateConsole.textContent = (state.lines || []).join('\n');
     rateConsole.scrollTop = rateConsole.scrollHeight;
     if (state.params && state.params.endpoints) setSelectedEndpoints(state.params.endpoints.split(','));
+    if (state.params && state.params.baseUrl) applyRateTarget(state.params.baseUrl);
     if (state.live) {
       updateRateHealthAndNumbers(state.live.categories, state.live.total, state.live.throughput);
       renderRateEndpointTable(state.live.perPath);
       renderRateErrorsPanel(state.live.errors);
     }
+    if (state.active && state.startedAt) rateTicker.start(state.startedAt);
   })
   .catch(() => {});
 
-source.addEventListener('rate-started', () => {
+source.addEventListener('rate-started', (ev) => {
+  const state = JSON.parse(ev.data);
   rateRowsByStep = new Map();
   setRateRunningUI(true);
   setRateState('running', false);
+  if (state.params && state.params.baseUrl) applyRateTarget(state.params.baseUrl);
+  rateTicker.start(state.startedAt || Date.now());
 });
 source.addEventListener('rate-line', (ev) => {
   const { line, row } = JSON.parse(ev.data);
@@ -1000,6 +1131,7 @@ source.addEventListener('rate-tick', (ev) => {
   setRateState('running', hasError);
   renderRateEndpointTable(tick.perPath);
   renderRateErrorsPanel(tick.errors);
+  renderDockerStats(rateDockerStatsEl, tick.docker || []);
 });
 source.addEventListener('rate-finished', (ev) => {
   const final = JSON.parse(ev.data);
@@ -1009,12 +1141,15 @@ source.addEventListener('rate-finished', (ev) => {
   renderRateEndpointTable(final.perPath);
   renderRateErrorsPanel(final.errors);
   if (final.rows) renderRateTable(final.rows);
+  rateTicker.stop();
+  renderDockerStats(rateDockerStatsEl, []);
   if (!panels.history.hidden) loadHistoryList();
 });
 source.addEventListener('rate-error', (ev) => {
   rateControlError.textContent = JSON.parse(ev.data).message;
   setRateRunningUI(false);
   setRateState('idle', false);
+  rateTicker.stop();
 });
 
 // Loads a past Mode 3 run's full detail into the same elements the live
@@ -1031,6 +1166,7 @@ async function loadPastRunIntoMode3(ts) {
     rateRateStep.value = run.params.rateStep;
     rateStepSec.value = run.params.stepSec;
     rateMaxRate.value = run.params.maxRate;
+    if (run.params.baseUrl) applyRateTarget(run.params.baseUrl);
   }
 
   const total = run.stats ? run.stats.total : 0;
@@ -1042,6 +1178,7 @@ async function loadPastRunIntoMode3(ts) {
   renderRateErrorsPanel(run.errors || []);
   renderRateTable(run.steps || []);
   rateConsole.textContent = run.summaryText || '';
+  renderDockerStats(rateDockerStatsEl, []);
 }
 
 // ═══════════════════════════════ HISTORY ═══════════════════════════════════
@@ -1080,7 +1217,7 @@ async function loadPastRunIntoMode2(ts) {
 
   renderEndpointTable2(run.stats ? run.stats.perPath : {});
   renderErrorsPanel(run.errors || []);
-  renderDockerStats([]);
+  renderDockerStats(dockerStatsEl, []);
 }
 
 // Same idea for Mode 1 — feeds the same stepped-ramp table + status bar
@@ -1098,7 +1235,7 @@ async function loadPastRunIntoMode1(ts) {
     capMaxRate.value = run.params.maxRate;
     capAutoStop.checked = !!run.params.autoStop;
     if (run.params.successThreshold !== undefined) capThreshold.value = run.params.successThreshold;
-    if (run.params.baseUrl) capBaseUrl.value = run.params.baseUrl;
+    if (run.params.baseUrl) applyCapTarget(run.params.baseUrl);
   }
 
   capRowsByStep = new Map(rows.map((r) => [r.step, r]));
@@ -1238,6 +1375,7 @@ const resetStateText = el('reset-state-text');
 const resetBtn = el('reset-btn');
 const resetError = el('reset-error');
 const resetConsole = el('reset-console');
+const resetTicker = makeElapsedTicker(el('reset-elapsed'));
 
 const RESET_STEP_LABELS = { build: 'Baue Image…', recreate: 'Starte Container neu…' };
 
@@ -1258,39 +1396,48 @@ resetBtn.addEventListener('click', async () => {
   resetError.textContent = '';
   resetConsole.textContent = '';
   setResetState('running');
+  resetTicker.start(Date.now());
   try {
     const res = await fetch('/api/reset/start', { method: 'POST' });
     const body = await res.json();
     if (!res.ok) {
       resetError.textContent = body.error || 'Reset fehlgeschlagen';
       setResetState('idle');
+      resetTicker.stop();
     }
   } catch (err) {
     resetError.textContent = String(err);
     setResetState('idle');
+    resetTicker.stop();
   }
 });
 
 fetch('/api/reset/state')
   .then((res) => res.json())
   .then((state) => {
-    if (state.active) setResetState('running', RESET_STEP_LABELS[state.step]);
+    if (state.active) {
+      setResetState('running', RESET_STEP_LABELS[state.step]);
+      resetTicker.start(state.startedAt || Date.now());
+    }
   })
   .catch(() => {});
 
 source.addEventListener('reset-step', (ev) => {
-  const { step } = JSON.parse(ev.data);
+  const { step, startedAt } = JSON.parse(ev.data);
   setResetState('running', RESET_STEP_LABELS[step]);
+  resetTicker.start(startedAt || Date.now());
 });
 source.addEventListener('reset-line', (ev) => {
   appendResetConsoleLine(JSON.parse(ev.data).line);
 });
 source.addEventListener('reset-done', () => {
   setResetState('idle');
+  resetTicker.stop();
 });
 source.addEventListener('reset-error', (ev) => {
   const info = JSON.parse(ev.data);
   resetError.textContent = `${info.step} fehlgeschlagen`
     + (info.code !== undefined ? ` (exit ${info.code})` : info.message ? `: ${info.message}` : '');
   setResetState('error');
+  resetTicker.stop();
 });

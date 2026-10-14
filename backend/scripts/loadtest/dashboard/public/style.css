@@ -104,9 +104,53 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   font-size: 14px;
 }
 .field input[type="text"] { width: 15rem; }
+.field select {
+  background: var(--surface-low);
+  border: 1px solid var(--outline);
+  border-radius: 6px;
+  color: var(--on-surface);
+  padding: 8px 11px;
+  font-family: var(--sans);
+  font-size: 13px;
+  width: 15rem;
+}
 .field.checkbox { flex-direction: row; align-items: center; gap: 6px; }
 .field.checkbox label { flex-direction: row; align-items: center; gap: 6px; text-transform: none; font-size: 13px; }
 .controls-spacer { flex: 1; }
+
+/* ── Worker-target indicator (2026-09-13 capacity session) ──────────────── */
+.worker-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--on-variant);
+  margin-left: 4px;
+  cursor: help;
+}
+.worker-badge--known { color: var(--cyan); }
+
+.endpoint-warning {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 14%, var(--surface));
+  border: 1px solid var(--warn);
+  font-size: 12.5px;
+  color: var(--on-surface);
+  cursor: help;
+}
+
+.known-issue-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--warn) 20%, var(--surface));
+  color: var(--warn);
+}
 
 .endpoint-picker { margin-bottom: 8px; }
 .endpoint-checkboxes {
@@ -218,6 +262,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
 .statusbar.idle { border-left-color: var(--outline); }
 
 .state { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
+/* Ticking "· 1:32" next to a running/preparing state — a pulsing dot alone
+   doesn't prove anything's still moving through a long silent stretch
+   (docker build output, a wait between login-capacity.sh's step rows, ...);
+   a number that keeps changing does. Muted + not bold so it doesn't compete
+   with the state label itself. */
+.elapsed { font-family: var(--mono); font-size: 0.8em; font-weight: 400; color: var(--on-variant); }
 .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--outline); }
 .dot.running { background: var(--ok); animation: pulse 1.6s infinite; }
 .dot.finished { background: var(--outline); }

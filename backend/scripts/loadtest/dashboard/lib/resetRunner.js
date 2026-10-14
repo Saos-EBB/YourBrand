@@ -24,6 +24,7 @@ class ResetRunner extends EventEmitter {
     super();
     this.child = null;
     this.step = null; // 'build' | 'recreate'
+    this.startedAt = null;
   }
 
   isActive() {
@@ -32,6 +33,7 @@ class ResetRunner extends EventEmitter {
 
   start() {
     if (this.isActive()) throw new Error('Ein Reset laeuft schon');
+    this.startedAt = Date.now();
     this._runStep('build', ['build', SERVICE], () => {
       this._runStep('recreate', ['up', '-d', '--force-recreate', SERVICE], () => {
         this.child = null;

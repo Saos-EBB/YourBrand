@@ -28,6 +28,7 @@ class RateRunner extends EventEmitter {
     this.lines = [];
     this.rowsByStep = new Map();
     this.leftover = '';
+    this.startedAt = null;
   }
 
   isActive() {
@@ -48,6 +49,7 @@ class RateRunner extends EventEmitter {
     this.lines = [];
     this.rowsByStep = new Map();
     this.leftover = '';
+    this.startedAt = Date.now();
 
     const env = {
       ...process.env,
@@ -133,6 +135,7 @@ class RateRunner extends EventEmitter {
       params: this.params,
       lines: this.lines,
       rows: dedupeRowsByStep([...this.rowsByStep.values()]),
+      startedAt: this.startedAt,
     };
   }
 }

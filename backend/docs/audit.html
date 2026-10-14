@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>YourBrand Backend — Endpoint-Kapazitäts-Audit — 2026-09-13</title>
+<title>YourBrand Backend — Endpoint-Kapazitäts-Audit — 2026-09-13/14</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -117,25 +117,30 @@
 <body>
 <header>
   <h1>YourBrand Backend — Endpoint-Kapazitäts-Audit</h1>
-  <div class="meta">Session-Datum: 2026-09-13 · Load-Test gegen den Loadtest-Docker-Stack (localhost:3100/3102), Tool: <code>scripts/loadtest/endpoint-rate.sh</code> · Baseline: 1 Node-Prozess · Vergleich: 2- und 8-Worker-Cluster-Experiment (Node <code>cluster</code>-Modul, kompilierter Build, DB_POOL_MAX=10-15/Worker)</div>
+  <div class="meta">Session-Datum: 2026-09-13/14 · Load-Test gegen den Loadtest-Docker-Stack (localhost:3100/3102), Tool: <code>scripts/loadtest/endpoint-rate.sh</code> + <code>rate-gen.js</code> (seit 09-14) · Baseline: 1 Node-Prozess · Vergleich: 2- und 8-Worker-Cluster-Experiment (Node <code>cluster</code>-Modul, kompilierter Build, DB_POOL_MAX=10-15/Worker) · <b>Tab 3 (09-14):</b> Kapazitätsplan für 10-50k aktive Nutzer, gemessen bei realistischer Datenmenge (~5.045 Profile, ~100k Conversations/Messages, ~114k Contact-Requests, ~160k Media-Uploads)</div>
 
   <div class="summary-grid" id="summary-grid"></div>
 
   <div class="top5">
     <h2>Wichtigste Funde dieser Session</h2>
     <ol>
-      <li><b>GET /admin/media/pending bricht bei 20 r/s zusammen</b> — <code>AdminService.getMediaPending()</code> hat kein <code>LIMIT</code>/Pagination, lädt alle 159.107 pending media_uploads-Zeilen bei jedem Aufruf. 80% Timeout, 9,2s Ø-Latenz selbst bei nur 20 gleichzeitigen Requests. <span class="badge risk-hoch">kritisch</span></li>
+      <li><b>Ein einziger kaputter Endpoint kann alle anderen mitreißen</b> (09-14, neu) — <code>GET /admin/media/pending</code>s unpaginierte Query lief nach Testende serverseitig weiter, hielt Connections aus dem gemeinsamen DB_POOL fest und liess das triviale <code>GET /hidden/coin/balance</code> Minuten später mit <b>0% Erfolg</b> (9000/9000 Timeouts) fehlschlagen — ein völlig unabhängiger, sonst gesunder Endpoint. Erholte sich erst, als die liegengebliebenen Admin-Queries durchgelaufen waren. <span class="badge risk-hoch">kritisch</span></li>
+      <li><b>GET /admin/media/pending bricht schon bei 20 r/s zusammen</b> — <code>AdminService.getMediaPending()</code> hat kein <code>LIMIT</code>/Pagination, lädt alle pending media_uploads-Zeilen bei jedem Aufruf (159k am 09-13, mittlerweile 0% Erfolg selbst bei 20 r/s). <span class="badge risk-hoch">kritisch</span></li>
+      <li><b>Conversations-Liste bricht bei realistischer Datenmenge ein</b> (09-14, neu) — <code>ChatService.getConversations()</code>s korrelierte Subquery (letzte Nachricht pro Conversation) brauchte am 09-13 bei ~440 r/s noch 185ms Ø; am 09-14, bei ~100k Conversations/Messages im selben Test-Datensatz, sind es 4,4-6,4s Ø schon bei 200 r/s — App- UND DB-CPU beide nahe Sättigung. Reisst <code>chat_messages_list</code> und <code>chat_messages_post</code> mit (letzteres nur noch 32,9% Erfolg bei 200 r/s). <span class="badge risk-hoch">kritisch</span></li>
+      <li><b>Kein Socket.IO-Redis-Adapter</b> (09-14, neu) — das 8-Worker-Cluster-Experiment, das die HTTP-Kapazität dieser Session vervielfacht hat, würde Chat/Notifications in Produktion silently kaputt machen: jeder Worker hat seinen eigenen In-Memory-Socket.IO-State, ein Client an Worker A bekommt keine Events, die über Worker B laufen. Weder <code>@socket.io/redis-adapter</code> noch eine äquivalente Lösung ist installiert. <span class="badge risk-hoch">kritisch — Blocker für Multi-Worker in Produktion</span></li>
       <li><b>Race Condition in zwei Services</b> — <code>ConversationsService.getOrCreate()</code> und <code>ChatService.sendContactRequest()</code> prüfen Existenz und inserten ohne Lock/Transaktion; unter Last kollidieren parallele Requests auf <code>uq_conversation_users</code>/<code>uq_contact_request_active</code> und werfen unbehandelte 500er. <span class="badge risk-mittel">mittel</span></li>
-      <li><b>Single-Node-Prozess war der eigentliche Flaschenhals, nicht die DB</b> — DB_POOL_MAX=40 hatte bei 1 Worker durchgehend >2x Headroom gegenüber der beobachteten Grenze. Skalierung auf 8 Worker hob praktisch jeden Endpoint von 200-580 r/s auf ≥1000-1950 r/s (Grenze meist nicht erreicht, sondern nur der Test ausgereizt). <span class="badge risk-niedrig">bestätigt</span></li>
-      <li><b>HttpExceptionFilter verschluckt Stacktraces</b> — bei jedem nicht-HttpException-Fehler wird nur eine generische Ein-Zeilen-Message geloggt; die beiden Race-Condition-500er mussten aus Schema + Timing rekonstruiert werden, nicht aus den Logs. <span class="badge risk-mittel">mittel</span></li>
-      <li><b>Load-Test-Harness selbst hatte zwei Bugs</b> (im Tool, nicht im Produkt) — O(n²)-Bubble-Sort in <code>endpoint-rate.sh</code> hing bei hohem Requestvolumen &gt;2h (gepatcht auf <code>asort()</code>); Token-TTL (15 min) kontaminierte lange Ramps mit 401ern, die der Aggregator fälschlich als „success“ zählte. <span class="badge risk-niedrig">gefixt/dokumentiert</span></li>
+      <li><b>Datenmenge schlägt Worker-Anzahl</b> (09-14, neu) — dieselben Routen, die am 09-13 mit 8 Workern sauber 1000-1950 r/s hielten, brechen am 09-14 bei identischem Setup, aber realistisch gewachsenem Datenbestand, schon bei 200-1000 r/s ein. Mehr App-Worker lösen das NICHT — die Flaschenhälse sind jetzt Query-Kosten (Postgres-/App-CPU), nicht Prozess-Nebenläufigkeit. <span class="badge risk-hoch">kritisch für Kapazitätsplanung</span></li>
+      <li><b>Single-Node-Prozess war der ursprüngliche Flaschenhals, nicht die DB</b> (09-13) — bei kleiner Datenmenge hatte DB_POOL_MAX=40 bei 1 Worker durchgehend >2x Headroom gegenüber der beobachteten Grenze; 8 Worker hoben praktisch jeden Endpoint von 200-580 r/s auf ≥1000-1950 r/s. Gilt weiterhin für die App-Prozess-Ebene — siehe aber die beiden Funde oben, warum das bei realistischer Datenmenge nicht mehr reicht. <span class="badge risk-niedrig">bestätigt, aber nicht mehr hinreichend</span></li>
+      <li><b>HttpExceptionFilter verschluckt Stacktraces</b> — bei jedem nicht-HttpException-Fehler wird nur eine generische Ein-Zeilen-Message geloggt. <span class="badge risk-mittel">mittel</span></li>
+      <li><b>Load-Test-Harness komplett umgebaut (09-14)</b> — <code>rate-gen.js</code> (Node, Keep-Alive-HTTP statt curl-Fork-pro-Request) ersetzt die alte Bash-Ramp-Loop, gleiches Log-Format, Dashboard unverändert kompatibel. Schafft nachweislich 10.000 r/s (exakt attempts=success auf jeder Stufe) — die alte Bash-Version kam nie über ~200-1500 r/s hinaus, weil der curl-Fork-Overhead selbst der Flaschenhals war. <span class="badge risk-niedrig">gefixt</span></li>
     </ol>
   </div>
 </header>
 
 <div class="tabs">
-  <button class="tab-btn active" data-tab="a">Endpoint-Kapazität</button>
+  <button class="tab-btn active" data-tab="a">Endpoint-Kapazität (09-13)</button>
   <button class="tab-btn" data-tab="b">Bugs &amp; Methodik</button>
+  <button class="tab-btn" data-tab="c">Kapazitätsplan: 10-50k Nutzer (09-14)</button>
 </div>
 
 <div class="controls">
@@ -168,9 +173,39 @@
     <div class="gap-note"><b>Hinweis:</b> Dieser Tab dokumentiert die in dieser Session gefundenen Bugs (im Produkt) sowie Probleme im Load-Test-Werkzeug selbst — letztere haben Messungen zeitweise verfälscht und wurden während der Session live gepatcht.</div>
     <div id="patterns"></div>
   </section>
+
+  <section id="panel-c" style="display:none;">
+    <div class="gap-note"><b>Ziel:</b> 10.000-50.000 gleichzeitig aktive (eingeloggte) Nutzer. Gemessen am 09-14 mit dem neuen <code>rate-gen.js</code>-Generator gegen den 8-Worker-Cluster, gegen den GLEICHEN Datensatz, den diese Session selbst über zwei Tage angehäuft hat (~5.045 Profile, ~100k Conversations, ~106k Messages, ~114k Contact-Requests, ~160k Media-Uploads) — kein synthetisch leerer Testlauf, sondern das, was ein Produkt nach realer Nutzung ansammelt. „Nutzbar" = p95-Latenz ≤ 800ms bei 100% Erfolg; alles darüber zählt als „bricht ein", selbst wenn technisch noch 200er zurückkommen.</div>
+
+    <div class="pattern-card">
+      <h3>Wie viel Traffic erzeugen 10-50k aktive Nutzer wirklich?</h3>
+      <div class="tagline">Aus dem Frontend-Code abgeleitet, nicht geraten — die einzigen zwei periodischen Hintergrund-Requests im ganzen Frontend sind per <code>grep -rn "setInterval"</code> vollständig erfasst. Alles Echtzeit-Zeug (neue Nachrichten, Notifications, Beef-Events) läuft über WebSocket, nicht HTTP-Polling.</div>
+      <ul>
+        <li><b>Heartbeat (Boden, garantiert):</b> <code>GET /profile/me</code> alle 120s, JEDER eingeloggte Nutzer mit offener App (<code>frontend/hooks/useHeartbeat.ts</code>). Macht <code>N/120</code> req/s — für 10k/25k/50k Nutzer: <b>83 / 208 / 417 req/s</b>. Liegt komfortabel unter JEDER in dieser Session gemessenen Kapazitätsgrenze, selbst der schlechtesten.</li>
+        <li><b>Presence-Poll (bedingt):</b> <code>GET /profile/:nickname</code> alle 30s, NUR während ein Nutzer eine konkrete Chat-Conversation offen hat (<code>frontend/app/(app)/chat/[id]/page.tsx:327</code>). Kein globaler Dauerlast-Faktor, nur relevant für die Zahl gleichzeitig offener Chats.</li>
+        <li><b>Interaktiver Traffic (das eigentliche Risiko):</b> Discover-Deck laden, Conversations-Liste öffnen, Nachrichten senden — nicht auf einem Timer, hängt vom tatsächlichen Nutzungsverhalten ab. Hier reicht schon ein kleiner Bruchteil gleichzeitig aktiver Nutzer, um die unten gemessenen Grenzen zu reissen: <b>2% von 10.000 Nutzern (200 Personen), die im selben 10-Sekunden-Fenster den Chat-Tab öffnen, sind schon 20 req/s auf eine Route, die bei 200 req/s bereits einbricht.</b> Bei 50.000 Nutzern wird aus denselben 2% schon 100 req/s.</li>
+      </ul>
+      <div class="kv"><b>Kernaussage:</b> Der Heartbeat-Boden ist bei JEDER Nutzerzahl in diesem Ziel-Bereich unkritisch. Der Flaschenhals ist NICHT "genug Worker für N Nutzer", sondern dass drei konkrete Query-Muster schon HEUTE, bei ~5.000 Profilen und ~100k Interaktionen, unter selbst niedriger Last einbrechen — und mit echtem Wachstum auf 10-50k Nutzer nur schlimmer werden, unabhängig von der Worker-Anzahl.</div>
+    </div>
+
+    <h2>Nutzbare Kapazität pro Route (09-14, aktueller Datenbestand)</h2>
+    <table id="capacity-table">
+      <thead>
+        <tr>
+          <th>Route</th>
+          <th>Nutzbare Grenze (p95≤800ms)</th>
+          <th>Bei höherer Last</th>
+          <th>Flaschenhals</th>
+        </tr>
+      </thead>
+      <tbody id="capacity-body"></tbody>
+    </table>
+
+    <div id="capacity-patterns"></div>
+  </section>
 </main>
 
-<footer>Erzeugt aus einer Load-Test-Session gegen den Docker-Loadtest-Stack (XXX_backend_load / XXX_backend_cluster_experiment, XXX_db_load, XXX_redis_load, minio-load). Ersetzt die vorherige Codebase-Audit-Version dieser Datei vollständig.</footer>
+<footer>Erzeugt aus einer zweitägigen Load-Test-Session gegen den Docker-Loadtest-Stack (XXX_backend_load / XXX_backend_cluster_experiment, XXX_db_load, XXX_redis_load, minio-load). Ersetzt die vorherige Codebase-Audit-Version dieser Datei vollständig. Tab 3 (09-14) misst gegen den durch diese Session selbst gewachsenen, realistischen Datenbestand — nicht gegen eine leere DB.</footer>
 
 <script>
 const findings = [
@@ -279,6 +314,97 @@ const patterns = [
    reuse:"Bei zukünftigen Lasttests: kleinere, dedizierte Token-Pools mit explizitem TOKEN_POOL_SIZE fahren, Ramps kurz genug für die Token-TTL halten (oder TTL für Testzwecke hochsetzen), und bei Raten &gt;1500-2000 r/s einen effizienteren Lastgenerator als bash+curl-per-request in Erwägung ziehen (z.B. autocannon)."},
 ];
 
+const capacityFindings = [
+  {route:"GET /discover/deck", limit:"~200 r/s", beyond:"Erfolg bricht ab ~2000 r/s auf 75-88% ein; Latenz schon ab 400 r/s über 800ms, bei 3200 r/s Ø=12s/p95=17,5s", bottleneck:"Postgres-CPU (831% CPU bei 1000 r/s) — PostGIS ST_DWithin/ST_Distance-Query", status:"hoch"},
+  {route:"GET /discover/matches", limit:"~1000 r/s", beyond:"100% Erfolg bis 2200 r/s, aber Ø klettert auf 4,2s", bottleneck:"App-CPU — gesunde, reine Kapazitätsgrenze", status:"niedrig"},
+  {route:"GET /hidden/coin/balance", limit:"~800 r/s", beyond:"p95 auf 1,3s bei 1000 r/s", bottleneck:"App-CPU — gesund. ACHTUNG: nach dem admin_pending-Test 0% Erfolg für mehrere Minuten (kaskadierende Pool-Erschöpfung, siehe unten)", status:"mittel"},
+  {route:"POST /hidden/coin/test-purchase", limit:"~600 r/s", beyond:"p95 auf 1,9s bei 1000 r/s", bottleneck:"App-CPU — gesund", status:"niedrig"},
+  {route:"POST /media/upload/profile-photo", limit:"<200 r/s", beyond:"p95 nie unter 1,6s, auch nicht beim niedrigsten getesteten Wert", bottleneck:"MinIO/Disk-I/O (multipart-Upload)", status:"hoch"},
+  {route:"GET /chat/conversations", limit:"<200 r/s", beyond:"Ø 4,4-4,5s schon bei 200-600 r/s; App-CPU 732%, DB-CPU 420%", bottleneck:"Korrelierte Subquery (letzte Nachricht pro Conversation), chat.service.ts:186-199 — skaliert mit Tabellengröße (~100k Conversations/Messages)", status:"hoch"},
+  {route:"GET /chat/conversations/:id/messages", limit:"<200 r/s", beyond:"Ø 4,96s bei 200 r/s", bottleneck:"Erbt /chat/conversations (verkettet: GET conversations → GET messages)", status:"hoch"},
+  {route:"POST /chat/conversations/:id/messages", limit:"<200 r/s", beyond:"nur 32,9% Erfolg selbst bei 200 r/s", bottleneck:"Erbt /chat/conversations + Write-Pfad", status:"hoch"},
+  {route:"POST /chat/requests (send)", limit:"<200 r/s", beyond:"Ø 2,27s bei 200 r/s", bottleneck:"Erbt /discover/deck (verkettet: GET deck → POST request)", status:"hoch"},
+  {route:"GET /chat/requests/incoming", limit:"~800 r/s", beyond:"p95 auf 2,2s bei 1200 r/s", bottleneck:"App-CPU — gesund", status:"niedrig"},
+  {route:"PATCH /chat/requests/:id/accept", limit:"~600-800 r/s", beyond:"p95 auf 937ms bei 1000 r/s", bottleneck:"App-CPU — gesund, plus bekannte Race Condition bei Nebenläufigkeit (siehe Tab 'Bugs')", status:"mittel"},
+  {route:"GET /admin/media/pending", limit:"0 r/s — nicht nutzbar", beyond:"0% Erfolg selbst bei 20 r/s, ausschließlich 10s-Timeouts", bottleneck:"Fehlende Pagination, 159k+ pending rows — siehe Tab 'Bugs & Methodik'", status:"hoch"},
+];
+
+function capBadge(status){
+  return `<span class="badge risk-${status}">${status === 'niedrig' ? 'gesund' : status === 'mittel' ? 'grenzwertig' : 'bricht ein'}</span>`;
+}
+
+function renderCapacityTable(){
+  const body = document.getElementById('capacity-body');
+  body.innerHTML = capacityFindings.map(f => `
+    <tr>
+      <td class="path">${f.route}</td>
+      <td><b>${f.limit}</b></td>
+      <td class="evidence">${f.beyond}</td>
+      <td class="evidence">${f.bottleneck} ${capBadge(f.status)}</td>
+    </tr>
+  `).join('');
+}
+
+const capacityPatterns = [
+  {name:"Kaskadierender Ausfall — ein kaputter Endpoint reisst einen gesunden mit",
+   tagline:"Der schwerwiegendste Einzelfund dieser Session: admin_pending brachte coin_balance zum Totalausfall, obwohl beide nichts miteinander zu tun haben.",
+   how:[
+     "Ablauf: admin_pending-Sweep lief bis 14:15:39 (100% Timeout bei jeder Rate, 159k+ Zeilen pro Query). Direkt danach, isoliert getestet: <code>GET /hidden/coin/balance</code> — eine simple <code>WHERE user_id=$1</code>-Abfrage — lieferte 9000 von 9000 Requests „000“ (Timeout), Ø 10.565ms.",
+     "Ursache: <code>rate-gen.js</code>s Client-Timeout (10s) schliesst den Socket, aber das beendet nicht zwangsläufig die laufende Postgres-Query serverseitig. Bei DB_POOL_MAX=10/Worker × 8 Worker = 80 Connections (nahe an Postgres' <code>max_connections=100</code>) reichte die Menge liegengebliebener admin_pending-Abfragen, um den gesamten Pool zu belegen — jede NEUE Anfrage, egal wie trivial, wartete auf eine Connection, die nie frei wurde, bis die alten Queries endlich durchliefen.",
+     "Re-Test ~90s später: coin_balance wieder 100% Erfolg, saubere Kurve (p95=669ms bei 800 r/s). <code>pg_stat_activity</code> zeigte zu dem Zeitpunkt keine hängenden Queries mehr — der Pool hatte sich von selbst erholt, nachdem die admin_pending-Altlast durchgelaufen war.",
+     "Bedeutung: das ist kein Testartefakt, sondern ein reales Produktionsrisiko — EIN langsamer/kaputter Endpoint kann bei geteiltem Connection-Pool die GESAMTE App für alle Nutzer lahmlegen, nicht nur für die, die den kaputten Endpoint selbst aufrufen."
+   ],
+   files:"backend/src/modules/core/admin/admin.service.ts:184-193 (Ursache), backend/src/config/database.config.ts (DB_POOL_MAX), Postgres max_connections=100",
+   reuse:"Fix-Priorität 1: admin_pending-Pagination beheben (behebt die Query-Kosten UND das Kaskaden-Risiko). Zusätzlich: Statement-Timeout auf DB-Ebene setzen (<code>statement_timeout</code>), damit eine liegengebliebene Query nach X Sekunden von Postgres selbst gekillt wird, statt den Pool unbegrenzt zu blockieren."},
+
+  {name:"Conversations-Liste skaliert nicht mit echter Nutzungshistorie",
+   tagline:"Die Route, die JEDER Nutzer beim Öffnen des Chat-Tabs aufruft, bricht bei ~100k Conversations/Messages schon bei 200 r/s ein — am 09-13, bei kleinerem Datenbestand, war dieselbe Route bei 1000+ r/s noch sauber.",
+   how:[
+     "<code>ChatService.getConversations()</code> (chat.service.ts:171-233) lädt für jede Conversation die \"letzte Nachricht\" über eine korrelierte Subquery (<code>MAX(m2.sent_at)</code> pro Conversation) statt eines vorberechneten/indizierten Felds.",
+     "09-13 (kleiner Datenbestand, gleiche 8-Worker-Cluster-Config): Ø 185ms bei 440 r/s. 09-14 (dieselbe Query, ~100k Conversations + ~106k Messages, durch die eigenen Lasttests dieser Session entstanden): Ø 4,4-4,5s bei nur 200-600 r/s.",
+     "docker stats während des 09-14-Tests: App-Cluster 732% CPU, Postgres 420% CPU — beide Seiten arbeiten hart an dieser einen Query, nicht nur eine.",
+     "Reisst zwei weitere Routen mit, weil sie darauf aufbauen: <code>chat_messages_list</code> (verkettetes Szenario, erbt die Kosten) und <code>chat_messages_post</code> (nur noch 32,9% Erfolg selbst bei 200 r/s)."
+   ],
+   files:"backend/src/modules/core/chat/chat.service.ts:171-233 (getConversations)",
+   reuse:"Fix: letzte Nachricht pro Conversation als eigene, indizierte Spalte pflegen (z.B. <code>conversations.last_message_at</code>/<code>last_message_id</code>, aktualisiert beim Insert einer neuen Message) statt sie live per Subquery zu berechnen — klassisches Denormalisierungs-Muster für genau dieses \"letzter Eintrag pro Gruppe\"-Problem."},
+
+  {name:"Kein Socket.IO-Redis-Adapter — Blocker für Multi-Worker in Produktion",
+   tagline:"Das 8-Worker-Setup, das die HTTP-Kapazität dieser Session um das 3-9-fache gehoben hat, würde Echtzeit-Chat in Produktion lautlos kaputt machen.",
+   how:[
+     "<code>grep -rn \"IoAdapter\\|RedisIoAdapter\\|socket.io-redis\\|@socket.io/redis-adapter\"</code> über den ganzen Backend-Code → 0 Treffer. Kein Redis-Adapter für Socket.IO installiert (auch nicht in package.json) oder konfiguriert.",
+     "Ohne Adapter hat JEDER Node-Worker-Prozess seinen EIGENEN In-Memory-Socket.IO-State. <code>ChatGateway</code>'s <code>server.to(room).emit(...)</code> erreicht nur Clients, die AM SELBEN Worker verbunden sind.",
+     "Konkret: User A verbindet sich zu Worker 3, User B (Chat-Partner) zu Worker 7 — eine neue Nachricht, deren Event auf Worker 3 emitted wird, kommt bei User B NIE an, weil Worker 7 davon nichts weiss. Live-Chat, Notifications, Beef-Events (alle über dasselbe EventEmitter→Gateway-Muster) sind betroffen.",
+     "Diese Session hat NUR HTTP-Kapazität getestet (endpoint-rate.sh macht keine WebSocket-Verbindungen) — das Risiko wurde beim Code-Review entdeckt, nicht durch einen fehlgeschlagenen Lasttest. Es würde erst in einem echten Multi-Worker-Produktions-Deploy sichtbar werden, und dann zufällig/inkonsistent wirken (\"manche Nachrichten kommen an, manche nicht\")."
+   ],
+   files:"backend/src/modules/core/chat/chat.gateway.ts, backend/src/main.ts (kein WebSocket-Adapter konfiguriert), package.json (kein Redis-Adapter-Paket)",
+   reuse:"Blocker für JEDEN Multi-Worker-Produktionsplan: <code>@socket.io/redis-adapter</code> (oder äquivalent) installieren und in main.ts via <code>app.useWebSocketAdapter(new RedisIoAdapter(app))</code> aktivieren, BEVOR mehr als 1 Worker in Produktion läuft. Ohne das ist die ganze Worker-Skalierung dieser Session nur für reinen HTTP-Traffic gültig, nicht für das Produkt als Ganzes."},
+
+  {name:"Empfehlung: Reihenfolge für 10.000 → 50.000 aktive Nutzer",
+   tagline:"Der Heartbeat-Boden (83-417 req/s je nach Nutzerzahl) ist bei jeder Zielgrösse unkritisch — die Reihenfolge unten behebt das, was tatsächlich im Weg steht.",
+   how:[
+     "<b>1. Sofort, vor allem anderen:</b> Pagination auf <code>GET /admin/media/pending</code> (behebt sowohl den Einzelausfall als auch das Kaskaden-Risiko für den Rest der App).",
+     "<b>2. Sofort:</b> <code>ChatService.getConversations()</code> auf eine indizierte \"letzte Nachricht\"-Spalte umstellen statt korrelierter Subquery — betrifft die meistgenutzte Route im Chat-Modul.",
+     "<b>3. Vor dem ersten Multi-Worker-Produktions-Deploy:</b> Socket.IO-Redis-Adapter einbauen. Ohne das ist Multi-Worker für dieses Produkt nicht nutzbar, egal wie gut die HTTP-Zahlen aussehen.",
+     "<b>4. Mittelfristig:</b> <code>discover/deck</code>s PostGIS-Query entschärfen — z.B. einen periodisch neu berechneten Kandidaten-Pool (Background-Job, ähnlich dem bestehenden BullMQ-Media-Pattern) statt einer live pro Request berechneten Geo-Query. Aktuell die einzige Route, die schon bei niedriger Last spürbar Postgres-CPU frisst (831% bei nur 1000 r/s).",
+     "<b>5. Erst danach relevant:</b> Mehr App-Worker / höherer DB_POOL_MAX / Postgres-Tuning für höhere Nutzerzahlen — diese Session hat bereits gezeigt, dass das linear skaliert (1→8 Worker: 3-9x Kapazität) UND dass es die aktuell blockierenden Probleme nicht löst. Erst wenn 1-4 erledigt sind, ist \"mehr Ressourcen\" wieder der richtige Hebel.",
+     "<b>Statement-Timeout:</b> unabhängig von der Reihenfolge oben — <code>statement_timeout</code> auf Postgres-Ebene setzen, damit eine einzelne kaputte Query nie wieder den ganzen Connection-Pool binden kann."
+   ],
+   files:"—",
+   reuse:"Mit 1+2 behoben sollte der aktuelle 8-Worker-Cluster ohne weitere Änderungen die 83-417 req/s Heartbeat-Last von 10-50k Nutzern plus realistischen interaktiven Traffic sauber tragen — das war schon am 09-13 nachgewiesen, bevor die Datenmenge die drei o.g. Routen zum Einbrechen brachte."},
+];
+
+function renderCapacityPatterns(){
+  document.getElementById('capacity-patterns').innerHTML = capacityPatterns.map(p => `
+    <div class="pattern-card">
+      <h3>${p.name}</h3>
+      <div class="tagline">${p.tagline}</div>
+      <ul>${p.how.map(h => `<li>${h}</li>`).join('')}</ul>
+      <div class="kv"><b>Key files:</b> <span class="path">${p.files}</span></div>
+      <div class="kv"><b>Empfehlung:</b> ${p.reuse}</div>
+    </div>
+  `).join('');
+}
+
 function badge(kind, val){
   const text = (val || "—").toString().trim();
   const known = ['hoch','mittel','niedrig'];
@@ -380,6 +506,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const tab = btn.dataset.tab;
     document.getElementById('panel-a').style.display = tab === 'a' ? 'block' : 'none';
     document.getElementById('panel-b').style.display = tab === 'b' ? 'block' : 'none';
+    document.getElementById('panel-c').style.display = tab === 'c' ? 'block' : 'none';
     document.querySelector('.controls').style.display = tab === 'a' ? 'flex' : 'none';
   });
 });
@@ -387,6 +514,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 renderSummary();
 renderTable();
 renderPatterns();
+renderCapacityTable();
+renderCapacityPatterns();
 </script>
 </body>
 </html>
