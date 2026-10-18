@@ -4,18 +4,30 @@
 Plan, Schema und offene Punkte stehen in [`nextStep.md`](nextStep.md), diese Datei sagt nur, **wo wir
 stehen und wie gearbeitet wird**.
 
-## Stand (2026-10-11)
+## Stand (2026-10-18)
 
-- **Branch:** `feat/shop-module`, zweigt von `main` ab (`f3cce38`).
-- **Schritte 1–12 sind fertig.** Überblick über das ganze Modul: [`backend/docs/shop.md`](backend/docs/shop.md). Der Shop steht vom Stöbern bis zur Kasse. Admins entscheiden angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`. **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen: Stripe-Keys und Zahlungstests.
-- Gepusht ist alles bis `5a24df5`. Danach sind lokale Commits dazugekommen (siehe unten). Seit workmode an ist, wird **nicht gepusht**.
+- **Branch:** `feat/shop-module`, zweigt von `main` ab (`f3cce38`). Alles ist gepusht, lokal und `origin` sind gleich
+  (letzter Commit `04176f5`). Kein Merge, kein PR.
+- **Schritte 1–12 sind fertig.** Überblick über das ganze Modul: [`backend/docs/shop.md`](backend/docs/shop.md). Der Shop
+  steht vom Stöbern über Kasse, Annahme und Auslieferung bis zu Rechnung, Erstattung und Fällen. Admins entscheiden
+  angehaltene Bestellungen unter `/admin/shop` und pflegen Artikel unter `/admin/shop/products`.
+- **Zahlungstests kommen ganz am Schluss** (Wunsch des Users: „nur API anhängen“). Offen: Stripe-Keys und Zahlungstests.
 
 | Commit | Schritt |
 |---|---|
 | `75313a9` | 1: Mandanten-Modul `shop` (braucht `payments` und `legal.vatId` oder `legal.taxNumber`) |
 | `297456d`, `d29dc5e` | 2: Migration `backend/migrations/007_shop.sql` und Seed `seed-shop.ts` (1000 Artikel) |
-| `5a24df5` | `nextStep.md` |
-| `abeb83e` | 3: `GET /shop/products` (Filter, Facetten), `GET /shop/products/:id`, `POST /shop/products/:id/reviews` (nur Käufer) |
+| `abeb83e` | 3: `GET /shop/products` (Filter, Facetten), Detail, Bewertungen (nur Käufer) |
+| `a394b8a` | 4: Checkout mit Stripe-Reservierung (`capture_method: manual`) und Pflichtfeldern je Lieferart |
+| `cb2690f` | 5: Stripe-Webhook über den Broker, Risiko-Regeln — System nimmt Unauffälliges an, hält den Rest an |
+| `61736bf`, `83e9358`, `8c0480d` | 6: Admin-Eingang mit Zeitstrahl, annehmen/ablehnen; Erstatten und Shop-Sperre; Alarme und Nachfass-Cron |
+| `cdb47e3`, `5df61f3`, `8ceb876` | 7: Auslieferung (Keys, Codes, Lieferstand), `ModuleBroker` + `/shop/redeem`, Bestand bei der Annahme |
+| `0234e8a` | 8: Rechnungen und Stornorechnungen (Worker, lückenlose Nummern, PDF) |
+| `c18cd0d`, `35b54dc` | 9: Fälle (Backend und UI) |
+| `e491b19`, `50ebf15` | 10: Käufer-Frontend: `/shop`, Detail, Warenkorb, Kasse |
+| `08ced19` | 11: Artikelpflege mit CSV-Import und verschlüsselten Keys |
+| `04176f5` | 12: Modul-Doku und Integrationstest gegen echtes Postgres |
+| `739ec02` | Demo-Stack `scripts/shop_demo.sh` |
 
 Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `backend/src/app.module.ts`.
 
@@ -29,7 +41,7 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
 - **Vertrag:** Die Bestellung ist ein Angebot. Die Eingangsbestätigung kommt sofort, der Vertrag entsteht erst mit der Annahme (Freigabe und Abbuchung).
 - **Bezahlt wird nur online**, kein Bar bei Lieferung.
 - **Regelbesteuert**, nur deutsche Steuersätze. **Bewerten** dürfen nur Käufer.
-- **Alarme:** App (Socket-Raum `admin`, Event `ticket.new`) und Mail. Weitere Kanäle kommen später.
+- **Alarme:** App (Socket-Raum `admin`, Event `shop.alert`) und Mail für Dringendes. Weitere Kanäle kommen später.
 
 ## Arbeitsweise
 
@@ -69,14 +81,14 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
 - **Frontend-Typecheck/Lint:** `docker exec shop_demo_fe sh -c 'npx tsc --noEmit && npx eslint <pfade>'`
 - Playwright liegt in `/home/silence/instantJobbot/node_modules/playwright`.
 
-## Nächster Schritt: 4, Checkout
+## Offen
 
-- `POST /shop/checkout { items, delivery_mode, contact…, withdrawalWaiver }`
-  - Preise kommen aus der DB.
-  - Pflichtfelder je Lieferart, wie die CHECKs in 007.
-- Bestellung `pending` anlegen, dann eine Stripe Checkout Session:
-  - `ui_mode: 'embedded_page'` wie im `PaymentService`
-  - `payment_intent_data.capture_method: 'manual'`
-  - `metadata: { kind: 'shop', orderId }`
-- Eingangsbestätigung per Mail (§ 312i BGB, ausdrücklich noch keine Annahme).
-- Der Webhook liegt im bestehenden `PaymentService.handleWebhook`. Für die Shop-Abzweigung muss ein Modulvertrag geändert werden, das vorher kurz abstimmen.
+Details in [`nextStep.md`](nextStep.md) unter „Offen / nicht gebaut“.
+
+- **Zahlungstests mit echten Stripe-Keys** (Testmodus + Stripe CLI für Webhooks), ganz am Schluss.
+- **Premium per Code** (`premium:30`): `subscriptions` kennt nur monthly/yearly/lifetime — erst entscheiden, dann bauen.
+  Bis dahin bleibt der Code „gültig, aber noch nicht einlösbar“.
+- **`MatchingModule` → `PaymentModule` direkt**, muss noch auf den `ModuleBroker` umgestellt werden.
+- **Seed:** Titel und `unlock_target` passen nicht immer zusammen.
+- **Body-Limit 100 KB** begrenzt CSV-Import und Keys — betrifft alle Module, erst abstimmen.
+- Nicht im Code: Rechtstexte prüfen lassen, EU-OSS, Marktplatz (Phase 2), weitere Alarm-Kanäle.
