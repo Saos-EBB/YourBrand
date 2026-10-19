@@ -29,7 +29,7 @@ stehen und wie gearbeitet wird**.
 | `04176f5` | 12: Modul-Doku und Integrationstest gegen echtes Postgres |
 | `739ec02` | Demo-Stack `scripts/shop_demo.sh` |
 | `f4749b4` | Seed: Titel passen zum Freischalt-Ziel |
-| (dieser) | Premium-Codes lösen direkt ein (Migration 008, `PremiumUnlockProvider`) |
+| `ac739af` | Premium-Codes lösen direkt ein (Migration 008, `PremiumUnlockProvider`) |
 
 Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `backend/src/app.module.ts`.
 
