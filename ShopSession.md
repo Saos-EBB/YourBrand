@@ -72,7 +72,7 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
   Seeds: `demo-seed.ts` (Demo-User), `seed-shop.ts` (1000 Artikel), `scripts/shop-demo/seed-orders.ts`
   (10 Bestellungen in allen Zuständen, Lizenz-Keys, ein Coin- und ein Premium-Code, ein offener Fall; Annahme über den echten `ShopFulfillmentService`).
 - Mandant: `scripts/shop-demo/tenant.json` (`core` + `shop` + `hidden`), Zustand und Logs in `.shop-demo/` (gitignored).
-- Frisch anfangen: `scripts/shop_demo.sh down && docker volume rm shop_demo_pgdata`.
+- Frisch anfangen: `scripts/shop_demo.sh down && docker rm shop_demo_db && docker volume rm shop_demo_pgdata`, dann `up`.
 - Stripe ist nicht angebunden (Platzhalter-Key): Kasse und „Annehmen“ zeigen den Fehlerweg. Angehaltene Bestellungen
   über der Frist bleiben deshalb angehalten (der Cron schreibt einmal `stripe_error`), Alarm-Mails scheitern am
   Resend-Platzhalter (steht als Warnung im Log `.shop-demo/backend.log`).

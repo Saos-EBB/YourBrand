@@ -1,3 +1,9 @@
+## 2026-10-19 — fix(shop-demo): Reset-Befehl in der Doku
+**Was:** Frisch anfangen braucht `docker rm shop_demo_db` vor dem Loeschen des Volumes (Eintrag in `errors.md`).
+Danach live gegen die Demo getestet: Premium-Code einloesen → `{kind: premium, amount: 30}`, Abo `code`/`shop` bis
++30 Tage, zweites Einloesen → 409.
+**Nicht gebaut:** kein `reset`-Befehl in `shop_demo.sh`.
+
 ## 2026-10-19 — chore(shop-demo): Demo-Bestellung mit Premium-Code
 **Was:** `seed-orders.ts` legt eine zehnte Bestellung an (gutz, zugestellt, `premium:30`), damit sich Premium-Codes in
 der Demo ohne Stripe einloesen lassen. Greift nur bei frischer Demo-DB (Seed ueberspringt vorhandene Bestellungen).

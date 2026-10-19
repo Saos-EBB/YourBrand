@@ -10,7 +10,7 @@
 # Ein zweites "up" ist harmlos: fehlende Migrationen werden nachgezogen,
 # Seeds ueberspringen Vorhandenes. Nach einem Neustart des Rechners laufen
 # DB/Redis/Frontend von selbst wieder an, Backend + Proxy brauchen ein "up".
-# Frisch anfangen: down, dann docker volume rm shop_demo_pgdata.
+# Frisch anfangen: down, dann docker rm shop_demo_db und docker volume rm shop_demo_pgdata.
 #
 # Ports: 3901 Shop (Proxy mit Auto-Login) · 3911 Frontend · 3900 Backend (+ Worker ohne Port)
 #        55432 Postgres · 56379 Redis. Zustand/Logs: .shop-demo/ (gitignored).
