@@ -126,7 +126,6 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 ## Offen / nicht gebaut
 - **Regel: Feature-Module nur über `ModuleBroker`** (Wunsch des Users, damit Module pro Mandant sauber an/aus gehen). Shop ist umgestellt. Offen: `MatchingModule` → `PaymentModule` direkt
 - **Premium per Code** (`premium:30`): `subscriptions` kennt nur monthly/yearly/lifetime — eigener Plan (Migration) oder anderes Modell, erst entscheiden
-- **Seed:** Titel und `unlock_target` passen nicht immer zusammen („Coin-Paket“ mit `premium:30`)
 - **Body-Limit 100 KB** (Express-Standard, `main.ts` setzt keins): CSV-Import auf 95 000 Zeichen, Keys auf 2000 pro Aufruf begrenzt. Für größere Dateien müsste das Limit in `main.ts` hoch — betrifft alle Module, daher erst abstimmen
 - **Rechtstexte** prüfen lassen: AGB (Bestellung = Angebot, Annahme mit Auftragsbestätigung, Wartezeit bei Lieferung), Widerrufsbelehrung je Artikelart, Datenschutz (Telefon/Adresse, 10 Jahre Rechnungen)
 - **EU-OSS:** digitale Leistungen an Privatkunden im EU-Ausland ab 10.000 €/Jahr mit dem Satz des Käuferlands — heute nur deutsche Sätze

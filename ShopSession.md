@@ -89,6 +89,5 @@ Details in [`nextStep.md`](nextStep.md) unter „Offen / nicht gebaut“.
 - **Premium per Code** (`premium:30`): `subscriptions` kennt nur monthly/yearly/lifetime — erst entscheiden, dann bauen.
   Bis dahin bleibt der Code „gültig, aber noch nicht einlösbar“.
 - **`MatchingModule` → `PaymentModule` direkt**, muss noch auf den `ModuleBroker` umgestellt werden.
-- **Seed:** Titel und `unlock_target` passen nicht immer zusammen.
 - **Body-Limit 100 KB** begrenzt CSV-Import und Keys — betrifft alle Module, erst abstimmen.
 - Nicht im Code: Rechtstexte prüfen lassen, EU-OSS, Marktplatz (Phase 2), weitere Alarm-Kanäle.

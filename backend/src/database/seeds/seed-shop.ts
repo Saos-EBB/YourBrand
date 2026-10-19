@@ -46,6 +46,8 @@ const TOPICS = [
     'Achtsamkeit', 'Steuern', 'Marketing', 'Zeichnen',
 ];
 const ADJECTIVES = ['Einfach', 'Kompakt', 'Profi', 'Basis', 'Kreativ', 'Grün', 'Schnell', 'Großes'];
+// App-Ziele bestimmen den Namen, damit ein „Coin-Paket“ auch Coins freischaltet
+const TARGET_NOUN: Record<string, string> = { premium: 'Premium-Pass', coins: 'Coin-Paket' };
 
 // mulberry32 — gleicher Seed, gleiche Artikel bei jedem Lauf
 function rng(seed: number): () => number {
@@ -64,15 +66,17 @@ async function seedProducts(): Promise<void> {
     for (let i = 1; i <= PRODUCT_COUNT; i++) {
         const [category, fulfillment, nouns, [min, max], vat, targets] = CATEGORIES[i % CATEGORIES.length];
         const topic = pick(TOPICS);
+        const target = fulfillment === 'unlock' ? pick(targets) : null;
+        const noun = (target && TARGET_NOUN[target.split(':')[0]]) ?? pick(nouns);
         // Preise enden auf 9, schief verteilt (mehr guenstige als teure)
         const price = Math.round((min + (max - min) * rand() ** 2) / 10) * 10 - 1;
         rows.push([
             `DEMO-${String(i).padStart(4, '0')}`,
-            `${pick(ADJECTIVES)}: ${pick(nouns)} ${topic}`,
-            `${pick(nouns)} rund um ${topic}.`,
+            `${pick(ADJECTIVES)}: ${noun} ${topic}`,
+            `${noun} rund um ${topic}.`,
             category,
             fulfillment,
-            fulfillment === 'unlock' ? pick(targets) : null,
+            target,
             Math.max(price, min),
             vat,
             // Merch hat Lagerbestand, der Rest ist unbegrenzt

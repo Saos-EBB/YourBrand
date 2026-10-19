@@ -1,3 +1,9 @@
+## 2026-10-19 — fix(shop): Seed-Titel passen zum Freischalt-Ziel
+**Was:** `seed-shop.ts` waehlt bei Freischalt-Artikeln erst das Ziel und leitet den Namen davon ab (`premium:*` →
+„Premium-Pass“, `coins:*` → „Coin-Paket“). Titel und Beschreibung nutzen dasselbe Nomen. Vorhandene Demo-Daten bleiben
+(`ON CONFLICT DO NOTHING`); neu anlegen mit `scripts/shop_demo.sh down && docker volume rm shop_demo_pgdata`.
+**Nicht gebaut:** Premium per Code, Stripe-Tests, Body-Limit, Matching ueber Broker (warten auf Entscheidung).
+
 ## 2026-10-12 — docs/test(shop): Modul-Doku + Integrationstest — Shop Schritt 12
 **Was:** `docs/shop.md` fasst das Modul an einer Stelle zusammen (Ablauf, Status, Regeln + Einstellungen,
 Broker-Vertraege, Auslieferung, Erstatten/Sperren/Faelle, Alarme/Cron, Rechnungen, Endpunkte, Demo/Tests).
