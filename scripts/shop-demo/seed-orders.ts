@@ -31,6 +31,7 @@ const SPECS: Spec[] = [
     { who: ME, status: 'approved', mode: 'delivery', product: `p.fulfillment = 'food'`, qty: 2 },
     { who: ME, status: 'approved', mode: 'shipping', product: `p.fulfillment = 'physical'`, qty: 1, problem: 'Der Aufdruck ist schief und ein Ärmel hat ein Loch.' },
     { who: ME, status: 'fulfilled', mode: 'digital', product: `p.unlock_target LIKE 'coins:%' AND p.title LIKE '%Coin%'`, qty: 1 },
+    { who: ME, status: 'fulfilled', mode: 'digital', product: `p.unlock_target = 'premium:30'`, qty: 1 },
     { who: ME, status: 'fulfilled', mode: 'digital', product: `p.fulfillment = 'license'`, qty: 1 },
     { who: OTHERS[2], status: 'rejected', mode: 'delivery', product: `p.fulfillment = 'food'`, qty: 3, reasons: ['amount_high'] },
 ];

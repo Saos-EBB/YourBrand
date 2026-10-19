@@ -1,3 +1,8 @@
+## 2026-10-19 — chore(shop-demo): Demo-Bestellung mit Premium-Code
+**Was:** `seed-orders.ts` legt eine zehnte Bestellung an (gutz, zugestellt, `premium:30`), damit sich Premium-Codes in
+der Demo ohne Stripe einloesen lassen. Greift nur bei frischer Demo-DB (Seed ueberspringt vorhandene Bestellungen).
+**Nicht gebaut:** kein eigenes Testskript, kein Nachtragen in bestehende Demo-DBs.
+
 ## 2026-10-19 — fix(payment): Enum payment_provider kennt 'stripe'
 **Was:** Migration `009_payment_provider_stripe.sql` (auch im DB-Image). Vorher scheiterte der Insert in `subscriptions`
 nach jedem Stripe-Checkout, Premium-Kaeufe wurden nie freigeschaltet. Gegenprobe: Insert ohne 009 → Fehler, mit 009 → ok.

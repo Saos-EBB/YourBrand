@@ -70,7 +70,7 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
   `--restart unless-stopped`; nach einem Neustart des Rechners braucht es nur nochmal `up` für Backend und Proxy.
 - `up` ist idempotent: neue Migrationen werden nachgezogen (`shop_demo_migrations`), Seeds überspringen Vorhandenes.
   Seeds: `demo-seed.ts` (Demo-User), `seed-shop.ts` (1000 Artikel), `scripts/shop-demo/seed-orders.ts`
-  (9 Bestellungen in allen Zuständen, Lizenz-Keys, ein offener Fall; Annahme über den echten `ShopFulfillmentService`).
+  (10 Bestellungen in allen Zuständen, Lizenz-Keys, ein Coin- und ein Premium-Code, ein offener Fall; Annahme über den echten `ShopFulfillmentService`).
 - Mandant: `scripts/shop-demo/tenant.json` (`core` + `shop` + `hidden`), Zustand und Logs in `.shop-demo/` (gitignored).
 - Frisch anfangen: `scripts/shop_demo.sh down && docker volume rm shop_demo_pgdata`.
 - Stripe ist nicht angebunden (Platzhalter-Key): Kasse und „Annehmen“ zeigen den Fehlerweg. Angehaltene Bestellungen
