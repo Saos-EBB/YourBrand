@@ -1,3 +1,9 @@
+## 2026-10-19 — fix(payment): Enum payment_provider kennt 'stripe'
+**Was:** Migration `009_payment_provider_stripe.sql` (auch im DB-Image). Vorher scheiterte der Insert in `subscriptions`
+nach jedem Stripe-Checkout, Premium-Kaeufe wurden nie freigeschaltet. Gegenprobe: Insert ohne 009 → Fehler, mit 009 → ok.
+**Nicht gebaut:** kein Umbau von `PaymentService`, keine Nachbuchung alter, gescheiterter Kaeufe (Stripe stellt
+fehlgeschlagene Webhooks bis zu 3 Tage erneut zu).
+
 ## 2026-10-19 — feat(shop): Premium-Codes schalten Premium direkt frei
 **Was:** `premium:<Tage>`-Codes loesen jetzt ein. `PremiumUnlockProvider` (payment) meldet `unlock('premium')` beim
 Broker an und legt eine Zeile in `subscriptions` an (plan `code`, Anbieter `shop`, `provider_subscription_id` =

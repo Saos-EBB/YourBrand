@@ -26,3 +26,4 @@ COPY migrations/005_drop_duplicate_beef_status_check.sql  /docker-entrypoint-ini
 COPY migrations/006_board_and_care.sql                     /docker-entrypoint-initdb.d/006_board_and_care.sql
 COPY migrations/007_shop.sql                               /docker-entrypoint-initdb.d/007_shop.sql
 COPY migrations/008_premium_codes.sql                      /docker-entrypoint-initdb.d/008_premium_codes.sql
+COPY migrations/009_payment_provider_stripe.sql            /docker-entrypoint-initdb.d/009_payment_provider_stripe.sql
