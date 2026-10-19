@@ -23,6 +23,7 @@ import { ShopPaymentEventsService } from './shop-payment-events.service';
 import { ShopRedeemService } from './shop-redeem.service';
 import { ShopRefundService } from './shop-refund.service';
 import { ShopRiskService } from './shop-risk.service';
+import { PremiumUnlockProvider } from '../payment/premium-unlock.provider';
 
 const DB = process.env.SHOP_IT_DB;
 const run = DB ? describe : describe.skip;
@@ -34,7 +35,7 @@ const SELLER = { name: 'Test GmbH', address: 'Teststr. 1, 10115 Berlin', email: 
 run('Shop Integration (echtes Postgres)', () => {
     let ds: DataSource;
     let s: ReturnType<typeof wire>;
-    const ids = { buyer: '', buyer2: '', admin: '' };
+    const ids = { buyer: '', buyer2: '', buyer3: '', admin: '' };
     const products: Record<string, string> = {};
 
     // Stripe-Ersatz: merkt sich, was abgebucht/aufgehoben/erstattet wurde
@@ -61,6 +62,8 @@ run('Shop Integration (echtes Postgres)', () => {
         const broker = new ModuleBroker();
         broker.providePayments(stripe);
         broker.provideUnlock('coins', async ({ userId, amount }) => { unlocked.push({ userId, amount }); });
+        // Premium echt, gegen die subscriptions-Tabelle
+        new PremiumUnlockProvider(ds, broker).onModuleInit();
         const alerts = new ShopAlertService(ds, socket as any, mail as any);
         const cases = new ShopCasesService(ds, alerts);
         const fulfillment = new ShopFulfillmentService(ds, cases, alerts);
@@ -101,7 +104,7 @@ run('Shop Integration (echtes Postgres)', () => {
             username: process.env.DB_USER, password: process.env.DB_PASSWORD, database: DB,
         }).initialize();
         s = wire();
-        for (const [key, role] of [['buyer', 'user'], ['buyer2', 'user'], ['admin', 'admin']] as const) {
+        for (const [key, role] of [['buyer', 'user'], ['buyer2', 'user'], ['buyer3', 'user'], ['admin', 'admin']] as const) {
             const [u] = await ds.query(
                 `INSERT INTO users (role, email, email_search_hash) VALUES ($1, NULL, $2) RETURNING id`,
                 [role, randomBytes(32).toString('hex')],
@@ -111,6 +114,7 @@ run('Shop Integration (echtes Postgres)', () => {
         const mk = async (key: string, dto: Record<string, unknown>) => { products[key] = (await s.admin.createProduct(dto as any)).id; };
         await mk('license', { sku: 'IT-LIC', fulfillment: 'license', title: 'Lizenz', category: 'Software', price_cents: 990 });
         await mk('coins', { sku: 'IT-COIN', fulfillment: 'unlock', title: 'Coins', category: 'In-App', price_cents: 500, unlock_target: 'coins:500' });
+        await mk('premium', { sku: 'IT-PREM', fulfillment: 'unlock', title: 'Premium 30', category: 'In-App', price_cents: 499, unlock_target: 'premium:30' });
         await mk('mug', { sku: 'IT-MUG', fulfillment: 'physical', title: 'Tasse', category: 'Merch', price_cents: 6000, stock: 3 });
         await mk('pizza', { sku: 'IT-PIZ', fulfillment: 'food', title: 'Pizza', category: 'Pizza', price_cents: 1200 });
         await s.admin.addCodes(products.license, ['KEY-AAAA-0001', 'KEY-AAAA-0002']);
@@ -254,5 +258,32 @@ run('Shop Integration (echtes Postgres)', () => {
         expect((await order(orderId)).status).toBe('cancelled');
         const mine = await s.buyerOrders.listMine(ids.buyer2);
         expect(mine.items.map((i: { id: string }) => i.id)).not.toContain(orderId);
+    });
+
+    it('Premium-Code: schaltet Premium direkt frei, zweiter Code verlaengert, nichts doppelt', async () => {
+        const { orderId } = await s.checkout.checkout(ids.buyer3, {
+            items: [{ productId: products.premium, quantity: 2 }], deliveryMode: 'digital', withdrawalWaiver: true,
+        } as any);
+        await send(authorized(orderId, 998, 'pi_prem'));
+        expect((await order(orderId)).status).toBe('fulfilled');
+        const mine = await s.buyerOrders.getMine(ids.buyer3, orderId);
+        const [first, second] = mine.items[0].codes.map((c: { code: string }) => c.code);
+
+        const premiumUntil = async () => (await ds.query(
+            `SELECT expires_at FROM subscriptions WHERE user_id = $1 AND plan = 'code' AND payment_provider = 'shop' AND status = 'active'
+              ORDER BY expires_at`, [ids.buyer3])).map((r: { expires_at: Date }) => r.expires_at.getTime());
+        const days = (ms: number) => Math.round((ms - Date.now()) / 86_400_000);
+
+        await expect(s.redeem.redeem(ids.buyer3, first)).resolves.toEqual({ kind: 'premium', amount: 30 });
+        expect((await premiumUntil()).map(days)).toEqual([30]);
+        await expect(s.redeem.redeem(ids.buyer3, first)).rejects.toBeInstanceOf(ConflictException);
+
+        await s.redeem.redeem(ids.buyer3, second);
+        expect((await premiumUntil()).map(days)).toEqual([30, 60]);
+
+        // Gleicher Idempotency-Key nochmal (z. B. Wiederholung nach Timeout): keine dritte Zeile
+        const [code] = await ds.query(`SELECT id FROM shop_codes WHERE redeemed_by = $1 ORDER BY redeemed_at LIMIT 1`, [ids.buyer3]);
+        await s.broker.unlock('premium', { userId: ids.buyer3, amount: 30, idempotencyKey: `shop-code-${code.id}` });
+        expect(await premiumUntil()).toHaveLength(2);
     });
 });

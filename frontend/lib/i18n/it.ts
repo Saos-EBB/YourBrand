@@ -1217,6 +1217,7 @@ export const it = {
     redeemNow: "Riscatta ora",
     redeemedLabel: "Riscattato",
     redeemSuccessCoins: "{n} monete accreditate",
+    redeemSuccessPremium: "Premium attivato per {n} giorni",
     redeemSuccess: "Codice riscattato",
     reportProblem: "Segnala un problema",
     problemQuestion: "Cosa c'è che non va?",

@@ -32,12 +32,12 @@ eigene Loadtest-Messungen (`scripts/loadtest/`).
   `validateCart`, `parseCsv`/`csvToProducts`, `progressError`. Ablauf und Fahrplan: `nextStep.md` im Repo-Root.
 - `src/modules/shared/broker/module-broker.ts` — **Vermittlung zwischen Feature-Modulen** (an/aus pro Mandant:
   payments, hidden, shop, matching, …). Regel ab 2026-10-11: Feature-Module importieren sich nicht gegenseitig.
-  Der Anbieter meldet sich in `onModuleInit` an (`providePayments`, `provideUnlock('coins', …)`), der Nutzer fragt
+  Der Anbieter meldet sich in `onModuleInit` an (`providePayments`, `provideUnlock('coins'|'premium', …)`), der Nutzer fragt
   ueber `ModuleBroker` (`payments()`, `canUnlock`/`unlock`). Zahlungs-Webhooks: `payments` uebersetzt Stripe in
   neutrale `PaymentEvent`s und reicht sie per `dispatchPaymentEvent(metadata.kind, …)` an das angemeldete Modul. Ist das Modul aus, ist niemand angemeldet →
   `ModuleUnavailableError` statt Absturz beim Start. Immer laufende Kernteile (auth, profile, notifications,
   system-settings) duerfen weiter direkt genutzt werden. Angemeldet: `StripePaymentGateway` (payment),
-  `CoinUnlockProvider` (coin). Bekannte Altlast: `MatchingModule` → `PaymentModule` direkt.
+  `PremiumUnlockProvider` (payment), `CoinUnlockProvider` (coin). Bekannte Altlast: `MatchingModule` → `PaymentModule` direkt.
 - `src/modules/hidden/*` — beef, coin, teeth, badge. Beef treibt Coin-Awards/-Spends per
   `CoinService`-Injection; Badge wird intern von `BeefService` erzeugt.
 - `common/` — Guards, `crypto.helper.ts` (AES-256-CBC + SHA-256 Email-Hash), `rls.helper.ts`

@@ -1255,6 +1255,7 @@ export const de = {
     redeemNow: "Jetzt einlösen",
     redeemedLabel: "Eingelöst",
     redeemSuccessCoins: "{n} Coins gutgeschrieben",
+    redeemSuccessPremium: "Premium für {n} Tage freigeschaltet",
     redeemSuccess: "Code eingelöst",
     reportProblem: "Problem melden",
     problemQuestion: "Was ist los?",

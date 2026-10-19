@@ -1217,6 +1217,7 @@ export const ru = {
     redeemNow: "Активировать сейчас",
     redeemedLabel: "Активирован",
     redeemSuccessCoins: "Начислено {n} монет",
+    redeemSuccessPremium: "Премиум активирован на {n} дн.",
     redeemSuccess: "Код активирован",
     reportProblem: "Сообщить о проблеме",
     problemQuestion: "Что случилось?",

@@ -1231,6 +1231,7 @@ export interface Translations {
     redeemNow: string
     redeemedLabel: string
     redeemSuccessCoins: string
+    redeemSuccessPremium: string
     redeemSuccess: string
     reportProblem: string
     problemQuestion: string

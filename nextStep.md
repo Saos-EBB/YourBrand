@@ -111,7 +111,7 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
    - ✅ **6c** Alarme (`shop.alert` per Socket an alle Admins, Dringendes per Mail) und Nachfass-Cron (Erinnerung 30 Min. vor der Frist, danach verfällt die Reservierung; überfällige Fälle melden sich erneut). Zähler am Admin-Badge und an den Shop-Tabs
 7. Auslieferung: Keys zuteilen, Codes erzeugen + `/shop/redeem`, Versand-/Essens-Status
    - ✅ **7a** Keys zuteilen/Codes erzeugen bei der Annahme (vorher Prüfung: genug Keys, sonst kein Abbuchen), Lieferstand für Essen/Versand im Admin, Käufer: „Meine Bestellungen“ mit Fortschritt und Keys/Codes
-   - ✅ **7b** `/shop/redeem` + „Jetzt einlösen“: Coins über die neue Vermittlung `ModuleBroker` (shared). Premium-Codes vorerst „bleibt gültig“ (Premium-Modell offen)
+   - ✅ **7b** `/shop/redeem` + „Jetzt einlösen“: Coins über die neue Vermittlung `ModuleBroker` (shared). Premium-Codes schalten Premium direkt frei (`PremiumUnlockProvider`, Migration 008)
 8. Rechnungen + Stornorechnungen (BullMQ-Worker wie GDPR-Export, pdfkit, Resend mit Anhang)
    - ✅ Rechnung bei der Annahme, Stornorechnung je Erstattung (Worker, pdfkit, Mail mit Anhang), Belege für Käufer und Admin zum Herunterladen, „Rechnung erneut senden“
 9. Fälle: Melden in beide Richtungen, Support, Nachrichtenverlauf
@@ -125,7 +125,8 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
 
 ## Offen / nicht gebaut
 - **Regel: Feature-Module nur über `ModuleBroker`** (Wunsch des Users, damit Module pro Mandant sauber an/aus gehen). Shop ist umgestellt. Offen: `MatchingModule` → `PaymentModule` direkt
-- **Premium per Code** (`premium:30`): `subscriptions` kennt nur monthly/yearly/lifetime — eigener Plan (Migration) oder anderes Modell, erst entscheiden
+- **Premium verschenken** (Code für andere kaufen): später
+- **Altlast:** `PaymentService` schreibt bei Stripe-Abos `payment_provider = 'stripe'`, das Enum kennt nur paypal/sepa (und jetzt shop) — nicht vom Shop, nicht angefasst
 - **Body-Limit 100 KB** (Express-Standard, `main.ts` setzt keins): CSV-Import auf 95 000 Zeichen, Keys auf 2000 pro Aufruf begrenzt. Für größere Dateien müsste das Limit in `main.ts` hoch — betrifft alle Module, daher erst abstimmen
 - **Rechtstexte** prüfen lassen: AGB (Bestellung = Angebot, Annahme mit Auftragsbestätigung, Wartezeit bei Lieferung), Widerrufsbelehrung je Artikelart, Datenschutz (Telefon/Adresse, 10 Jahre Rechnungen)
 - **EU-OSS:** digitale Leistungen an Privatkunden im EU-Ausland ab 10.000 €/Jahr mit dem Satz des Käuferlands — heute nur deutsche Sätze

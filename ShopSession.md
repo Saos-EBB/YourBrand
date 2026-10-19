@@ -28,6 +28,8 @@ stehen und wie gearbeitet wird**.
 | `08ced19` | 11: Artikelpflege mit CSV-Import und verschlüsselten Keys |
 | `04176f5` | 12: Modul-Doku und Integrationstest gegen echtes Postgres |
 | `739ec02` | Demo-Stack `scripts/shop_demo.sh` |
+| `f4749b4` | Seed: Titel passen zum Freischalt-Ziel |
+| (dieser) | Premium-Codes lösen direkt ein (Migration 008, `PremiumUnlockProvider`) |
 
 Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `backend/src/app.module.ts`.
 
@@ -86,8 +88,7 @@ Code: `backend/src/modules/core/shop/`, eingebunden über `FEATURE_MODULES` in `
 Details in [`nextStep.md`](nextStep.md) unter „Offen / nicht gebaut“.
 
 - **Zahlungstests mit echten Stripe-Keys** (Testmodus + Stripe CLI für Webhooks), ganz am Schluss.
-- **Premium per Code** (`premium:30`): `subscriptions` kennt nur monthly/yearly/lifetime — erst entscheiden, dann bauen.
-  Bis dahin bleibt der Code „gültig, aber noch nicht einlösbar“.
+- **Premium verschenken** (Codes für andere): später. Premium-Codes selbst lösen schon direkt ein.
 - **`MatchingModule` → `PaymentModule` direkt**, muss noch auf den `ModuleBroker` umgestellt werden.
 - **Body-Limit 100 KB** begrenzt CSV-Import und Keys — betrifft alle Module, erst abstimmen.
 - Nicht im Code: Rechtstexte prüfen lassen, EU-OSS, Marktplatz (Phase 2), weitere Alarm-Kanäle.

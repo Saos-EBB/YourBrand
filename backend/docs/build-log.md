@@ -1,3 +1,13 @@
+## 2026-10-19 — feat(shop): Premium-Codes schalten Premium direkt frei
+**Was:** `premium:<Tage>`-Codes loesen jetzt ein. `PremiumUnlockProvider` (payment) meldet `unlock('premium')` beim
+Broker an und legt eine Zeile in `subscriptions` an (plan `code`, Anbieter `shop`, `provider_subscription_id` =
+Idempotency-Key). Mehrere Codes stapeln sich ab dem letzten Ablauf; pro User per Advisory-Lock nacheinander.
+Migration `008_premium_codes.sql` (Enum-Werte + eindeutiger Index auf den Key), auch im DB-Image. Frontend zeigt
+„Premium fuer N Tage freigeschaltet“ in allen 9 Sprachen. Integrationstest: zwei Codes → 30 und 60 Tage, gleicher
+Key nochmal → keine dritte Zeile. 7/7 gruen.
+**Nicht gebaut:** Premium verschenken, Stripe-Tests, Body-Limit, Matching ueber Broker. Gefunden, nicht angefasst:
+`PaymentService` schreibt `payment_provider = 'stripe'`, das Enum kennt den Wert nicht.
+
 ## 2026-10-19 — fix(shop): Seed-Titel passen zum Freischalt-Ziel
 **Was:** `seed-shop.ts` waehlt bei Freischalt-Artikeln erst das Ziel und leitet den Namen davon ab (`premium:*` →
 „Premium-Pass“, `coins:*` → „Coin-Paket“). Titel und Beschreibung nutzen dasselbe Nomen. Vorhandene Demo-Daten bleiben

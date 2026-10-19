@@ -1217,6 +1217,7 @@ export const ja = {
     redeemNow: "今すぐ使う",
     redeemedLabel: "使用済み",
     redeemSuccessCoins: "{n} コインを追加しました",
+    redeemSuccessPremium: "プレミアムを{n}日間有効にしました",
     redeemSuccess: "コードを使いました",
     reportProblem: "問題を報告",
     problemQuestion: "どうしましたか？",

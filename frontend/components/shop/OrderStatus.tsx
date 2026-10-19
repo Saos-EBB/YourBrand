@@ -77,5 +77,7 @@ export function OrdersButton() {
 }
 
 export function redeemMessage(t: T, r: RedeemResult): string {
-  return r.kind === 'coins' ? t.shop.redeemSuccessCoins.replace('{n}', r.amount.toLocaleString()) : t.shop.redeemSuccess
+  if (r.kind === 'coins') return t.shop.redeemSuccessCoins.replace('{n}', r.amount.toLocaleString())
+  if (r.kind === 'premium') return t.shop.redeemSuccessPremium.replace('{n}', r.amount.toLocaleString())
+  return t.shop.redeemSuccess
 }

@@ -1244,6 +1244,7 @@ export const en = {
     redeemNow: "Redeem now",
     redeemedLabel: "Redeemed",
     redeemSuccessCoins: "{n} coins added",
+    redeemSuccessPremium: "Premium unlocked for {n} days",
     redeemSuccess: "Code redeemed",
     reportProblem: "Report a problem",
     problemQuestion: "What's wrong?",

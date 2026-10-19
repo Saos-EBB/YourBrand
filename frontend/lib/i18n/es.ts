@@ -1217,6 +1217,7 @@ export const es = {
     redeemNow: "Canjear ahora",
     redeemedLabel: "Canjeado",
     redeemSuccessCoins: "{n} monedas añadidas",
+    redeemSuccessPremium: "Premium activado durante {n} días",
     redeemSuccess: "Código canjeado",
     reportProblem: "Informar de un problema",
     problemQuestion: "¿Qué pasa?",

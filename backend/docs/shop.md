@@ -64,6 +64,7 @@ Versandpauschale: `shop_shipping_cents` (490).
 | `payments()`: `createReservedCheckout`, `capture`, `cancel`, `refund` | `StripePaymentGateway` (payment) | Kasse, Annahme, Ablehnen, Frist, Erstatten |
 | `dispatchPaymentEvent(kind, event)` / `handlePaymentEvents('shop', …)` | `PaymentService.handleWebhook` übersetzt Stripe in neutrale `PaymentEvent`s (`payment-events.ts`) | `ShopPaymentEventsService` |
 | `unlock('coins', …)` | `CoinUnlockProvider` (hidden) | Codes einlösen |
+| `unlock('premium', …)` | `PremiumUnlockProvider` (payment) | Codes einlösen |
 
 Ist ein Modul aus, ist niemand angemeldet: `ModuleUnavailableError` bzw. das Event wird ignoriert.
 
@@ -79,7 +80,8 @@ antwortet der Webhook mit Fehler und Stripe stellt neu zu.
   `FOR UPDATE SKIP LOCKED`. Vorher wird geprüft, ob genug da sind, sonst wird gar nicht erst abgebucht.
 - **Codes** (`unlock`): `XXXX-XXXX-XXXX`, 60 Bit, ohne 0/O/1/I. Einlösen unter `/shop/redeem`: Code erst für sich
   reservieren, dann über den Broker gutschreiben; scheitert die Gutschrift, wird die Reservierung zurückgenommen.
-  `premium:*` bleibt vorerst „gültig, aber noch nicht einlösbar“ (Premium-Modell offen).
+  `premium:<Tage>` schaltet Premium direkt frei (`PremiumUnlockProvider`, payment): eine Zeile in `subscriptions` mit
+  plan `code`, Anbieter `shop`, Ablauf nach den Tagen. Weitere Codes verlängern ab dem letzten Ablauf. Migration `008_premium_codes.sql`.
 - **Bestand** (`food`/`physical`, NULL = unbegrenzt): Prüfung vor dem Abbuchen, Abzug in der Annahme, nie unter 0,
   Engpass → `stock_short` im Protokoll.
 - **Lieferstand**: Abholen `accepted → preparing → ready → delivered`, Liefern `… → on_the_way → delivered`,

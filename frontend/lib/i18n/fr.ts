@@ -1217,6 +1217,7 @@ export const fr = {
     redeemNow: "Utiliser maintenant",
     redeemedLabel: "Utilisé",
     redeemSuccessCoins: "{n} pièces ajoutées",
+    redeemSuccessPremium: "Premium activé pour {n} jours",
     redeemSuccess: "Code utilisé",
     reportProblem: "Signaler un problème",
     problemQuestion: "Qu'est-ce qui ne va pas ?",

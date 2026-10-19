@@ -1216,6 +1216,7 @@ export const deEasy = {
     redeemNow: "Jetzt einlösen",
     redeemedLabel: "Schon eingelöst",
     redeemSuccessCoins: "Du hast {n} Coins bekommen",
+    redeemSuccessPremium: "Du hast jetzt {n} Tage Premium",
     redeemSuccess: "Code eingelöst",
     reportProblem: "Problem melden",
     problemQuestion: "Was ist passiert?",

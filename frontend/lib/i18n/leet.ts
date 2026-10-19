@@ -1227,6 +1227,7 @@ export const leetspeak = {
     redeemNow: "R3D33M N0W",
     redeemedLabel: "R3D33M3D",
     redeemSuccessCoins: "+{n} C01N5",
+    redeemSuccessPremium: "PR3M1UM +{n} D4Y5",
     redeemSuccess: "C0D3 R3D33M3D",
     reportProblem: "R3P0R7 PR0BL3M",
     problemQuestion: "WH47'5 WR0N6?",
