@@ -91,7 +91,7 @@ Regeln: `matching` und `board` erfordern `chat`, `orgs` erfordert `caretaker`, `
   Erst mit der Annahme wird abgebucht, ausgeliefert und die Rechnung (§ 14 UStG) per Mail
   verschickt; Erstattungen bekommen eine Stornorechnung. Käufer und Team können sich gegenseitig
   melden und den Support erreichen (`shop_cases`), Fälle haben eine Frist und melden sich erneut.
-  Schema: `backend/migrations/007_shop.sql`, Demo-Daten: `seed-shop.ts`.
+  Schema: `backend/migrations/007_shop.sql` und `008_premium_codes.sql` (Premium-Codes), Demo-Daten: `seed-shop.ts`.
 
 Schema: `backend/migrations/006_board_and_care.sql` (Mandanten-DBs bekommen es automatisch über
 `tenant-init`, die Haupt-DB nur bei neuem Volume). Demo-Daten: `seed-board-care.ts`.

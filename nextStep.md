@@ -75,9 +75,9 @@ No-op ohne das Modul. Läuft über `docker-entrypoint.sh`. Lizenz-Artikel haben 
    "modules": { "...": "...", "shop": true },
    "legal": { "...": "...", "vatId": "DE123456789" }
    ```
-2. Mandant starten: `scripts/tenant.sh up kiez` → `init` spielt 007 automatisch ein, der Seed legt 1000 Artikel an.
-   Die Haupt-DB (`default`) bekommt 007 nur bei neuem Volume oder von Hand:
-   `docker exec -i XXX_db psql -U <user> -d <db> -c "SET search_path=public; $(cat backend/migrations/007_shop.sql)"`
+2. Mandant starten: `scripts/tenant.sh up kiez` → `init` spielt 007 und 008 automatisch ein, der Seed legt 1000 Artikel an.
+   Die Haupt-DB (`default`) bekommt 007/008 nur bei neuem Volume oder von Hand, je Datei:
+   `docker exec -i XXX_db psql -U <user> -d <db> -c "SET search_path=public; $(cat backend/migrations/007_shop.sql)"` (dann 008)
 3. Prüfen:
    ```bash
    scripts/tenant.sh smoke kiez

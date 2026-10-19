@@ -4,7 +4,7 @@ Mandanten-Modul `shop` (an in `tenant.json` unter `modules.shop`, braucht `payme
 `legal.taxNumber`). Der Mandant verkauft **Essen** (abholen/liefern), **Merch** (Versand), **Lizenz-Keys** und
 **Freischalt-Codes** (`coins:500` in der App oder für etwas außerhalb). Bis ~1000 Artikel mit Filtern.
 
-Code: `src/modules/core/shop/`, Schema: `migrations/007_shop.sql`, Frontend: `app/(app)/shop`, `app/(app)/admin/shop`,
+Code: `src/modules/core/shop/`, Schema: `migrations/007_shop.sql` (+ `008_premium_codes.sql` für Premium-Codes), Frontend: `app/(app)/shop`, `app/(app)/admin/shop`,
 `components/shop/`. Fahrplan und Entscheidungen: `nextStep.md` im Repo-Root.
 
 **Grundsatz: Das System hält an, ein Mensch entscheidet.** Stripe reserviert nur (`capture_method: manual`).

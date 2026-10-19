@@ -1,3 +1,8 @@
+## 2026-10-19 — feat(shop): Meldung nach dem Einloesen eines Premium-Codes
+**Was:** `redeemMessage` zeigt bei `premium` „Premium fuer N Tage freigeschaltet“ (neuer Text `redeemSuccessPremium`
+in allen 9 Sprachen) statt des allgemeinen „Code eingeloest“. `tsc` + ESLint sauber.
+**Nicht gebaut:** keine Anzeige des Ablaufdatums, kein eigener Premium-Bildschirm.
+
 ## 2026-10-12 — fix(shop): Bestand-Labels
 **Was:** Haltegrund „Bestand reicht nicht“, Zeitstrahl „Bestand reichte nicht“ mit fehlender Menge (rot).
 

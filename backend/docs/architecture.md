@@ -132,6 +132,12 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-10-19 — Premium-Codes aus dem Shop (`premium:<Tage>`) werden eine normale Zeile in `subscriptions`
+  (plan `code`, payment_provider `shop`, Ablauf nach den Tagen, `provider_subscription_id` = Idempotency-Key).
+  Grund: Die App erkennt Premium schon an „aktive Zeile, Ablauf leer oder in der Zukunft“ (z. B. Swipe-Limit) —
+  kein zweiter Premium-Mechanismus noetig. Anbieter ist `PremiumUnlockProvider` im Payment-Modul (besitzt
+  `subscriptions`), der Shop ruft ihn nur ueber den Broker. Mehrere Codes stapeln sich. Verschenken kommt spaeter.
+
 - 2026-10-07 — Mandanten-Console als Script im Backend (`src/console/`, wie `tenant-init.ts`) statt
   eigener App. Grund: sie importiert Schema/Loader und die Stats-Queries direkt, ohne neue
   Dependencies; die Mandanten-DBs fragt sie per pg direkt ab (Postgres auf Host-Port 5432) statt
