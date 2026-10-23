@@ -6,7 +6,23 @@
 
 const { execFile } = require('child_process');
 
-function pollDockerStats(containers) {
+// `containers` are name substrings (docker ps --filter name=, OR'd), so
+// scaled replicas show up without listing them one by one. An explicit
+// name list for `docker stats` would fail as a whole if one were missing.
+function listContainers(filters) {
+  return new Promise((resolve) => {
+    execFile(
+      'docker',
+      ['ps', '--format', '{{.Names}}', ...filters.flatMap((f) => ['--filter', `name=${f}`])],
+      { timeout: 5000 },
+      (err, stdout) => resolve(err ? [] : stdout.trim().split('\n').filter(Boolean).sort()),
+    );
+  });
+}
+
+async function pollDockerStats(filters) {
+  const containers = await listContainers(filters);
+  if (containers.length === 0) return [];
   return new Promise((resolve) => {
     execFile(
       'docker',
@@ -29,7 +45,8 @@ function pollDockerStats(containers) {
             }
           })
           .filter(Boolean);
-        resolve(stats.map((s) => ({ name: s.Name, cpu: s.CPUPerc, mem: s.MemUsage })));
+        // Compose-Replikas heissen <projekt>--<service>-N — Projektpraefix weg.
+        resolve(stats.map((s) => ({ name: s.Name.replace(/^.*--/, ''), cpu: s.CPUPerc, mem: s.MemUsage })));
       },
     );
   });

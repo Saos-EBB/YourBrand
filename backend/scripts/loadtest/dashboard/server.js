@@ -37,7 +37,10 @@ const PORT = 4300;
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-const CONTAINERS = ['XXX_backend_load', 'XXX_db_load'];
+// Substring-Filter fuer `docker ps --filter name=` — XXX_backend_load
+// matcht auch die Replikas (<projekt>--XXX_backend_load_replica-N), deren
+// Anzahl sich mit BACKEND_REPLICAS aendert.
+const CONTAINERS = ['XXX_backend_load', 'XXX_db_load', 'XXX_lb_load'];
 // Bump to 2000ms if a very high NUM_USERS makes the per-tick readdir()
 // in lib/tailer.js the bottleneck (see that file's header comment).
 const CSV_POLL_MS = 1000;

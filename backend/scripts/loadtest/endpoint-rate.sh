@@ -83,8 +83,13 @@ if [ "$EXISTING_USERS" -lt "$TOKEN_POOL_SIZE" ]; then
   echo "Prefetche Tokens..."
   BASE_URL="$BASE_URL" USERS_FILE="$USERS_FILE" TOKENS_FILE="$TOKENS_FILE" ./prefetch-tokens.sh
 fi
-if [ ! -f "$TOKENS_FILE" ] || [ "$(wc -l < "$TOKENS_FILE" 2>/dev/null || echo 0)" -eq 0 ]; then
-  echo "Prefetche Tokens..."
+# JWTs laufen nach 15 min ab (auth.service.ts) — ein aelterer tokens.csv
+# liefert mitten im Run nur noch 401. Ab TOKEN_MAX_AGE_SEC neu prefetchen.
+TOKEN_MAX_AGE_SEC="${TOKEN_MAX_AGE_SEC:-300}"
+TOKENS_AGE=$(( $(date +%s) - $(stat -c %Y "$TOKENS_FILE" 2>/dev/null || echo 0) ))
+if [ ! -f "$TOKENS_FILE" ] || [ "$(wc -l < "$TOKENS_FILE" 2>/dev/null || echo 0)" -eq 0 ] \
+   || [ "$TOKENS_AGE" -gt "$TOKEN_MAX_AGE_SEC" ]; then
+  echo "Prefetche Tokens (vorhandene: ${TOKENS_AGE}s alt)..."
   BASE_URL="$BASE_URL" USERS_FILE="$USERS_FILE" TOKENS_FILE="$TOKENS_FILE" ./prefetch-tokens.sh
 fi
 
@@ -93,6 +98,14 @@ AVAILABLE_TOKENS="${#TOKEN_LINES[@]}"
 if [ "$AVAILABLE_TOKENS" -eq 0 ]; then
   echo "Fehler: ${TOKENS_FILE} ist leer."
   exit 1
+fi
+
+# Ziele fuer Kontaktanfragen + Admin-Token fuer admin_pending (actions.sh)
+init_pool_user_ids
+if admin_login; then
+  echo "Admin-Login ok (${ADMIN_LOGIN}), approve-Rate ${ADMIN_APPROVE_PCT}%"
+else
+  echo "WARNUNG: Admin-Login (${ADMIN_LOGIN}) fehlgeschlagen — admin_pending laeuft mit Pool-Token und bekommt 403."
 fi
 
 # ─────────────────────────────────────────────────────────────

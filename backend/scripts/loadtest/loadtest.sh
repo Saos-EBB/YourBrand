@@ -111,6 +111,14 @@ if [ "$AVAILABLE_TOKENS" -eq 0 ]; then
   exit 1
 fi
 
+# Ziele fuer Kontaktanfragen + Admin-Token fuer admin_pending (actions.sh)
+init_pool_user_ids
+if admin_login; then
+  echo "Admin-Login ok (${ADMIN_LOGIN}), approve-Rate ${ADMIN_APPROVE_PCT}%"
+else
+  echo "WARNUNG: Admin-Login (${ADMIN_LOGIN}) fehlgeschlagen — admin_pending laeuft mit Pool-Token und bekommt 403."
+fi
+
 # NUM_USERS=0 (Standalone-Aufruf ohne run-loadtest.sh, kein expliziter
 # Wunsch) heisst weiterhin "ein Worker pro verfuegbarem Token" — sonst
 # laeuft NUM_USERS UNVERAENDERT, auch wenn es AVAILABLE_TOKENS uebersteigt:

@@ -1,3 +1,10 @@
+## 2026-10-24 — feat(loadtest): Load Balancer mit Backend-Replikas, Skripte dafuer angepasst
+**Was:** nginx (`XXX_lb_load`, `scripts/loadtest/nginx-lb.conf`) auf :3100 vor `XXX_backend_load` und
+`BACKEND_REPLICAS` weiteren Instanzen (`node dist/main`), weil eine Instanz der Engpass war. Dashboard zeigt die
+Replikas, „Backend zuruecksetzen“ erzeugt sie mit; Kontaktanfragen gehen an Pool-User (sonst keine Chats), Admin-Aktionen
+mit eigenem Admin-Token, Tokens aelter als 5 min werden neu geholt. Stand vom 2026-10-22, im Repo bisher nicht committet.
+**Nicht gebaut:** kein Socket.IO-Adapter, Crons laufen weiter in jeder Instanz (siehe Kommentar in der Compose-Datei).
+
 ## 2026-10-19 — fix(shop-demo): Reset-Befehl in der Doku
 **Was:** Frisch anfangen braucht `docker rm shop_demo_db` vor dem Loeschen des Volumes (Eintrag in `errors.md`).
 Danach live gegen die Demo getestet: Premium-Code einloesen → `{kind: premium, amount: 30}`, Abo `code`/`shop` bis

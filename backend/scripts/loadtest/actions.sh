@@ -11,17 +11,63 @@
 # (defining these functions doesn't need them yet, only calling one does):
 #   ERRORS_FILE   — log_error_if_needed() appends here
 # Optional, have their own defaults if unset:
-#   BASE_URL, TEST_PHOTO
+#   BASE_URL, TEST_PHOTO, ADMIN_LOGIN/ADMIN_PASSWORD, ADMIN_APPROVE_PCT
+# Optional, vom sourcenden Skript nach dem Laden des Token-Pools gesetzt:
+#   TOKEN_LINES   — fuer init_pool_user_ids (Ziele fuer Kontaktanfragen)
 #
-# admin_pending is part of the flat list like any other action — a token
-# without the owner role (the normal case, seed_user_* are all role=user)
-# gets 403 and counts as EXPECTED-REJECT, not a bug. To see real 200s on
-# this action, add the owner account (owner@demo.example.com) to users.csv
-# before prefetch runs.
+# admin_pending laeuft mit einem eigenen Admin-Token (admin_login, Demo-
+# Account admin1 aus demo-users.yaml), nicht mit dem Pool-Token — seed_user_*
+# sind alle role=user und bekaemen nur 403.
 
 BASE_URL="${BASE_URL:-http://localhost:3000/api/v1}"
 ACTIONS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_PHOTO="${TEST_PHOTO:-${ACTIONS_SCRIPT_DIR}/test-photo.jpg}"  # fuer action_media_upload
+# Nickname statt E-Mail: der E-Mail-Login (email_search_hash) scheitert fuer
+# die Demo-Accounts im alten Loadtest-Volume, der Nickname-Login nicht.
+ADMIN_LOGIN="${ADMIN_LOGIN:-gutz}"   # admin1 aus demo-users.yaml
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-Demo1234!}"
+ADMIN_APPROVE_PCT="${ADMIN_APPROVE_PCT:-85}"  # Rest wird rejected
+ADMIN_TOKEN="${ADMIN_TOKEN:-}"
+POOL_USER_IDS=()
+
+# Loggt den Admin ein und setzt ADMIN_TOKEN. Einmal vom sourcenden Skript vor
+# dem Start der Worker aufrufen; action_admin_pending loggt bei 401 (Token
+# nach 15 min abgelaufen) selbst neu ein. Nicht in die User-CSV geloggt —
+# gemessen wird der Admin-Endpoint, nicht dieser Login.
+admin_login() {
+  ADMIN_TOKEN=$(curl -s -m 10 -X POST "${BASE_URL}/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"identifier\":\"${ADMIN_LOGIN}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+    | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
+  [ -n "$ADMIN_TOKEN" ]
+}
+
+# User-IDs (JWT "sub") aller Pool-Tokens nach POOL_USER_IDS. Kontaktanfragen
+# gehen an diese User statt an zufaellige Deck-Kandidaten: die liegen meist
+# ausserhalb des Pools (Pool = Bruchteil der geseedeten User), deren Anfragen
+# nimmt dann nie jemand an — und ohne Annahme keine Conversations, also auch
+# kein chat_messages_*.
+init_pool_user_ids() {
+  POOL_USER_IDS=()
+  local line token payload sub
+  for line in "${TOKEN_LINES[@]}"; do
+    token="${line#*,}"
+    payload="${token#*.}"; payload="${payload%%.*}"
+    payload="${payload//-/+}"; payload="${payload//_//}"
+    while [ $(( ${#payload} % 4 )) -ne 0 ]; do payload+="="; done
+    sub=$(printf '%s' "$payload" | base64 -d 2>/dev/null | grep -o '"sub":"[^"]*"' | cut -d'"' -f4)
+    [ -n "$sub" ] && POOL_USER_IDS+=("$sub")
+  done
+}
+
+# UUIDs im Pfad -> ":id", damit das Dashboard/die Auswertung pro Endpoint
+# gruppiert statt pro Conversation/Medium. Setzt LOG_PATH.
+normalize_path() {
+  LOG_PATH="$1"
+  while [[ "$LOG_PATH" =~ ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}) ]]; do
+    LOG_PATH="${LOG_PATH/${BASH_REMATCH[1]}/:id}"
+  done
+}
 
 # 4xx sind bei diesem Lastansatz erwartet (z.B. "Anfrage bereits gesendet",
 # "insufficient coins", 403 auf admin_pending fuer Nicht-Owner) und werden
@@ -40,7 +86,7 @@ log_error_if_needed() {
 
 # Führt einen Request aus, loggt Status-Code + Dauer in die User-Logdatei.
 # Args: <user_log_file> <token|-> <METHOD> <path> [json_body]
-# Setzt RESPONSE_BODY als Nebeneffekt — fuer Aktionen, die die Antwort
+# Setzt RESPONSE_BODY/RESPONSE_STATUS als Nebeneffekt — fuer Aktionen, die die Antwort
 # auswerten muessen (z.B. eine ID fuer den naechsten Call brauchen), ohne
 # dafuer einen zweiten curl-Call nur zum Parsen zu brauchen.
 do_request() {
@@ -65,7 +111,9 @@ do_request() {
   status="${raw##*$'\n'}"
   [ -z "$status" ] && status="000"   # curl killed/no response at all -> treat like connection failure
 
-  echo "$(date -Iseconds),${method},${path},${status},${dur}" >> "$logfile"
+  RESPONSE_STATUS="$status"
+  normalize_path "$path"
+  echo "$(date -Iseconds),${method},${LOG_PATH},${status},${dur}" >> "$logfile"
   log_error_if_needed "$method" "$path" "$status" "$RESPONSE_BODY"
 }
 
@@ -142,19 +190,28 @@ action_chat_messages_post() {
   fi
 }
 
-# Quick-GET aufs Deck um einen Kandidaten zu holen, dann Kontaktanfrage.
-# 409 heisst "gab's schon" — erwartet unter Last, kein Bug.
+# Kontaktanfrage an einen zufaelligen anderen Pool-User (siehe
+# init_pool_user_ids), damit contact_request_accept auch etwas zum Annehmen
+# findet. 409 heisst "gab's schon" — bei kleinem Pool unter Last erwartet.
+# Ohne POOL_USER_IDS (init nicht aufgerufen) wie frueher: Ziel aus dem Deck.
 action_contact_request_send() {
   local logfile="$1" token="$2"
-  do_request "$logfile" "$token" GET "/discover/deck"
-  local ids=()
-  while IFS= read -r id; do
-    [ -n "$id" ] && ids+=("$id")
-  done < <(printf '%s' "$RESPONSE_BODY" | grep -o '"user_id":"[^"]*"' | cut -d'"' -f4)
-  if [ "${#ids[@]}" -gt 0 ]; then
-    local target="${ids[$((RANDOM % ${#ids[@]}))]}"
-    do_request "$logfile" "$token" POST "/chat/requests" "{\"receiver_id\":\"${target}\"}"
+  local ids=() self_id
+  if [ "${#POOL_USER_IDS[@]}" -gt 1 ]; then
+    ids=("${POOL_USER_IDS[@]}")
+  else
+    do_request "$logfile" "$token" GET "/discover/deck"
+    while IFS= read -r id; do
+      [ -n "$id" ] && ids+=("$id")
+    done < <(printf '%s' "$RESPONSE_BODY" | grep -o '"user_id":"[^"]*"' | cut -d'"' -f4)
   fi
+  [ "${#ids[@]}" -eq 0 ] && return
+  local target="${ids[$((RANDOM % ${#ids[@]}))]}"
+  # Anfrage an sich selbst waere ein 400 — dann einen Nachbarn nehmen.
+  self_id=$(printf '%s' "${token#*.}" | cut -d. -f1 | tr '_-' '/+' | base64 -d 2>/dev/null | grep -o '"sub":"[^"]*"' | cut -d'"' -f4)
+  [ "$target" = "$self_id" ] && target="${ids[$(( (RANDOM + 1) % ${#ids[@]} ))]}"
+  [ "$target" = "$self_id" ] && return
+  do_request "$logfile" "$token" POST "/chat/requests" "{\"receiver_id\":\"${target}\"}"
 }
 
 action_contact_request_incoming() {
@@ -172,8 +229,33 @@ action_contact_request_accept() {
   [ -n "$first_id" ] && do_request "$logfile" "$token" PATCH "/chat/requests/${first_id}/accept"
 }
 
+# Admin-Moderation: Pending-Liste holen, ein zufaelliges Medium daraus
+# ADMIN_APPROVE_PCT % approven, sonst rejecten. Zufaellig statt das erste,
+# damit parallele Worker nicht alle dasselbe Medium bearbeiten. Haelt
+# nebenbei die Pending-Queue klein, die media_upload sonst unbegrenzt
+# wachsen laesst (GET /admin/media/pending hat kein LIMIT).
+# Ohne Admin-Token (Login fehlgeschlagen) Fallback auf den Pool-Token -> 403.
 action_admin_pending() {
-  do_request "$1" "$2" GET "/admin/media/pending"
+  local logfile="$1" token="${ADMIN_TOKEN:-$2}"
+  do_request "$logfile" "$token" GET "/admin/media/pending"
+  if [ "$RESPONSE_STATUS" = "401" ] && [ -n "$ADMIN_TOKEN" ] && admin_login; then
+    token="$ADMIN_TOKEN"
+    do_request "$logfile" "$token" GET "/admin/media/pending"
+  fi
+  [ "$RESPONSE_STATUS" = "200" ] || return
+
+  local ids=()
+  while IFS= read -r id; do
+    [ -n "$id" ] && ids+=("$id")
+  done < <(printf '%s' "$RESPONSE_BODY" | grep -o '"id":"[^"]*"' | cut -d'"' -f4 | head -50)
+  [ "${#ids[@]}" -eq 0 ] && return
+  local media_id="${ids[$((RANDOM % ${#ids[@]}))]}"
+  if [ $((RANDOM % 100)) -lt "$ADMIN_APPROVE_PCT" ]; then
+    do_request "$logfile" "$token" PATCH "/admin/media/${media_id}/approve"
+  else
+    do_request "$logfile" "$token" PATCH "/admin/media/${media_id}/reject" \
+      '{"reason":"loadtest reject"}'
+  fi
 }
 
 ACTIONS=(

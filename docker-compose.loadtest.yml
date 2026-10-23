@@ -37,6 +37,9 @@ services:
     image: xxx_db_load:local
     container_name: XXX_db_load
     restart: unless-stopped
+    # Default max_connections=100 reicht nicht fuer mehrere Backend-Instanzen
+    # (je DB_POOL_MAX=20) + Worker + pgAdmin/Seeds.
+    command: postgres -c max_connections=300
     environment:
       POSTGRES_DB:       ${DB_NAME}
       POSTGRES_USER:     ${DB_USER}
@@ -103,7 +106,7 @@ services:
     image: xxx_backend_load:local
     container_name: XXX_backend_load
     restart: unless-stopped
-    environment:
+    environment: &backend_load_env
       DB_HOST:     XXX_db_load
       DB_PORT:     5432
       DB_NAME:     ${DB_NAME}
@@ -118,6 +121,8 @@ services:
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET:   yourbrand-media-load
       S3_PUBLIC_URL_BASE: http://localhost:9500/yourbrand-media-load
+      TENANT:      ${TENANT:-default}
+      TENANT_DIR:  /tenants
       JWT_SECRET:  ${JWT_SECRET}
       DEMO_MEDIA_PATH: /app
       LOADTEST_MODE: "true"
@@ -125,8 +130,16 @@ services:
       SEED_TX_PER_USER: 0
       SEED_MEDIA_PER_USER: 0
       SEED_RESET:  ${SEED_RESET:-false}
-    ports:
-      - "3100:3000"
+    # Kein Host-Port mehr — :3100 gehoert jetzt XXX_lb_load (nginx), der auf
+    # diese Instanz + alle Replikas verteilt.
+    healthcheck: &backend_load_healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/v1/tenant"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      # docker-entrypoint.sh seedet vor dem Start (full-reset + SEED_USERS)
+      start_period: 900s
+      start_interval: 5s
     depends_on:
       XXX_db_load:
         condition: service_healthy
@@ -137,6 +150,64 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - ./tenants:/tenants:ro
+    networks:
+      - XXX_load_network
+
+  # Zusaetzliche Backend-Instanzen hinter XXX_lb_load. Anzahl ueber
+  # BACKEND_REPLICAS (default 3 -> 4 Instanzen insgesamt mit XXX_backend_load).
+  #
+  # Starten bewusst NICHT ueber docker-entrypoint.sh: Seeds/full-reset laufen
+  # nur einmal in XXX_backend_load, und erst wenn der healthy ist. Und sie
+  # starten `node dist/main` statt `nest start --watch`, weil alle Instanzen
+  # dasselbe ./backend mounten — mehrere Watch-Compiler wuerden sich in
+  # /app/dist gegenseitig ueberschreiben. dist/ baut XXX_backend_load; nach
+  # Code-Aenderungen die Replikas neu starten (Dashboard "Reset backend"
+  # macht das mit).
+  #
+  # Bekannte Grenzen (fuer den HTTP-Loadtest egal): Socket.io-Gateways haben
+  # keinen Redis-Adapter, Events erreichen nur Clients derselben Instanz; und
+  # die @Cron-Jobs (last-active flush jede Minute, pseudonymization 02:00)
+  # laufen in jeder Instanz.
+  XXX_backend_load_replica:
+    image: xxx_backend_load:local
+    restart: unless-stopped
+    command: ["node", "dist/main"]
+    deploy:
+      replicas: ${BACKEND_REPLICAS:-3}
+    environment:
+      <<: *backend_load_env
+      SEED_USERS: 0
+    healthcheck:
+      <<: *backend_load_healthcheck
+      start_period: 120s
+    depends_on:
+      XXX_backend_load:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./tenants:/tenants:ro
+    networks:
+      - XXX_load_network
+
+  # Load Balancer auf :3100 (dort, wo frueher XXX_backend_load direkt lag) —
+  # Loadtest-Skripte und Dashboard bleiben unveraendert. nginx loest den
+  # Replika-Servicenamen beim Start auf, deshalb muss er nach einem
+  # Replika-Neustart/-Skalieren mit neu gestartet werden.
+  XXX_lb_load:
+    image: nginx:1.27-alpine
+    container_name: XXX_lb_load
+    restart: unless-stopped
+    ports:
+      - "3100:80"
+    volumes:
+      - ./backend/scripts/loadtest/nginx-lb.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      XXX_backend_load:
+        condition: service_healthy
+      XXX_backend_load_replica:
+        condition: service_healthy
     networks:
       - XXX_load_network
 
@@ -162,6 +233,8 @@ services:
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET:   yourbrand-media-load
       S3_PUBLIC_URL_BASE: http://localhost:9500/yourbrand-media-load
+      TENANT:      ${TENANT:-default}
+      TENANT_DIR:  /tenants
     depends_on:
       XXX_db_load:
         condition: service_healthy
@@ -172,6 +245,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - ./tenants:/tenants:ro
     networks:
       - XXX_load_network
 

@@ -1,6 +1,7 @@
 'use strict';
 //
 // "Reset backend" button support: rebuilds and recreates XXX_backend_load
+// (plus its replicas and the nginx LB in front of them)
 // so it picks up code/config changes (Dockerfile, database.config.ts,
 // env vars added to docker-compose.loadtest.yml, ...). `docker compose up
 // -d` alone does NOT do this — an already-built image is left as-is and a
@@ -18,6 +19,9 @@ const { EventEmitter } = require('events');
 const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..', '..');
 const COMPOSE_ARGS = ['compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.loadtest.yml'];
 const SERVICE = 'XXX_backend_load';
+// Replikas laufen `node dist/main` ohne Watch (dist/ baut XXX_backend_load),
+// nginx loest ihre IPs nur beim Start auf — beide muessen mit neu starten.
+const RECREATE_SERVICES = [SERVICE, 'XXX_backend_load_replica', 'XXX_lb_load'];
 
 class ResetRunner extends EventEmitter {
   constructor() {
@@ -33,7 +37,7 @@ class ResetRunner extends EventEmitter {
   start() {
     if (this.isActive()) throw new Error('Ein Reset laeuft schon');
     this._runStep('build', ['build', SERVICE], () => {
-      this._runStep('recreate', ['up', '-d', '--force-recreate', SERVICE], () => {
+      this._runStep('recreate', ['up', '-d', '--force-recreate', ...RECREATE_SERVICES], () => {
         this.child = null;
         this.step = null;
         this.emit('done');
