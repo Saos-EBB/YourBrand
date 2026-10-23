@@ -1,5 +1,14 @@
 # Fehler
 
+## 2026-10-23 — 500 bei parallelem Erstzugriff (Coins, Notification-Settings, Interessen)
+**Symptom:** Unter Last vereinzelt 500 auf `GET /hidden/coin/balance` (9 von 1.500 bei 300 req/s), `GET/PUT
+/notifications/settings` (bis 31 %) und `POST /profile/me/interests/:id` (1,6 %); Log: `duplicate key value violates
+unique constraint`.
+**Ursache:** Erst lesen, dann anlegen. Zwei gleichzeitige erste Requests desselben Users sehen beide „keine Zeile“ und
+legen beide an; der zweite scheitert am UNIQUE-Constraint, der Exception-Filter macht daraus eine 500.
+**Fix:** Anlegen per `INSERT … ON CONFLICT DO NOTHING`, der Constraint entscheidet. Startbonus bucht nur, wessen INSERT
+die Zeile angelegt hat (`RETURNING`).
+
 ## 2026-10-19 — Demo-Reset: Volume laesst sich nicht loeschen
 **Symptom:** `docker volume rm shop_demo_pgdata` nach `scripts/shop_demo.sh down` → „volume is in use“.
 **Ursache:** `down` stoppt die Container nur (`docker stop`), entfernt sie nicht — der gestoppte `shop_demo_db` haelt

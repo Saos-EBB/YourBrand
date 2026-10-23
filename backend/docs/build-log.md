@@ -1,3 +1,9 @@
+## 2026-10-24 — fix(coin): Konto-Anlage sicher bei parallelen Requests
+**Was:** `ensureBalance` legt Konto und Startbonus in einer Transaktion per `ON CONFLICT DO NOTHING … RETURNING` an
+(Eintrag in `errors.md`). Gegenprobe: 100 neue User, 1.000 req/s, 5.000 Requests, 0 Fehler, je User ein Konto und ein
+Startbonus.
+**Nicht gebaut:** `addCoins`/`spendCoins` unveraendert (verschachtelte Transaktion, siehe Loadtest-Audit B8), kein Test.
+
 ## 2026-10-24 — feat(auth): Loadtest-Modus nur mit passendem Schluessel
 **Was:** `isLoadtestRequest` vergleicht `X-Loadtest-Key` zeitkonstant mit `LOADTEST_KEY` (mind. 32 Zeichen). Nur dann:
 kein Throttling (globales `skipIf` statt `@SkipThrottle` am Login), Login-Token `LOADTEST_TOKEN_TTL_S` (Default 12 h),

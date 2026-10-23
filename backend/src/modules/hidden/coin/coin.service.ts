@@ -39,19 +39,28 @@ export class CoinService {
         return this.stripeClient;
     }
 
+    // Legt beim ersten Zugriff das Konto mit Startguthaben an. Parallele erste Requests desselben Users
+    // (zwei Tabs, Loadtest) duerfen sich nicht in die Quere kommen: ON CONFLICT DO NOTHING statt
+    // Lesen-dann-Anlegen, und den Startbonus bucht nur der Request, dessen INSERT die Zeile angelegt hat.
     async ensureBalance(userId: string): Promise<void> {
         const existing = await this.balanceRepo.findOne({ where: { user_id: userId } });
-        if (!existing) {
-            await this.balanceRepo.save(
-                this.balanceRepo.create({ user_id: userId, balance: STARTING_COINS })
+        if (existing) return;
+        await this.dataSource.transaction(async (manager) => {
+            const inserted: unknown[] = await manager.query(
+                `INSERT INTO user_coin_balance (user_id, balance)
+                 VALUES ($1, $2)
+                 ON CONFLICT (user_id) DO NOTHING
+                 RETURNING user_id`,
+                [userId, STARTING_COINS]
             );
-            await this.txRepo.save(
-                this.txRepo.create({
+            if (inserted.length === 0) return;
+            await manager.save(
+                manager.create(CoinTransaction, {
                     user_id: userId, amount: STARTING_COINS,
                     type: 'starting_bonus', beef_id: null,
                 })
             );
-        }
+        });
     }
 
     async getBalance(userId: string): Promise<number> {
