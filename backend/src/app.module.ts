@@ -8,6 +8,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { FailOpenThrottlerStorage } from './common/redis/fail-open-throttler-storage';
 import { isLoadtestRequest } from './common/loadtest/loadtest-key';
 import Redis from 'ioredis';
 import { APP_GUARD } from '@nestjs/core';
@@ -95,7 +96,7 @@ const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) 
         throttlers: [
           { ttl: 60000, limit: 100, skipIf: (ctx) => isLoadtestRequest(ctx.switchToHttp().getRequest()) },
         ],
-        storage: new ThrottlerStorageRedisService(redis),
+        storage: new FailOpenThrottlerStorage(new ThrottlerStorageRedisService(redis)),
       }),
     }),
     TypeOrmModule.forRootAsync({

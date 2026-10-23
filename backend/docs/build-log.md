@@ -1,3 +1,9 @@
+## 2026-10-24 — fix(redis): Timeouts und fail-open, Redis-Ausfall legt die API nicht mehr lahm
+**Was:** Audit B16 (Eintrag in `errors.md`). Gegenprobe: Redis 12 s pausiert waehrend 300 req/s auf vier eingeloggten
+Endpunkten: 9.000 Requests, 0 Fehler, p95 26 ms, alle 5 s eine Spitze bis ~540 ms (eine Probe pro Prozess). Vorher: 000.
+**Nicht gebaut:** kein Circuit Breaker mit Halb-offen-Zustand, keine Metrik, Timeouts nicht per Env; Setup-Versuchszaehler
+und Beef-Spielstand bleiben strikt (dort ist Redis echter Zustand).
+
 ## 2026-10-24 — fix(notifications,profile): Erst-Anlage sicher bei parallelen Requests
 **Was:** Notification-Settings (`ensureSettings`, dann `update`) und `addInterest` legen per `ON CONFLICT DO NOTHING` an
 statt Lesen-dann-Anlegen (Eintrag in `errors.md`). Gegenprobe: 100 neue User, 900 req/s, 7.200 Requests, 0 Fehler, je

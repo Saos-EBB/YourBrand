@@ -1,5 +1,13 @@
 # Fehler
 
+## 2026-10-24 — Redis haengt, ganze API haengt
+**Symptom:** Redis per `docker pause` angehalten: jeder eingeloggte Request bekam keine Antwort (000 nach 15 s),
+`/tenant` ohne Redis lief weiter.
+**Ursache:** Der Redis-Client hatte kein `commandTimeout`; Throttler-Zaehler und `userExistsCached` im JwtGuard warten
+bei jedem Request auf Redis, ohne Fehlerbehandlung.
+**Fix:** `commandTimeout` 500 ms, `connectTimeout` 2 s, `maxRetriesPerRequest` 1; Cache- und Zaehler-Zugriffe ueber
+`redisOr` (fail-open, nach einem Fehler 5 s ohne Redis), Throttler mit `FailOpenThrottlerStorage`.
+
 ## 2026-10-23 — 500 bei parallelem Erstzugriff (Coins, Notification-Settings, Interessen)
 **Symptom:** Unter Last vereinzelt 500 auf `GET /hidden/coin/balance` (9 von 1.500 bei 300 req/s), `GET/PUT
 /notifications/settings` (bis 31 %) und `POST /profile/me/interests/:id` (1,6 %); Log: `duplicate key value violates

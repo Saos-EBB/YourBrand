@@ -15,6 +15,13 @@ import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
                     // Ein Redis fuer alle Mandanten — jeder Key bekommt den
                     // Mandanten-Prefix, auch die Throttler-Zaehler.
                     keyPrefix: tenantInfra().redisPrefix,
+                    // Ohne Timeouts wartet jeder Befehl, bis Redis antwortet: ein haengendes Redis liess
+                    // jeden eingeloggten Request haengen (Loadtest 2026-10-23, 000 nach 15 s). Jetzt
+                    // scheitert ein Befehl nach 500 ms; Cache-Nutzer fallen dann auf die DB zurueck.
+                    // BullMQ hat eigene Verbindungen (queue.module.ts), dort gilt das nicht.
+                    connectTimeout: 2000,
+                    commandTimeout: 500,
+                    maxRetriesPerRequest: 1,
                 }),
         },
     ],

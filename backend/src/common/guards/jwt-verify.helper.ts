@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { Request } from 'express';
+import { redisOr } from '../redis/redis-fail-open';
 
 const USER_EXISTS_TTL_SECONDS = 15 * 60;
 
@@ -21,13 +22,14 @@ export async function userExistsCached(
     dataSource: DataSource,
 ): Promise<boolean> {
     const cacheKey = `user:exists:${userId}`;
-    const cached = await redis.get(cacheKey);
+    // Redis ist hier nur Cache: faellt es aus, entscheidet die DB-Abfrage (fail-open).
+    const cached = await redisOr(() => redis.get(cacheKey), null);
     if (cached !== null) return cached === '1';
 
     const [{ exists }] = await dataSource.query(
         'SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL) AS exists',
         [userId],
     );
-    await redis.set(cacheKey, exists ? '1' : '0', 'EX', USER_EXISTS_TTL_SECONDS);
+    await redisOr(() => redis.set(cacheKey, exists ? '1' : '0', 'EX', USER_EXISTS_TTL_SECONDS), null);
     return exists;
 }

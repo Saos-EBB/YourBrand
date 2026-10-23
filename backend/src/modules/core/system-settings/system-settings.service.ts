@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../../../common/redis/redis.constants';
+import { redisOr } from '../../../common/redis/redis-fail-open';
 import { SystemSetting } from './entities/system-setting.entity';
 
 const CACHE_TTL_SECONDS = 60;
@@ -21,11 +22,12 @@ export class SystemSettingsService {
     ) { }
 
     private async getCached(key: string): Promise<string | null> {
-        const cached = await this.redis.get(`settings:${key}`);
+        // Redis ist nur Cache: bei Ausfall direkt aus der DB (fail-open).
+        const cached = await redisOr(() => this.redis.get(`settings:${key}`), null);
         if (cached !== null) return cached === MISS_SENTINEL ? null : cached;
 
         const setting = await this.repo.findOne({ where: { key } });
-        await this.redis.set(`settings:${key}`, setting ? setting.value : MISS_SENTINEL, 'EX', CACHE_TTL_SECONDS);
+        await redisOr(() => this.redis.set(`settings:${key}`, setting ? setting.value : MISS_SENTINEL, 'EX', CACHE_TTL_SECONDS), null);
         return setting ? setting.value : null;
     }
 
