@@ -1,3 +1,9 @@
+## 2026-10-24 — fix(errors): DB-Konflikte als 409, abgebrochene Abfragen als 503
+**Was:** Audit B5. `HttpExceptionFilter` ordnet `QueryFailedError` zu: 23505/23503 → 409, 57014 (statement_timeout) → 503
+mit `Retry-After: 2`; bei echten 500 wird der Stack geloggt. Test 5/5.
+**Nicht gebaut:** keine Request-ID, 4xx weiter auf ERROR (beides Audit B11). Gefunden, nicht angefasst: 3 Tests sind schon
+vorher rot (`tictactoe.handler.spec.ts` 2x Serienwertung, `demo-seed-path.spec.ts` Nickname in `demo-relations.yaml`).
+
 ## 2026-10-24 — fix(db): Zeitlimit fuer Abfragen und offene Transaktionen
 **Was:** Audit B9. Pro Verbindung `statement_timeout` 5 s und `idle_in_transaction_session_timeout` 10 s (API), Worker
 120 s / 60 s, ueber die node-postgres-Optionen in `extra` statt Migration. Gegenprobe im Container: `pg_sleep(6)`
