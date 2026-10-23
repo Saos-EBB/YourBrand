@@ -1,0 +1,50 @@
+NEED TO FIX
+===========
+Gefunden am 2026-10-22 beim Erstellen der API-Liste (Commit e1aeb9f)
+
+
+1. GET /api/v1/media/file/* ist komplett offen  [WICHTIG]
+-----------------------------------------------------------
+Datei: backend/src/modules/core/media/media.controller.ts:78 (serveFile)
+
+Der Endpunkt ist der Proxy fuer alle Dateien im S3-Bucket. Er liefert jeden
+Schluessel aus, ohne Login und ohne Pruefung des Freigabe-Status.
+Wer einen Pfad kennt oder errät, bekommt also auch Fotos und Audio-Dateien,
+die noch nicht freigegeben oder schon abgelehnt sind.
+
+Zu pruefen:
+- Freigabe-Status pruefen, bevor die Datei ausgeliefert wird
+  (pending/rejected nur fuer Besitzer und Admins)
+- ggf. Login verlangen oder signierte, zeitlich begrenzte URLs nutzen
+- klaeren, ob noch andere Dateien im selben Bucket liegen
+  (z. B. Rechnungen oder Exporte)
+
+
+2. Socket-Event game:reaction_result wird nie gesendet
+------------------------------------------------------
+Datei: frontend/components/beef/games/ReactionGame.tsx:95
+
+Das Reaktionsspiel hoert auf 'game:reaction_result', aber das Backend
+(backend/src/modules/hidden/beef/beef.gateway.ts) emittiert dieses Event
+nirgends. Der Listener ist tot, das Ergebnis kommt nie an.
+
+Zu pruefen:
+- Entweder im Backend nach 'game:reaction_click' das Ergebnis senden
+- oder im Frontend auf das Event umstellen, das wirklich kommt
+  (vermutlich game:state_update / game:finished)
+
+
+3. Admin-Routen fuer Medien, Meldungen und Strikes doppelt
+-----------------------------------------------------------
+Dateien: backend/src/modules/core/admin/admin.controller.ts
+         backend/src/modules/core/moderation/moderation.controller.ts
+
+Gleiche Funktionen gibt es zweimal:
+  /admin/media/pending            <->  /moderation/admin/media/queue
+  /admin/media/:id/approve        <->  /moderation/admin/media/:id/approve
+  /admin/media/:id/reject         <->  /moderation/admin/media/:id/reject
+  /admin/reports                  <->  /moderation/reports
+  /admin/strikes (GET/POST)       <->  /moderation/strikes (GET/POST)
+
+Das Frontend nutzt nur die /admin-Variante. Die /moderation/...-Admin-Routen
+koennen vermutlich weg (vorher pruefen, ob sie anders arbeiten).

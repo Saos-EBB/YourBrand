@@ -1,3 +1,7 @@
+## 2026-10-24 — chore: Notiz „need to fix.txt“ einchecken
+**Was:** Offene Funde vom 2026-10-22 (Media-Proxy ohne Login, totes Socket-Event im Reaktionsspiel u. a.), bisher nur lokal.
+**Nicht gebaut:** kein Umzug nach `docs/`, keine Fixes daraus.
+
 ## 2026-10-24 — feat(loadtest): Load Balancer mit Backend-Replikas, Skripte dafuer angepasst
 **Was:** nginx (`XXX_lb_load`, `scripts/loadtest/nginx-lb.conf`) auf :3100 vor `XXX_backend_load` und
 `BACKEND_REPLICAS` weiteren Instanzen (`node dist/main`), weil eine Instanz der Engpass war. Dashboard zeigt die
