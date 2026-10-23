@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Delete, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Request, Req, Res, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import type { Response } from 'express';
-import { Throttle, SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -10,6 +10,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ConsentDto } from './dto/consent.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeEmailDto } from './dto/change-email.dto';
+import { isLoadtestRequest } from '../../../common/loadtest/loadtest-key';
 
 // Lokal liegen Frontend und Backend auf derselben Site (localhost:3001 /
 // localhost:3000) — SameSite=Lax reicht, das Refresh-Cookie geht mit.
@@ -46,13 +47,12 @@ export class AuthController {
 
     @Post('login')
     @HttpCode(HttpStatus.OK)
+    // Brute-Force-Schutz. Aufgehoben nur fuer Requests mit passendem Loadtest-Schluessel
+    // (skipIf im ThrottlerModule, siehe common/loadtest/loadtest-key.ts); die bekommen
+    // dann auch ein langlebiges Access-Token.
     @Throttle({ default: { ttl: 60000, limit: 5 } })
-    // Nur im Loadtest-Stack (LOADTEST_MODE=true) aufgehoben — Brute-Force-Schutz
-    // bleibt fuer Demo/Prod unveraendert. Loadtest-User teilen sich alle dieselbe
-    // Quell-IP (der Testrunner), gegen die der Login-Throttle sonst sofort greift.
-    @SkipThrottle({ default: process.env.LOADTEST_MODE === 'true' })
-    async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-        const { accessToken, rawRefreshToken, needsConsent } = await this.authService.login(dto);
+    async login(@Body() dto: LoginDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+        const { accessToken, rawRefreshToken, needsConsent } = await this.authService.login(dto, isLoadtestRequest(req));
         res.cookie('refreshToken', rawRefreshToken, REFRESH_COOKIE_OPTIONS);
         return { accessToken, needsConsent };
     }

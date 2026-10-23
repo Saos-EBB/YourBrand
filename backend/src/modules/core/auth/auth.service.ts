@@ -14,6 +14,7 @@ import { AgbVersion } from '../profile/entities/agb-version.entity';
 import { ConsentLog } from '../profile/entities/consent-log.entity';
 import { MailService } from '../../../common/mail/mail.service';
 import { encryptField, decryptField } from '../../../common/crypto/crypto.helper';
+import { loadtestTokenTtlSeconds } from '../../../common/loadtest/loadtest-key';
 
 @Injectable()
 export class AuthService {
@@ -106,7 +107,8 @@ export class AuthService {
         return { message: 'Registrierung erfolgreich' };
     }
 
-    async login(dto: LoginDto) {
+    // loadtest: Request kam mit passendem Loadtest-Schluessel → langlebiges Access-Token.
+    async login(dto: LoginDto, loadtest = false) {
         let user: User | null;
 
         if (dto.identifier.includes('@')) {
@@ -156,7 +158,7 @@ export class AuthService {
         }
 
         const payload = { sub: user.id, role: user.role };
-        const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+        const accessToken = this.jwtService.sign(payload, { expiresIn: loadtest ? loadtestTokenTtlSeconds() : '15m' });
 
         const rawRefreshToken = this.generateRefreshToken();
         const tokenHash = this.hashToken(rawRefreshToken);

@@ -1,3 +1,10 @@
+## 2026-10-24 — feat(auth): Loadtest-Modus nur mit passendem Schluessel
+**Was:** `isLoadtestRequest` vergleicht `X-Loadtest-Key` zeitkonstant mit `LOADTEST_KEY` (mind. 32 Zeichen). Nur dann:
+kein Throttling (globales `skipIf` statt `@SkipThrottle` am Login), Login-Token `LOADTEST_TOKEN_TTL_S` (Default 12 h),
+Test-Kauf erlaubt (`LoadtestKeyGuard`, sonst 404). Live gegen den Stack geprueft: ohne Schluessel 429 ab 100/min,
+15-min-Token, 404; mit Schluessel alles 200/201, 720-min-Token. Unit-Test 4/4.
+**Nicht gebaut:** kein Schluessel-Check fuer WebSockets, keine Rotation, kein Admin-UI dafuer.
+
 ## 2026-10-24 — chore: Notiz „need to fix.txt“ einchecken
 **Was:** Offene Funde vom 2026-10-22 (Media-Proxy ohne Login, totes Socket-Event im Reaktionsspiel u. a.), bisher nur lokal.
 **Nicht gebaut:** kein Umzug nach `docs/`, keine Fixes daraus.

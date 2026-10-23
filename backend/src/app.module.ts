@@ -8,6 +8,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { isLoadtestRequest } from './common/loadtest/loadtest-key';
 import Redis from 'ioredis';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/core/auth/auth.module';
@@ -75,9 +76,10 @@ const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) 
       load: [appConfig, databaseConfig],
       envFilePath: '.env',
     }),
-    // skipIf greift nur im Loadtest-Stack (LOADTEST_MODE=true): dort teilen sich
-    // alle simulierten User dieselbe Quell-IP (der Testrunner), gegen die der
-    // globale 100req/60s-Throttle sonst sofort greift. Prod/Demo unveraendert.
+    // skipIf greift nur fuer Requests mit passendem Loadtest-Schluessel (LOADTEST_MODE=true +
+    // LOADTEST_KEY im Backend, gleicher Wert im Header X-Loadtest-Key, siehe common/loadtest/loadtest-key.ts):
+    // dort teilen sich alle simulierten User dieselbe Quell-IP (der Testrunner), gegen die der
+    // globale 100req/60s-Throttle und das Login-Limit sonst sofort greifen. Ohne Schluessel unveraendert.
     // Achtung Array-Form: skipIf muss im Throttler-Objekt selbst stehen, nicht
     // als Sibling von "throttlers" (das waere nur bei der Objekt-Form gueltig)
     // — ThrottlerGuard liest bei Array-Konfiguration ausschliesslich das
@@ -91,7 +93,7 @@ const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) 
       inject: [REDIS_CLIENT],
       useFactory: (redis: Redis) => ({
         throttlers: [
-          { ttl: 60000, limit: 100, skipIf: () => process.env.LOADTEST_MODE === 'true' },
+          { ttl: 60000, limit: 100, skipIf: (ctx) => isLoadtestRequest(ctx.switchToHttp().getRequest()) },
         ],
         storage: new ThrottlerStorageRedisService(redis),
       }),

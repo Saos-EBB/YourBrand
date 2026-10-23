@@ -132,6 +132,12 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-10-24 — Loadtest-Modus nur per Handshake (`common/loadtest/`): Throttling aus, 12-h-Access-Token und
+  `POST /hidden/coin/test-purchase` gibt es nur fuer Requests, deren Header `X-Loadtest-Key` gleich `LOADTEST_KEY`
+  ist, und nur bei `LOADTEST_MODE=true`. Grund: Vorher hob `LOADTEST_MODE` allein alle Limits fuer jeden auf; jetzt
+  muessen Backend und Lastgenerator denselben Schluessel kennen, und ein versehentlich gesetztes `LOADTEST_MODE`
+  oeffnet nichts. Gegenstueck: `data/<ziel>/loadtest.key` im Loadtest-Repo.
+
 - 2026-10-19 — Premium-Codes aus dem Shop (`premium:<Tage>`) werden eine normale Zeile in `subscriptions`
   (plan `code`, payment_provider `shop`, Ablauf nach den Tagen, `provider_subscription_id` = Idempotency-Key).
   Grund: Die App erkennt Premium schon an „aktive Zeile, Ablauf leer oder in der Zukunft“ (z. B. Swipe-Limit) —

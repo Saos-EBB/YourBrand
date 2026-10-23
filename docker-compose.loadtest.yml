@@ -126,6 +126,10 @@ services:
       JWT_SECRET:  ${JWT_SECRET}
       DEMO_MEDIA_PATH: /app
       LOADTEST_MODE: "true"
+      # Handshake mit dem Lastgenerator: nur Requests mit X-Loadtest-Key = LOADTEST_KEY sind ohne Limits
+      # und bekommen langlebige Tokens. Wert steht in ./.env (mind. 32 Zeichen), Gegenstueck im Loadtest-Repo.
+      LOADTEST_KEY: ${LOADTEST_KEY:-}
+      LOADTEST_TOKEN_TTL_S: ${LOADTEST_TOKEN_TTL_S:-43200}
       SEED_USERS:  ${SEED_USERS:-5000}
       SEED_TX_PER_USER: 0
       SEED_MEDIA_PER_USER: 0
