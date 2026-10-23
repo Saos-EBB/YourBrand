@@ -1,3 +1,9 @@
+## 2026-10-24 — fix(notifications,profile): Erst-Anlage sicher bei parallelen Requests
+**Was:** Notification-Settings (`ensureSettings`, dann `update`) und `addInterest` legen per `ON CONFLICT DO NOTHING` an
+statt Lesen-dann-Anlegen (Eintrag in `errors.md`). Gegenprobe: 100 neue User, 900 req/s, 7.200 Requests, 0 Fehler, je
+User genau eine Zeile.
+**Nicht gebaut:** kein 23505→409 im Exception-Filter, doppelter UNIQUE-Index auf `user_interests` bleibt (Migration).
+
 ## 2026-10-24 — fix(coin): Konto-Anlage sicher bei parallelen Requests
 **Was:** `ensureBalance` legt Konto und Startbonus in einer Transaktion per `ON CONFLICT DO NOTHING … RETURNING` an
 (Eintrag in `errors.md`). Gegenprobe: 100 neue User, 1.000 req/s, 5.000 Requests, 0 Fehler, je User ein Konto und ein

@@ -276,13 +276,15 @@ export class ProfileService {
         const interest = await this.interestRepo.findOne({ where: { id: interestId } });
         if (!interest) throw new NotFoundException('Interesse nicht gefunden');
 
-        const existing = await this.userInterestRepo.findOne({
-            where: { user_id: userId, interest_id: interestId },
-        });
-        if (!existing) {
-            const entry = this.userInterestRepo.create({ user_id: userId, interest_id: interestId });
-            await this.userInterestRepo.save(entry);
-        }
+        // Idempotent und sicher bei parallelen Requests: UNIQUE (user_id, interest_id) entscheidet,
+        // statt Lesen-dann-Anlegen (zwei gleichzeitige Requests liefen sonst in einen duplicate key → 500).
+        await this.userInterestRepo
+            .createQueryBuilder()
+            .insert()
+            .into(UserInterest)
+            .values({ user_id: userId, interest_id: interestId })
+            .orIgnore()
+            .execute();
 
         await this.checkAndCompleteOnboarding(userId);
         return this.getUserInterests(userId);

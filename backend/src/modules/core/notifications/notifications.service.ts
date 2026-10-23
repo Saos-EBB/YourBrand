@@ -124,31 +124,28 @@ export class NotificationsService {
         await this.notificationRepository.remove(notification);
     }
 
+    // Legt die Einstellungen beim ersten Zugriff an. ON CONFLICT DO NOTHING (UNIQUE user_id) statt
+    // Lesen-dann-Anlegen: parallele erste Requests desselben Users liefen sonst in einen duplicate key → 500.
+    private async ensureSettings(userId: string): Promise<void> {
+        await this.settingsRepository
+            .createQueryBuilder()
+            .insert()
+            .into(NotificationSettings)
+            .values({ user_id: userId })
+            .orIgnore()
+            .execute();
+    }
+
     async getSettings(userId: string) {
-        let settings = await this.settingsRepository.findOne({
-            where: { user_id: userId },
-        });
-
-        if (!settings) {
-            settings = this.settingsRepository.create({ user_id: userId });
-            await this.settingsRepository.save(settings);
-        }
-
-        return settings;
+        const settings = await this.settingsRepository.findOne({ where: { user_id: userId } });
+        if (settings) return settings;
+        await this.ensureSettings(userId);
+        return this.settingsRepository.findOneOrFail({ where: { user_id: userId } });
     }
 
     async updateSettings(userId: string, dto: UpdateNotificationSettingsDto) {
-        let settings = await this.settingsRepository.findOne({
-            where: { user_id: userId },
-        });
-
-        if (!settings) {
-            settings = this.settingsRepository.create({ user_id: userId });
-        }
-
-        Object.assign(settings, dto);
-        settings.updated_at = new Date();
-
-        return this.settingsRepository.save(settings);
+        await this.ensureSettings(userId);
+        await this.settingsRepository.update({ user_id: userId }, { ...dto, updated_at: new Date() });
+        return this.settingsRepository.findOneOrFail({ where: { user_id: userId } });
     }
 }
