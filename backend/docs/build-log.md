@@ -1,3 +1,9 @@
+## 2026-10-24 — fix(db): Zeitlimit fuer Abfragen und offene Transaktionen
+**Was:** Audit B9. Pro Verbindung `statement_timeout` 5 s und `idle_in_transaction_session_timeout` 10 s (API), Worker
+120 s / 60 s, ueber die node-postgres-Optionen in `extra` statt Migration. Gegenprobe im Container: `pg_sleep(6)`
+bricht nach 5.005 ms mit 57014 ab; Full Load 250 req/s ohne einen einzigen Abbruch.
+**Nicht gebaut:** keine getrennten DB-Rollen je Routen-Klasse (Phase 1, Migration), kein PgBouncer, Werte nicht per Env.
+
 ## 2026-10-24 — fix(redis): Timeouts und fail-open, Redis-Ausfall legt die API nicht mehr lahm
 **Was:** Audit B16 (Eintrag in `errors.md`). Gegenprobe: Redis 12 s pausiert waehrend 300 req/s auf vier eingeloggten
 Endpunkten: 9.000 Requests, 0 Fehler, p95 26 ms, alle 5 s eine Spitze bis ~540 ms (eine Probe pro Prozess). Vorher: 000.

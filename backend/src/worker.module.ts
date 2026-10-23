@@ -56,7 +56,12 @@ import databaseConfig from './config/database.config';
                 database: configService.get('database.name'),
                 username: configService.get('database.user'),
                 password: configService.get('database.password'),
-                extra: { max: configService.get<number>('database.poolMax') },
+                // Worker darf laenger (GDPR-Export, Rechnungen), aber nicht unbegrenzt; siehe app.module.ts.
+                extra: {
+                    max: configService.get<number>('database.poolMax'),
+                    statement_timeout: 120_000,
+                    idle_in_transaction_session_timeout: 60_000,
+                },
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
                 synchronize: false,
                 logging: configService.get('app.nodeEnv') === 'development',
