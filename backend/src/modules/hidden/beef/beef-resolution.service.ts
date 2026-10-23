@@ -74,10 +74,10 @@ export class BeefResolutionService {
                 const { winnerId, loserId, coinDistribution, correctVoters } = result;
 
                 if (coinDistribution.winnerShare > 0)
-                    await this.coinService.addCoins(winnerId!, coinDistribution.winnerShare, 'earned_win', beef.id, `beef:${beef.id}:winner:${winnerId}`);
+                    await this.coinService.addCoins(winnerId!, coinDistribution.winnerShare, 'earned_win', beef.id, `beef:${beef.id}:winner:${winnerId}`, manager);
 
                 for (const { voterId, amount } of coinDistribution.bettorPayouts) {
-                    await this.coinService.addCoins(voterId, amount, 'earned_bet_win', beef.id, `beef:${beef.id}:bet:${voterId}`);
+                    await this.coinService.addCoins(voterId, amount, 'earned_bet_win', beef.id, `beef:${beef.id}:bet:${voterId}`, manager);
                 }
 
                 const expires_at = new Date(Date.now() + badgeDurationMs);

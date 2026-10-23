@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import Stripe from 'stripe';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -39,13 +39,20 @@ export class CoinService {
         return this.stripeClient;
     }
 
+    // Mit manager laeuft alles in dessen Transaktion (eine Verbindung, gemeinsames Commit/Rollback),
+    // sonst in einer eigenen. Eine eigene Transaktion innerhalb einer fremden haelt zwei Pool-Verbindungen
+    // gleichzeitig und ist nicht atomar mit ihr (Loadtest-Audit B8).
+    private inTransaction<T>(manager: EntityManager | undefined, fn: (m: EntityManager) => Promise<T>): Promise<T> {
+        return manager ? fn(manager) : this.dataSource.transaction(fn);
+    }
+
     // Legt beim ersten Zugriff das Konto mit Startguthaben an. Parallele erste Requests desselben Users
     // (zwei Tabs, Loadtest) duerfen sich nicht in die Quere kommen: ON CONFLICT DO NOTHING statt
     // Lesen-dann-Anlegen, und den Startbonus bucht nur der Request, dessen INSERT die Zeile angelegt hat.
-    async ensureBalance(userId: string): Promise<void> {
-        const existing = await this.balanceRepo.findOne({ where: { user_id: userId } });
+    async ensureBalance(userId: string, outer?: EntityManager): Promise<void> {
+        const existing = await (outer ?? this.dataSource.manager).findOne(UserCoinBalance, { where: { user_id: userId } });
         if (existing) return;
-        await this.dataSource.transaction(async (manager) => {
+        await this.inTransaction(outer, async (manager) => {
             const inserted: unknown[] = await manager.query(
                 `INSERT INTO user_coin_balance (user_id, balance)
                  VALUES ($1, $2)
@@ -69,9 +76,9 @@ export class CoinService {
         return row?.balance ?? 0;
     }
 
-    async addCoins(userId: string, amount: number, type: string, beefId?: string, idempotencyKey?: string): Promise<void> {
-        await this.ensureBalance(userId);
-        await this.dataSource.transaction(async (manager) => {
+    async addCoins(userId: string, amount: number, type: string, beefId?: string, idempotencyKey?: string, outer?: EntityManager): Promise<void> {
+        await this.ensureBalance(userId, outer);
+        await this.inTransaction(outer, async (manager) => {
             if (idempotencyKey) {
                 const existing = await manager.findOne(CoinTransaction, { where: { idempotency_key: idempotencyKey } });
                 if (existing) return;
@@ -89,9 +96,9 @@ export class CoinService {
         });
     }
 
-    async spendCoins(userId: string, amount: number, type: string, beefId?: string, idempotencyKey?: string): Promise<void> {
-        await this.ensureBalance(userId);
-        await this.dataSource.transaction(async (manager) => {
+    async spendCoins(userId: string, amount: number, type: string, beefId?: string, idempotencyKey?: string, outer?: EntityManager): Promise<void> {
+        await this.ensureBalance(userId, outer);
+        await this.inTransaction(outer, async (manager) => {
             if (idempotencyKey) {
                 const existing = await manager.findOne(CoinTransaction, { where: { idempotency_key: idempotencyKey } });
                 if (existing) return;

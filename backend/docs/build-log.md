@@ -1,3 +1,11 @@
+## 2026-10-24 — fix(coin): Buchungen in der aeusseren Transaktion
+**Was:** Audit B8. `addCoins`/`spendCoins`/`ensureBalance` nehmen einen optionalen `EntityManager`; `BeefResolutionService`
+uebergibt seinen, damit Beef-Abschluss und Auszahlungen gemeinsam committen oder zurueckrollen und nur eine
+Pool-Verbindung belegen. Integrationstest `coin.integration.spec.ts` (nur mit `COIN_IT_DB`): 2/2; gegen den alten Code
+schlaegt der Rollback-Fall fehl (7 Coins blieben gebucht).
+**Nicht gebaut:** Beef eroeffnen/annehmen/voten/kommentieren buchen weiter ohne aeussere Transaktion (dort kein
+Verschachteln, aber auch nicht atomar mit dem Beef-Update).
+
 ## 2026-10-24 — fix(errors): DB-Konflikte als 409, abgebrochene Abfragen als 503
 **Was:** Audit B5. `HttpExceptionFilter` ordnet `QueryFailedError` zu: 23505/23503 → 409, 57014 (statement_timeout) → 503
 mit `Retry-After: 2`; bei echten 500 wird der Stack geloggt. Test 5/5.
