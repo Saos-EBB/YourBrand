@@ -21,8 +21,8 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
-import { MediaService } from './media.service';
-import { downloadObject, guessContentType } from '../../../common/storage/object-storage.helper';
+import { MediaService, MAX_SIZE_BYTES } from './media.service';
+import { streamObject, guessContentType } from '../../../common/storage/object-storage.helper';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -49,6 +49,9 @@ export class MediaController {
     @UseInterceptors(
         FileInterceptor('file', {
             storage: memoryStorage(),
+            // Grenze schon beim Einlesen: sonst liegt eine beliebig grosse Datei komplett im RAM,
+            // bevor der Service sie ablehnt (413 statt voller Heap).
+            limits: { fileSize: MAX_SIZE_BYTES, files: 1 },
             fileFilter: (_req, file, cb) => {
                 if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
                     cb(null, true);
@@ -82,8 +85,19 @@ export class MediaController {
         const key = decodeURIComponent(req.path.slice(idx + marker.length));
         if (!key) throw new NotFoundException('Datei nicht gefunden');
 
-        const buffer = await downloadObject(key);
+        // Gestreamt statt ganz in den Speicher geladen; Browser duerfen eine Stunde cachen.
+        let object: Awaited<ReturnType<typeof streamObject>>;
+        try {
+            object = await streamObject(key);
+        } catch (err) {
+            if ((err as { name?: string }).name === 'NoSuchKey') throw new NotFoundException('Datei nicht gefunden');
+            throw err;
+        }
         res.set('Content-Type', guessContentType(key));
-        res.send(buffer);
+        res.set('Cache-Control', 'public, max-age=3600');
+        if (object.etag) res.set('ETag', object.etag);
+        if (object.length !== undefined) res.set('Content-Length', String(object.length));
+        object.body.on('error', () => res.destroy());
+        object.body.pipe(res);
     }
 }

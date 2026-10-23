@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { Readable } from 'stream';
 import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 let client: S3Client | undefined;
@@ -50,6 +51,15 @@ export async function downloadObject(key: string): Promise<Buffer> {
     }));
     const bytes = await response.Body!.transformToByteArray();
     return Buffer.from(bytes);
+}
+
+/** Liefert das Objekt als Stream, ohne es in den Speicher zu laden (fuer die Auslieferung an Clients). */
+export async function streamObject(key: string): Promise<{ body: Readable; etag?: string; length?: number }> {
+    const response = await getClient().send(new GetObjectCommand({
+        Bucket: getBucket(),
+        Key: key,
+    }));
+    return { body: response.Body as Readable, etag: response.ETag, length: response.ContentLength };
 }
 
 /** Deletes the object at `key`. */

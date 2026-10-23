@@ -9,7 +9,7 @@ import { MEDIA_PROCESSING_QUEUE, MEDIA_TICKET_QUEUE } from '../../../common/queu
 import { MediaUpload, FileType, FileContext, ModerationStatus } from './entities/media-upload.entity';
 import { Profile } from '../profile/entities/profile.entity';
 
-const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+export const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class MediaService {

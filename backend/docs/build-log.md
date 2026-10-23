@@ -1,3 +1,10 @@
+## 2026-10-24 — fix(media): Upload-Grenze beim Einlesen, Medien gestreamt ausliefern
+**Was:** Audit B6. Profilfoto-Upload begrenzt schon im Interceptor auf 5 MB (vorher erst nach dem kompletten Einlesen
+im Service), `serveFile` streamt das S3-Objekt mit `Content-Length`, `ETag` und `Cache-Control: public, max-age=3600`,
+fehlender Schluessel → 404. Live: 6-MB-Datei → 413, Testfoto → 201, `profiles/admin1.png` 630 KB gestreamt.
+**Nicht gebaut:** keine Zugriffspruefung im Media-Proxy (`need to fix.txt` Punkt 1, aendert wer Bilder sieht), keine
+signierten URLs, kein CDN; Speichervorteil nicht gemessen.
+
 ## 2026-10-24 — fix(coin): Buchungen in der aeusseren Transaktion
 **Was:** Audit B8. `addCoins`/`spendCoins`/`ensureBalance` nehmen einen optionalen `EntityManager`; `BeefResolutionService`
 uebergibt seinen, damit Beef-Abschluss und Auszahlungen gemeinsam committen oder zurueckrollen und nur eine
