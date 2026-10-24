@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Res, StreamableFile, ParseUUIDPipe, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { RouteClass } from '../../../common/route-class/route-class.decorator';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
@@ -33,11 +34,13 @@ export class ShopAdminController {
         private readonly invoices: ShopInvoiceService,
     ) { }
 
+    @RouteClass('heavy')
     @Get('attention')
     attention() {
         return this.alerts.attention();
     }
 
+    @RouteClass('heavy')
     @Get('products')
     list(@Query() query: AdminListProductsQuery) {
         return this.admin.listProducts(query);
@@ -65,6 +68,7 @@ export class ShopAdminController {
         return this.admin.addCodes(id, dto.codes);
     }
 
+    @RouteClass('heavy')
     @Get('orders')
     listOrders(@Query() query: AdminListOrdersQuery) {
         return this.orders.listOrders(query);
@@ -102,6 +106,7 @@ export class ShopAdminController {
         return this.invoices.resend(id);
     }
 
+    @RouteClass('heavy')
     @Get('invoices/:id/pdf')
     async invoicePdf(@Param('id', ParseUUIDPipe) id: string, @Res({ passthrough: true }) res: Response) {
         const { number, pdf } = await this.invoices.pdf(id, null);
@@ -123,6 +128,7 @@ export class ShopAdminController {
         return this.cases.reportBuyer(req.user.sub, id, dto);
     }
 
+    @RouteClass('heavy')
     @Get('cases')
     listCases(@Query() query: AdminListCasesQuery) {
         return this.cases.listCases(query);

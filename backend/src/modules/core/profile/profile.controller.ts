@@ -1,3 +1,4 @@
+import { RouteClass } from '../../../common/route-class/route-class.decorator';
 import {
     BadRequestException,
     Body,
@@ -83,6 +84,7 @@ export class ProfileController {
     }
 
 
+    @RouteClass('heavy')
     @Get('search')
     @UseGuards(JwtGuard)
     searchProfiles(@Request() req: any, @Query() query: SearchProfileDto) {
@@ -116,6 +118,7 @@ export class ProfileController {
         return this.profileService.submitSensitiveData(req.user.sub, dto);
     }
 
+    @RouteClass('upload')
     @Post('audio')
     @UseGuards(JwtGuard)
     @UseInterceptors(

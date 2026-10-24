@@ -1,3 +1,12 @@
+## 2026-10-24 — feat(ops): Routen-Klassen mit Gate je Instanz
+**Was:** Audit Phase 1, S1+S2. `@RouteClass('heavy' | 'auth' | 'upload')` an Suche, Deck, Admin-Listen/-Dashboards,
+Owner-Transaktionen, Shop-Admin-Listen, Login/Registrierung/Passwort, Foto- und Audio-Upload; globaler `RouteClassGate`
+laesst je Klasse und Instanz hoechstens `GATE_HEAVY` (4), `GATE_AUTH` (8), `GATE_UPLOAD` (2) gleichzeitig zu, darueber
+sofort 503 mit `Retry-After: 2`. Test 2/2. Gemessen, 30 Suchen/s neben 300 req/s schnellen Routen: Suche bekommt 215 x
+503 sofort statt zu warten, die schnellen Routen bleiben aber bei p95 10 s (14 % Timeouts), weil die laufenden Suchen den
+Event-Loop der gemeinsamen Instanzen blockieren. Schutz fuer die schnellen Routen erst mit eigenen Instanzen (naechster Step).
+**Nicht gebaut:** keine Klassen-Spalte im Endpunkt-Katalog, keine Metrik, keine Warteschlange vor dem Gate.
+
 ## 2026-10-24 — feat(docker): Prod-Ziel im Dockerfile
 **Was:** Audit B1, erster Schritt. `docker build --target prod`: `npm ci` → `nest build` → Laufzeit-Stage mit
 `npm ci --omit=dev`, `node dist/main` als User `node`, ohne Seeds und Full-Reset; Worker per `node dist/worker`. Dev

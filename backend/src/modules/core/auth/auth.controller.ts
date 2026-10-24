@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Delete, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Request, Req, Res, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { RouteClass } from '../../../common/route-class/route-class.decorator';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -40,11 +41,13 @@ const { maxAge: _maxAge, ...CLEAR_COOKIE_OPTIONS } = REFRESH_COOKIE_OPTIONS;
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
+    @RouteClass('auth')
     @Post('register')
     async register(@Body() dto: RegisterDto) {
         return this.authService.register(dto);
     }
 
+    @RouteClass('auth')
     @Post('login')
     @HttpCode(HttpStatus.OK)
     // Brute-Force-Schutz. Aufgehoben nur fuer Requests mit passendem Loadtest-Schluessel
@@ -100,6 +103,7 @@ export class AuthController {
         return this.authService.forgotPassword(dto.email);
     }
 
+    @RouteClass('auth')
     @Post('reset-password')
     @HttpCode(HttpStatus.OK)
     @Throttle({ default: { ttl: 60000, limit: 3 } })
@@ -120,6 +124,7 @@ export class AuthController {
         return this.authService.createConsents(req.user.sub, dto.consents, ip);
     }
 
+    @RouteClass('auth')
     @Patch('change-password')
     @UseGuards(JwtGuard)
     @HttpCode(HttpStatus.OK)

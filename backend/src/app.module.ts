@@ -11,7 +11,8 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { FailOpenThrottlerStorage } from './common/redis/fail-open-throttler-storage';
 import { isLoadtestRequest } from './common/loadtest/loadtest-key';
 import Redis from 'ioredis';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { RouteClassGate } from './common/route-class/route-class.gate';
 import { AuthModule } from './modules/core/auth/auth.module';
 import { MailModule } from './common/mail/mail.module';
 import { ProfileModule } from './modules/core/profile/profile.module';
@@ -151,6 +152,7 @@ const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) 
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: FeatureGuard },
+    { provide: APP_INTERCEPTOR, useClass: RouteClassGate },
   ],
 })
 export class AppModule implements NestModule {

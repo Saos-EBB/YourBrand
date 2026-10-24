@@ -1,3 +1,4 @@
+import { RouteClass } from '../../../common/route-class/route-class.decorator';
 import {
     Controller,
     Get,
@@ -44,6 +45,7 @@ class MediaDebugFilter implements ExceptionFilter {
 export class MediaController {
     constructor(private readonly mediaService: MediaService) {}
 
+    @RouteClass('upload')
     @Post('upload/profile-photo')
     @UseGuards(JwtGuard)
     @UseInterceptors(

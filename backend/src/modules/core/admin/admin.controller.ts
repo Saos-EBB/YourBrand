@@ -1,3 +1,4 @@
+import { RouteClass } from '../../../common/route-class/route-class.decorator';
 import {
     Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe,
     ParseUUIDPipe, Patch, Post, Query, Request, UseGuards,
@@ -54,6 +55,7 @@ export class AdminController {
         return this.adminService.createAdminUser(dto);
     }
 
+    @RouteClass('heavy')
     @Get('users')
     getUsers(
         @Query('role') role?: string,
@@ -218,23 +220,27 @@ export class AdminController {
 
     // ── Dashboard stats ────────────────────────────────────────────────────────
 
+    @RouteClass('heavy')
     @Get('dashboard/user-stats')
     getUserDashboardStats(@Request() req: any) {
         return this.adminService.getUserDashboardStats(req.user.sub);
     }
 
+    @RouteClass('heavy')
     @Get('dashboard/admin-stats')
     @Roles('admin')
     getAdminStats() {
         return this.adminService.getAdminStats();
     }
 
+    @RouteClass('heavy')
     @Get('dashboard/stats')
     @UseGuards(OwnerGuard)
     getDashboardStats() {
         return this.adminService.getDashboardStats();
     }
 
+    @RouteClass('heavy')
     @Get('dashboard/analytics')
     @UseGuards(OwnerGuard)
     getDashboardAnalytics(@Query('days') days?: string) {
@@ -257,12 +263,14 @@ export class AdminController {
 
     // ── Owner: coin & cash transactions ──────────────────────────────────────
 
+    @RouteClass('heavy')
     @Get('owner/coin-transactions')
     @UseGuards(OwnerGuard)
     getCoinTransactions() {
         return this.adminService.getCoinTransactions();
     }
 
+    @RouteClass('heavy')
     @Get('owner/cash-transactions')
     @UseGuards(OwnerGuard)
     getCashTransactions() {

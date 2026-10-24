@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { RouteClass } from '../../../common/route-class/route-class.decorator';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { MatchingService } from './matching.service';
 import { SwipeService } from './swipe.service';
@@ -14,6 +15,7 @@ export class DiscoverController {
         private readonly swipeService: SwipeService,
     ) {}
 
+    @RouteClass('heavy')
     @Get('deck')
     async getDeck(@Req() req: any) {
         const userId: string = req.user.sub;
