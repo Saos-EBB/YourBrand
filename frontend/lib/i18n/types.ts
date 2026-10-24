@@ -284,6 +284,7 @@ export interface Translations {
   }
   discover: {
     title: string
+    loadMore: string
     disconnectLabel: string
     requestSent: string
     acceptRequest: string

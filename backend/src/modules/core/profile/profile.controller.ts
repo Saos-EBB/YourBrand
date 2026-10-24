@@ -101,6 +101,7 @@ export class ProfileController {
             query.lat,
             query.lng,
             query.radius,
+            query.cursor,
         );
     }
 

@@ -80,6 +80,13 @@ function buildQuery(f: typeof DEFAULT_FILTERS): string {
   return qs ? `/profile/search?${qs}` : '/profile/search'
 }
 
+// Eine Seite der Suche; nextCursor ist null auf der letzten Seite.
+type SearchPage = { data: SearchProfile[]; nextCursor: string | null }
+
+function withCursor(query: string, cursor: string): string {
+  return `${query}${query.includes('?') ? '&' : '?'}cursor=${encodeURIComponent(cursor)}`
+}
+
 function Spinner() {
   return (
     <span className="inline-flex items-center justify-center gap-2">
@@ -294,6 +301,10 @@ function SearchTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
+  // Filter der letzten Suche: "Weitere laden" setzt die angezeigte Liste fort, nicht das halb bearbeitete Formular.
+  const [applied, setApplied] = useState(DEFAULT_FILTERS)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const receivedCount = profiles.filter(p => p.connection_status === 'RECEIVED').length
 
@@ -301,8 +312,10 @@ function SearchTab() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetchApi<SearchProfile[] | { data: SearchProfile[] }>(buildQuery(f))
-      setProfiles(Array.isArray(res) ? res : (res?.data ?? []))
+      const res = await fetchApi<SearchPage>(buildQuery(f))
+      setProfiles(res.data)
+      setNextCursor(res.nextCursor)
+      setApplied(f)
     } catch (err) {
       if (err instanceof Error && err.message === 'Session expired') return
       setError(err instanceof Error ? err.message : 'Fehler beim Laden')
@@ -312,6 +325,21 @@ function SearchTab() {
   }
 
   useEffect(() => { loadProfiles(DEFAULT_FILTERS) }, [])
+
+  async function loadMore() {
+    if (!nextCursor) return
+    setLoadingMore(true)
+    try {
+      const res = await fetchApi<SearchPage>(withCursor(buildQuery(applied), nextCursor))
+      setProfiles(ps => [...ps, ...res.data])
+      setNextCursor(res.nextCursor)
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Session expired') return
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   function handleProfileUpdate(userId: string, changes: Partial<SearchProfile>) {
     setProfiles(ps => ps.map(p => p.user_id === userId ? { ...p, ...changes } : p))
@@ -462,6 +490,14 @@ function SearchTab() {
           {profiles.map((profile) => (
             <SearchProfileCard key={profile.id} profile={profile} onUpdate={handleProfileUpdate} />
           ))}
+        </div>
+      )}
+      {!loading && !error && nextCursor && (
+        <div className="flex justify-center">
+          <button onClick={loadMore} disabled={loadingMore} aria-busy={loadingMore}
+            className="px-6 py-2.5 rounded-full bg-surface-container-high text-on-surface font-semibold text-sm min-h-[44px] hover:opacity-90 transition-opacity disabled:opacity-50">
+            {t.discover.loadMore}
+          </button>
         </div>
       )}
     </div>

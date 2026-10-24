@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsArray, IsUUID, IsEnum, IsInt, IsNumber, IsBoolean, IsIn, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsArray, IsUUID, IsEnum, IsInt, IsNumber, IsBoolean, IsIn, Min, Max, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { GenderOption, LookingForOption } from '../entities/profile.entity';
 
@@ -64,4 +64,10 @@ export class SearchProfileDto {
     @IsOptional()
     @IsIn(['NONE', 'SENT', 'RECEIVED', 'CONNECTED'])
     connection_status?: 'NONE' | 'SENT' | 'RECEIVED' | 'CONNECTED';
+
+    // Cursor aus nextCursor der vorigen Seite
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
+    cursor?: string;
 }

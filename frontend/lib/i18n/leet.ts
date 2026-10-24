@@ -249,6 +249,7 @@ export const leetspeak = {
   },
   discover: {
     title: 'D15c0v3r',
+    loadMore: 'L04d m0r3',
     disconnectLabel: 'D15c0nn3c7',
     requestSent: 'R3qu357 53n7 ✓',
     acceptRequest: '4cc3p7 r3qu357',

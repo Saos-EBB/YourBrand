@@ -261,6 +261,7 @@ export const en = {
 
   discover: {
     title: 'Discover',
+    loadMore: 'Load more',
     disconnectLabel: 'Disconnect',
     requestSent: 'Request sent ✓',
     acceptRequest: 'Accept request',

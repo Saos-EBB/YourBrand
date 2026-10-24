@@ -262,6 +262,7 @@ export const es = {
 
   discover: {
     title: 'Discover',
+    loadMore: 'Cargar más',
     disconnectLabel: 'Disconnect',
     requestSent: 'Request sent ✓',
     acceptRequest: 'Accept request',

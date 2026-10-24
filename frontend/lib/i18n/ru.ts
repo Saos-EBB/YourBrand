@@ -262,6 +262,7 @@ export const ru = {
 
   discover: {
     title: 'Discover',
+    loadMore: 'Загрузить ещё',
     disconnectLabel: 'Disconnect',
     requestSent: 'Request sent ✓',
     acceptRequest: 'Accept request',

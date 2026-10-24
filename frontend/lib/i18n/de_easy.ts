@@ -261,6 +261,7 @@ export const deEasy = {
 
   discover: {
     title: 'Entdecken',
+    loadMore: 'Mehr zeigen',
     disconnectLabel: 'Verbindung trennen',
     requestSent: 'Anfrage gesendet ✓',
     acceptRequest: 'Anfrage annehmen',

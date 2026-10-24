@@ -1,3 +1,12 @@
+## 2026-10-24 — feat(search): Profilsuche seitenweise
+**Was:** Audit B2. `GET /profile/search` liefert `{ data, nextCursor }` mit 30 Profilen, zuletzt Aktive zuerst
+(Keyset auf `last_active_at` in ms + Profil-ID), Fotos/Interessen/Verbindungsstatus nur fuer diese 30. Discover-Seite
+zeigt „Weitere laden“ (`discover.loadMore` in 9 Sprachen) und setzt mit den Filtern der letzten Suche fort. Geprueft:
+alle 169 Seiten ergeben 5.043 eindeutige Profile (= alle passenden), Seite 19 KB statt 2,8 MB, 37 ms; kaputter Cursor → 400;
+Frontend-Typecheck im Image gruen.
+**Nicht gebaut:** kein frei waehlbares `limit`, kein Infinite Scroll, Altersfilter unveraendert. Im Browser nicht
+durchgeklickt (kein Frontend im Loadtest-Stack).
+
 ## 2026-10-24 — feat(db): Zeitlimit je Instanz-Gruppe per Env
 **Was:** Audit Phase 1, S4 in der kleinen Form (Entscheidung 2026-10-24: Env statt DB-Rollen). `DB_STATEMENT_TIMEOUT_MS`
 (Default 5 s); Loadtest-Stack: schnelle Instanzen 2 s, heavy 10 s, Worker unveraendert 120 s. In den Containern

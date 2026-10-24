@@ -26,6 +26,21 @@ import { ProfanityService } from '../moderation/profanity.service';
 import { encryptField } from '../../../common/crypto/crypto.helper';
 import { ProfileView, PublicProfile, ConnectionStatus } from './profile.types';
 
+const SEARCH_PAGE = 30;
+
+// Cursor der Suche: Aktivitaet (ISO, Millisekunden) und Profil-ID des letzten Eintrags, base64url-JSON.
+function encodeSearchCursor(t: string | null, id: string): string {
+    return Buffer.from(JSON.stringify([t, id])).toString('base64url');
+}
+
+function decodeSearchCursor(cursor: string): { t: string | null; id: string } {
+    try {
+        const [t, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+        if ((t === null || typeof t === 'string') && typeof id === 'string') return { t, id };
+    } catch { /* faellt unten durch */ }
+    throw new BadRequestException('Ungueltiger Cursor');
+}
+
 @Injectable()
 export class ProfileService {
     constructor(
@@ -489,7 +504,8 @@ export class ProfileService {
         lat?: number,
         lng?: number,
         radius?: number,
-    ): Promise<(Partial<Profile> & { photo_url: string | null; photo_needs_review: boolean; is_online: boolean; interests: { id: string; name_de: string; category: string | null }[]; connection_status: 'NONE' | 'SENT' | 'RECEIVED' | 'CONNECTED'; conversation_id: string | null; request_id: string | null })[]> {
+        cursor?: string,
+    ): Promise<{ nextCursor: string | null; data: (Partial<Profile> & { photo_url: string | null; photo_needs_review: boolean; is_online: boolean; interests: { id: string; name_de: string; category: string | null }[]; connection_status: 'NONE' | 'SENT' | 'RECEIVED' | 'CONNECTED'; conversation_id: string | null; request_id: string | null })[] }> {
         const qb = this.profileRepo
             .createQueryBuilder('p')
             .innerJoin('p.user', 'u')
@@ -598,7 +614,28 @@ export class ProfileService {
             `);
         }
 
-        const profiles = await qb.getMany();
+        // Seitenweise: die zuletzt Aktiven zuerst, SEARCH_PAGE pro Seite, Keyset-Cursor statt OFFSET.
+        // Vorher lud die Suche ohne LIMIT alle passenden Profile (2,7 MB bei 5.000 Usern) und blockierte damit
+        // den Event-Loop der Instanz. date_trunc auf Millisekunden, damit der Cursor (JS-Date) exakt vergleicht.
+        const activity = "date_trunc('milliseconds', p.last_active_at)";
+        if (cursor) {
+            const c = decodeSearchCursor(cursor);
+            if (c.t === null) {
+                qb.andWhere('(p.last_active_at IS NULL AND p.id < :cursorId)', { cursorId: c.id });
+            } else {
+                qb.andWhere(
+                    `(${activity} < :cursorT OR (${activity} = :cursorT AND p.id < :cursorId) OR p.last_active_at IS NULL)`,
+                    { cursorT: c.t, cursorId: c.id },
+                );
+            }
+        }
+        qb.orderBy(activity, 'DESC', 'NULLS LAST').addOrderBy('p.id', 'DESC').limit(SEARCH_PAGE + 1);
+        const page = await qb.getMany();
+        const profiles = page.slice(0, SEARCH_PAGE);
+        const last = profiles[profiles.length - 1];
+        const nextCursor = page.length > SEARCH_PAGE && last
+            ? encodeSearchCursor(last.last_active_at ? new Date(last.last_active_at).toISOString() : null, last.id)
+            : null;
         const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
         const maskedProfiles = profiles.map(p => ({
@@ -700,7 +737,7 @@ export class ProfileService {
             connectionMap[row.user_id] = row;
         }
 
-        return maskedProfiles.map(p => ({
+        return { nextCursor, data: maskedProfiles.map(p => ({
             ...p,
             photo_url: p.photo_id ? (urlMap[p.photo_id] ?? null) : null,
             photo_needs_review: p.photo_id ? (reviewMap[p.photo_id] ?? false) : false,
@@ -709,7 +746,7 @@ export class ProfileService {
             connection_status: (connectionMap[p.user_id]?.connection_status ?? 'NONE') as 'NONE' | 'SENT' | 'RECEIVED' | 'CONNECTED',
             conversation_id: connectionMap[p.user_id]?.conversation_id ?? null,
             request_id: connectionMap[p.user_id]?.request_id ?? null,
-        }));
+        })) };
     }
 
 

@@ -262,6 +262,7 @@ export const it = {
 
   discover: {
     title: 'Discover',
+    loadMore: 'Carica altri',
     disconnectLabel: 'Disconnect',
     requestSent: 'Request sent ✓',
     acceptRequest: 'Accept request',

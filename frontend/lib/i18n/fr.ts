@@ -262,6 +262,7 @@ export const fr = {
 
   discover: {
     title: 'Discover',
+    loadMore: 'Charger plus',
     disconnectLabel: 'Disconnect',
     requestSent: 'Request sent ✓',
     acceptRequest: 'Accept request',

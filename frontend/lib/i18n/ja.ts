@@ -262,6 +262,7 @@ export const ja = {
 
   discover: {
     title: 'Discover',
+    loadMore: 'さらに読み込む',
     disconnectLabel: 'Disconnect',
     requestSent: 'Request sent ✓',
     acceptRequest: 'Accept request',

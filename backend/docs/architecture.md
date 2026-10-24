@@ -132,6 +132,10 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-10-24 — Wachsende Listen werden seitenweise ausgeliefert: `{ data, nextCursor }`, Keyset-Cursor (opak,
+  base64url) statt OFFSET, feste Seitengroesse. Grund: ungebremste Antworten (Suche 2,8 MB, Owner-Transaktionen 2 MB)
+  blockierten unter Last den Event-Loop aller Routen einer Instanz. Admin-Listen mit `{ data, total }` bleiben, wie sie sind.
+
 - 2026-10-24 — Schwere Routen (Suche, Deck, Admin-Listen) laufen im Loadtest-Stack auf eigenen Instanzen, nginx
   trennt per Pfad. Grund: Bei gemeinsamen Instanzen blockierten laufende Suchen den Event-Loop fuer alle Routen; das
   Gate je Instanz (`RouteClassGate`) begrenzt nur die Anzahl, nicht die Blockade. Die Pfadliste in `nginx-lb.conf`
