@@ -59,6 +59,7 @@ export const es = {
 
   notifications: {
     care_invite: "{nickname} quiere acompañarle. Puede aceptarlo en «Cuidado».",
+    loadMore: 'Cargar más',
     care_accepted: "{nickname} aceptó su acompañamiento.",
     care_revoked: "{nickname} terminó el acompañamiento.",
     care_approval_needed: "{nickname} aceptó una nueva solicitud de contacto. Revise la aprobación.",

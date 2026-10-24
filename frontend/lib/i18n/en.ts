@@ -59,6 +59,7 @@ export const en = {
 
   notifications: {
     care_invite: "{nickname} would like to look after you. You can agree under \"Care\".",
+    loadMore: 'Load more',
     care_accepted: "{nickname} agreed to your care.",
     care_revoked: "{nickname} ended the care.",
     care_approval_needed: "{nickname} accepted a new contact request. Please check the approval.",

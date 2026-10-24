@@ -22,6 +22,8 @@ interface NotificationState {
   unreadCount: number
   activeConversationId: string | null
   setNotifications: (notifications: Notification[]) => void
+  // Weitere Seite von GET /notifications hinten anhaengen (per ID zusammengefuehrt)
+  appendNotifications: (older: Notification[]) => void
   addNotification: (notification: Notification) => void
   addOrUpdateNotification: (notification: Notification) => void
   markRead: (id: string) => void
@@ -97,6 +99,12 @@ export const useNotificationStore = create<NotificationState>()((set) => ({
         ),
       ]
       return { notifications: merged, unreadCount: merged.filter((n) => !n.is_read).length }
+    }),
+  appendNotifications: (older) =>
+    set((state) => {
+      const known = new Set(state.notifications.map((n) => n.id))
+      const notifications = [...state.notifications, ...older.filter((n) => !known.has(n.id))]
+      return { notifications, unreadCount: notifications.filter((n) => !n.is_read).length }
     }),
   addNotification: (notification) =>
     set((state) => {

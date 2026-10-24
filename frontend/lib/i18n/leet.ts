@@ -53,6 +53,7 @@ export const leetspeak = {
   },
   notifications: {
     care_invite: "{nickname} W0ULD L1K3 70 L00K 4F73R Y0U. Y0U C4N 46R33 UND3R \"C4R3\".",
+    loadMore: 'L04d m0r3',
     care_accepted: "{nickname} 46R33D 70 Y0UR C4R3.",
     care_revoked: "{nickname} 3ND3D 7H3 C4R3.",
     care_approval_needed: "{nickname} 4CC3P73D 4 N3W C0N74C7 R3QU357. PL3453 CH3CK 7H3 4PPR0V4L.",

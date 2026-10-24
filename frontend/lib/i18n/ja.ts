@@ -59,6 +59,7 @@ export const ja = {
 
   notifications: {
     care_invite: "{nickname}さんがあなたをサポートしたいそうです。「サポート」で同意できます。",
+    loadMore: 'さらに読み込む',
     care_accepted: "{nickname}さんがサポートに同意しました。",
     care_revoked: "{nickname}さんがサポートを終えました。",
     care_approval_needed: "{nickname}さんが新しい連絡リクエストを受け入れました。承認を確認してください。",

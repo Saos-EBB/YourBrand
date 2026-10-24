@@ -1,3 +1,11 @@
+## 2026-10-24 — feat(notifications): Benachrichtigungen seitenweise
+**Was:** Audit B7. `GET /notifications` liefert `{ data, nextCursor }`, 100 je Seite, ungelesene zuerst, dann neueste
+(Cursor: is_read + `created_at::text` + ID). Glocke nimmt die erste Seite, Seite /notifications hat „Weitere laden“
+(`notifications.loadMore`, 9 Sprachen), Store bekommt `appendNotifications`. Geprueft mit 230 Test-Eintraegen auf 40
+Zeitstempeln: 3 Seiten, alle eindeutig, 154 ungelesen wie in der DB, Reihenfolge korrekt; Testdaten danach geloescht.
+**Nicht gebaut:** kein Gesamtzaehler vom Server (Ungelesen-Zaehler exakt bis 100), Konversationsliste nicht paginiert
+(nicht Teil der Entscheidung, waechst pro User langsam). Im Browser nicht durchgeklickt.
+
 ## 2026-10-24 — feat(admin): Owner-Transaktionen seitenweise
 **Was:** Audit B7 / N1. `admin/owner/coin-transactions` und `cash-transactions` liefern `{ data, nextCursor }`, 200 je
 Seite, neueste zuerst (Cursor: `created_at::text` + ID). Owner-Tab „Coins & Cash“ mit „Weitere laden“. Geprueft:

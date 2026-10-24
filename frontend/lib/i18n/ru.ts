@@ -59,6 +59,7 @@ export const ru = {
 
   notifications: {
     care_invite: "{nickname} хочет вас сопровождать. Согласиться можно в разделе «Опека».",
+    loadMore: 'Загрузить ещё',
     care_accepted: "{nickname} согласился на опеку.",
     care_revoked: "{nickname} закончил опеку.",
     care_approval_needed: "{nickname} принял новый запрос на контакт. Проверьте одобрение.",

@@ -59,6 +59,7 @@ export const fr = {
 
   notifications: {
     care_invite: "{nickname} souhaite vous accompagner. Vous pouvez accepter sous « Accompagnement ».",
+    loadMore: 'Charger plus',
     care_accepted: "{nickname} a accepté votre accompagnement.",
     care_revoked: "{nickname} a arrêté l'accompagnement.",
     care_approval_needed: "{nickname} a accepté une nouvelle demande de contact. Merci de vérifier la validation.",

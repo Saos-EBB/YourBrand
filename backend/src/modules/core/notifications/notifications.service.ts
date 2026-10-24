@@ -1,10 +1,20 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { NotificationSettings } from './entities/notification-settings.entity';
 import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
+
+const NOTIFICATION_PAGE = 100;
+
+function decodeNotificationCursor(cursor: string): { read: boolean; t: string; id: string } {
+    try {
+        const [read, t, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+        if (typeof read === 'boolean' && typeof t === 'string' && typeof id === 'string') return { read, t, id };
+    } catch { /* faellt unten durch */ }
+    throw new BadRequestException('Ungueltiger Cursor');
+}
 
 @Injectable()
 export class NotificationsService {
@@ -82,11 +92,29 @@ export class NotificationsService {
         this.eventEmitter.emit('notification.created', { userId, notification: saved });
     }
 
-    async getNotifications(userId: string) {
-        return this.notificationRepository.find({
-            where: { user_id: userId },
-            order: { is_read: 'ASC', created_at: 'DESC' },
-        });
+    // Seitenweise, ungelesene zuerst, dann neueste. Vorher kamen alle Benachrichtigungen eines Users auf einmal.
+    // Der Ungelesen-Zaehler im Frontend stimmt damit bis NOTIFICATION_PAGE ungelesene.
+    async getNotifications(userId: string, cursor?: string): Promise<{ data: Notification[]; nextCursor: string | null }> {
+        const qb = this.notificationRepository
+            .createQueryBuilder('n')
+            .addSelect('n.created_at::text', 'cursor_ts')
+            .where('n.user_id = :userId', { userId });
+        if (cursor) {
+            const c = decodeNotificationCursor(cursor);
+            qb.andWhere(
+                '(n.is_read > :cursorRead OR (n.is_read = :cursorRead AND (n.created_at, n.id) < (CAST(:cursorT AS timestamptz), CAST(:cursorId AS uuid))))',
+                { cursorRead: c.read, cursorT: c.t, cursorId: c.id },
+            );
+        }
+        qb.orderBy('n.is_read', 'ASC').addOrderBy('n.created_at', 'DESC').addOrderBy('n.id', 'DESC')
+            .limit(NOTIFICATION_PAGE + 1);
+        const { entities, raw } = await qb.getRawAndEntities<{ cursor_ts: string }>();
+        const data = entities.slice(0, NOTIFICATION_PAGE);
+        const last = data.length - 1;
+        const nextCursor = entities.length > NOTIFICATION_PAGE && last >= 0
+            ? Buffer.from(JSON.stringify([data[last].is_read, raw[last].cursor_ts, data[last].id])).toString('base64url')
+            : null;
+        return { data, nextCursor };
     }
 
     async markAsRead(userId: string, notificationId: string) {

@@ -61,6 +61,7 @@ export const de = {
 
   notifications: {
     care_invite: "{nickname} möchte Sie betreuen. Unter „Betreuung“ können Sie zustimmen.",
+    loadMore: 'Weitere laden',
     care_accepted: "{nickname} hat Ihrer Betreuung zugestimmt.",
     care_revoked: "{nickname} hat die Betreuung beendet.",
     care_approval_needed: "{nickname} hat eine neue Kontaktanfrage angenommen. Bitte prüfen Sie die Freigabe.",

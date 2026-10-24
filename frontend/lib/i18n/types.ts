@@ -53,6 +53,7 @@ export interface Translations {
   }
   notifications: {
     care_invite: string
+    loadMore: string
     care_accepted: string
     care_revoked: string
     care_approval_needed: string

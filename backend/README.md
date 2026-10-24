@@ -314,7 +314,7 @@ All notification routes require JWT.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/notifications` | Get all notifications. |
+| GET | `/notifications` | Get all notifications. Paginated: `{ data, nextCursor }`, 100 per page, unread first then newest; `?cursor=` for the next page. |
 | PATCH | `/notifications/read-all` | Mark all notifications as read. |
 | PATCH | `/notifications/:id/read` | Mark a single notification as read. |
 | GET | `/notifications/settings` | Get notification settings. |

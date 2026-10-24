@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Put, Delete, Body, Param, Request, UseGuards, ParseUUIDPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Put, Delete, Body, Param, Request, UseGuards, ParseUUIDPipe, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
@@ -9,8 +9,8 @@ export class NotificationsController {
     constructor(private readonly notificationsService: NotificationsService) { }
 
     @Get()
-    getNotifications(@Request() req: any) {
-        return this.notificationsService.getNotifications(req.user.sub);
+    getNotifications(@Request() req: any, @Query('cursor') cursor?: string) {
+        return this.notificationsService.getNotifications(req.user.sub, cursor);
     }
 
     @Patch('read-all')

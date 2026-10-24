@@ -91,8 +91,9 @@ export function NotificationBell() {
 
     async function load() {
       try {
-        const data = await fetchApi<AppNotification[]>('/notifications')
-        useNotificationStore.getState().setNotifications(data)
+        // Erste Seite: ungelesene zuerst, das reicht fuer Glocke und Zaehler
+        const page = await fetchApi<{ data: AppNotification[] }>('/notifications')
+        useNotificationStore.getState().setNotifications(page.data)
       } catch {}
 
       if (chatEnabled) try {

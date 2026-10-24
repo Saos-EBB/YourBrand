@@ -59,6 +59,7 @@ export const it = {
 
   notifications: {
     care_invite: "{nickname} vorrebbe assisterla. Può accettare in «Assistenza».",
+    loadMore: 'Carica altri',
     care_accepted: "{nickname} ha accettato l'assistenza.",
     care_revoked: "{nickname} ha terminato l'assistenza.",
     care_approval_needed: "{nickname} ha accettato una nuova richiesta di contatto. Controlli l'approvazione.",

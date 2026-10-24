@@ -34,6 +34,8 @@ export default function NotificationsPage() {
   const [loading, setLoading]     = useState(true)
   const [deleting, setDeleting]   = useState(false)
   const [error, setError]         = useState<string | null>(null)
+  const [cursor, setCursor]       = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const notifications = useNotificationStore((s) => s.notifications)
   const unreadCount   = useNotificationStore((s) => s.unreadCount)
@@ -64,8 +66,9 @@ export default function NotificationsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const data = await fetchApi<AppNotification[]>('/notifications')
-        useNotificationStore.getState().setNotifications(data)
+        const page = await fetchApi<{ data: AppNotification[]; nextCursor: string | null }>('/notifications')
+        useNotificationStore.getState().setNotifications(page.data)
+        setCursor(page.nextCursor)
       } catch (err) {
         if (err instanceof Error && err.message === 'Session expired') return
         setError(err instanceof Error ? err.message : t.notifications.loadError)
@@ -75,6 +78,23 @@ export default function NotificationsPage() {
     }
     load()
   }, [])
+
+  async function loadMore() {
+    if (!cursor) return
+    setLoadingMore(true)
+    try {
+      const page = await fetchApi<{ data: AppNotification[]; nextCursor: string | null }>(
+        `/notifications?cursor=${encodeURIComponent(cursor)}`,
+      )
+      useNotificationStore.getState().appendNotifications(page.data)
+      setCursor(page.nextCursor)
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Session expired') return
+      setError(err instanceof Error ? err.message : t.notifications.loadError)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   async function handleMarkRead(id: string) {
     useNotificationStore.getState().markRead(id)
@@ -294,6 +314,15 @@ export default function NotificationsPage() {
               )
             })}
           </ul>
+        )}
+
+        {cursor && (
+          <div className="flex justify-center">
+            <button onClick={loadMore} disabled={loadingMore} aria-busy={loadingMore}
+              className="px-6 py-2.5 rounded-full bg-surface-container-high text-on-surface font-semibold text-sm min-h-[44px] hover:opacity-90 transition-opacity disabled:opacity-50">
+              {t.notifications.loadMore}
+            </button>
+          </div>
         )}
 
       </div>
