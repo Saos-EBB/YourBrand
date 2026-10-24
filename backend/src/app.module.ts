@@ -71,7 +71,10 @@ const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) 
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
+    // Crons (@Cron) nur in einer Instanz: bei mehreren Backend-Instanzen lief sonst jeder Job in jeder Instanz
+    // (doppelte Benachrichtigungen, doppelte Zaehler, Loadtest-Audit B3). Weitere Instanzen setzen RUN_CRONS=false.
+    // Die Crons bleiben im API-Prozess, weil sie Socket-Events ueber den In-Process-Eventbus ausloesen.
+    ...(process.env.RUN_CRONS === 'false' ? [] : [ScheduleModule.forRoot()]),
     EventEmitterModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,

@@ -700,6 +700,7 @@ Copy `.env.example` to `.env` and fill in all values.
 | `SEED_RESET` | Rebuild the load-volume seed data (`seed-extra-users` etc.) on start |
 | `LOADTEST_MODE` | Only for the load-test stack — mounts the Stripe-free coin test purchase |
 | `LOADTEST_KEY` | Load-test handshake, at least 32 characters. Only with `LOADTEST_MODE=true`: requests whose `X-Loadtest-Key` header matches skip all throttling, get long-lived access tokens on login and may use the coin test purchase. Without a matching header everything behaves normally |
+| `RUN_CRONS` | `false` turns off all scheduled jobs (`@Cron`) in this instance. With several backend instances set it on all but one, otherwise every job runs once per instance |
 | `LOADTEST_TOKEN_TTL_S` | Access-token lifetime in seconds for logins with a matching `X-Loadtest-Key` (default `43200` = 12 h) |
 
 Tenants other than `default` don't use `backend/.env` — `scripts/tenant.sh` generates `tenants/<slug>/.env` with their own secrets.

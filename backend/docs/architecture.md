@@ -132,6 +132,11 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-10-24 — Geplante Jobs (`@Cron`) laufen im API-Prozess, aber nur in einer Instanz (`RUN_CRONS=false` auf allen
+  anderen). Grund: Im Worker kaemen ihre Socket-Events (Spielstart, Ergebnis) nicht bei den Clients an; mehrfach
+  laufen darf aber kein Job. Zustandswechsel, die sie ausloesen, sind zusaetzlich atomar (`UPDATE … WHERE status = …`),
+  falls doch zwei Laeufe zusammenfallen.
+
 - 2026-10-24 — Wachsende Listen werden seitenweise ausgeliefert: `{ data, nextCursor }`, Keyset-Cursor (opak,
   base64url) statt OFFSET, feste Seitengroesse. Grund: ungebremste Antworten (Suche 2,8 MB, Owner-Transaktionen 2 MB)
   blockierten unter Last den Event-Loop aller Routen einer Instanz. Admin-Listen mit `{ data, total }` bleiben, wie sie sind.

@@ -184,6 +184,7 @@ services:
     environment:
       <<: *backend_load_env
       SEED_USERS: 0
+      RUN_CRONS: "false"   # Crons laufen nur in XXX_backend_load
     healthcheck:
       <<: *backend_load_healthcheck
       start_period: 120s
@@ -209,6 +210,7 @@ services:
       <<: *backend_load_env
       SEED_USERS: 0
       DB_STATEMENT_TIMEOUT_MS: 10000
+      RUN_CRONS: "false"   # Crons laufen nur in XXX_backend_load
     healthcheck:
       <<: *backend_load_healthcheck
       start_period: 120s

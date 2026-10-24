@@ -1,3 +1,10 @@
+## 2026-10-24 — feat(ops): Crons nur in einer Instanz
+**Was:** Audit B3, zweiter Teil. `ScheduleModule` nur ohne `RUN_CRONS=false`; im Loadtest-Stack laufen die Crons nur in
+`XXX_backend_load`, Replikas und heavy setzen `RUN_CRONS=false`. Gemessen (Beef-Ablauf-Cron, 2,5 min): vorher in allen 8
+Instanzen je 3 Laeufe, nachher nur in `XXX_backend_load`.
+**Nicht gebaut:** kein Umzug in den Worker (die Crons loesen Socket-Events ueber den In-Process-Eventbus aus, im Worker
+kaemen sie nicht an), keine zusaetzliche Redis-Sperre, kein automatisches Uebernehmen bei Ausfall dieser Instanz.
+
 ## 2026-10-24 — fix(beef): Zustandswechsel atomar, ein Spiel pro Beef
 **Was:** Audit B3, erster Teil. `startGamePhase` und `chickenBeef` wechseln den Status per `UPDATE … WHERE status = …`
 und machen nur weiter, wenn sie die Zeile geaendert haben; Zug- und Ready-Timeout loesen ihre Frist atomar ein
