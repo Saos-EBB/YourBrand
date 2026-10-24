@@ -38,6 +38,8 @@ import { UserDashboardStatsDto } from './dto/user-dashboard-stats.dto';
 import { AdminStatsDto } from './dto/admin-stats.dto';
 import { ConversationsService } from '../chat/conversations.service';
 
+const OWNER_PAGE = 200;
+
 @Injectable()
 export class AdminService {
     private readonly logger = new Logger(AdminService.name);
@@ -747,23 +749,28 @@ export class AdminService {
 
     // ── Owner: coin & cash transactions ───────────────────────────────────────
 
-    async getCoinTransactions(): Promise<unknown[]> {
-        return this.dataSource.query(`
+    // Beide Listen seitenweise, neueste zuerst (vorher die komplette Historie: 2 MB bei 10.000 Buchungen).
+    // cursor = nextCursor der vorigen Seite; er traegt created_at exakt als Text plus ID.
+    async getCoinTransactions(cursor?: string): Promise<{ data: unknown[]; nextCursor: string | null }> {
+        return this.ownerPage(`
             SELECT
                 ct.id,
                 ct.user_id,
                 p.nickname,
                 ct.amount,
                 ct.type  AS reason,
-                ct.created_at
+                ct.created_at,
+                ct.created_at::text AS cursor_ts
             FROM coin_transactions ct
             LEFT JOIN profiles p ON p.user_id = ct.user_id
-            ORDER BY ct.created_at DESC
-        `);
+            WHERE $1::text IS NULL OR (ct.created_at, ct.id) < ($1::timestamptz, $2::uuid)
+            ORDER BY ct.created_at DESC, ct.id DESC
+            LIMIT $3
+        `, cursor);
     }
 
-    async getCashTransactions(): Promise<unknown[]> {
-        return this.dataSource.query(`
+    async getCashTransactions(cursor?: string): Promise<{ data: unknown[]; nextCursor: string | null }> {
+        return this.ownerPage(`
             SELECT
                 pl.id,
                 pl.user_id,
@@ -771,10 +778,31 @@ export class AdminService {
                 pl.amount,
                 pl.currency,
                 pl.status,
-                pl.created_at
+                pl.created_at,
+                pl.created_at::text AS cursor_ts
             FROM payment_logs pl
             LEFT JOIN profiles p ON p.user_id = pl.user_id
-            ORDER BY pl.created_at DESC
-        `);
+            WHERE $1::text IS NULL OR (pl.created_at, pl.id) < ($1::timestamptz, $2::uuid)
+            ORDER BY pl.created_at DESC, pl.id DESC
+            LIMIT $3
+        `, cursor);
+    }
+
+    private async ownerPage(sql: string, cursor?: string): Promise<{ data: unknown[]; nextCursor: string | null }> {
+        let t: string | null = null;
+        let id: string | null = null;
+        if (cursor) {
+            try {
+                [t, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+            } catch { /* unten */ }
+            if (typeof t !== 'string' || typeof id !== 'string') throw new BadRequestException('Ungueltiger Cursor');
+        }
+        const rows: { id: string; cursor_ts: string }[] = await this.dataSource.query(sql, [t, id, OWNER_PAGE + 1]);
+        const page = rows.slice(0, OWNER_PAGE);
+        const last = page[page.length - 1];
+        const nextCursor = rows.length > OWNER_PAGE && last
+            ? Buffer.from(JSON.stringify([last.cursor_ts, last.id])).toString('base64url')
+            : null;
+        return { nextCursor, data: page.map(({ cursor_ts: _c, ...row }) => row) };
     }
 }

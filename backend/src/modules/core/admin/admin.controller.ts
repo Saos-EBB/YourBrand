@@ -266,15 +266,15 @@ export class AdminController {
     @RouteClass('heavy')
     @Get('owner/coin-transactions')
     @UseGuards(OwnerGuard)
-    getCoinTransactions() {
-        return this.adminService.getCoinTransactions();
+    getCoinTransactions(@Query('cursor') cursor?: string) {
+        return this.adminService.getCoinTransactions(cursor);
     }
 
     @RouteClass('heavy')
     @Get('owner/cash-transactions')
     @UseGuards(OwnerGuard)
-    getCashTransactions() {
-        return this.adminService.getCashTransactions();
+    getCashTransactions(@Query('cursor') cursor?: string) {
+        return this.adminService.getCashTransactions(cursor);
     }
 
     // ── System settings (owner only) ──────────────────────────────────────────

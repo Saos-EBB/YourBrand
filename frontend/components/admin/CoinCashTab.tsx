@@ -40,11 +40,31 @@ function Td({ children, mono }: { children: React.ReactNode; mono?: boolean }) {
   )
 }
 
+// Owner-Listen kommen seitenweise (200 je Seite, neueste zuerst). Die Suche filtert nur die schon geladenen Zeilen.
+type OwnerPage<T> = { data: T[]; nextCursor: string | null }
+
+function withCursor(path: string, cursor: string | null): string {
+  return cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path
+}
+
+function LoadMore({ onClick, busy }: { onClick: () => void; busy: boolean }) {
+  return (
+    <div className="flex justify-center">
+      <button onClick={onClick} disabled={busy} aria-busy={busy}
+        className="px-4 py-2 rounded-full bg-surface-container-high text-on-surface text-sm font-semibold min-h-[40px] hover:opacity-90 transition-opacity disabled:opacity-50">
+        Weitere laden
+      </button>
+    </div>
+  )
+}
+
 // ─── Coin sub-tab ─────────────────────────────────────────────────────────────
 
 function CoinSection({ showToast }: Props) {
   const [rows, setRows] = useState<AdminCoinTransaction[] | null>(null)
   const [loading, setLoading] = useState(false)
+  const [cursor, setCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const { query: coinSearch, handleChange: handleCoinSearch, filtered: filteredCoin } =
     useSearch(rows ?? [], (r, q) =>
@@ -54,11 +74,19 @@ function CoinSection({ showToast }: Props) {
 
   useEffect(() => {
     setLoading(true)
-    fetchApi<AdminCoinTransaction[]>('/admin/owner/coin-transactions')
-      .then(setRows)
+    fetchApi<OwnerPage<AdminCoinTransaction>>('/admin/owner/coin-transactions')
+      .then((res) => { setRows(res.data); setCursor(res.nextCursor) })
       .catch((err) => showToast(err instanceof Error ? err.message : 'Fehler', false))
       .finally(() => setLoading(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function loadMore() {
+    setLoadingMore(true)
+    fetchApi<OwnerPage<AdminCoinTransaction>>(withCursor('/admin/owner/coin-transactions', cursor))
+      .then((res) => { setRows((prev) => [...(prev ?? []), ...res.data]); setCursor(res.nextCursor) })
+      .catch((err) => showToast(err instanceof Error ? err.message : 'Fehler', false))
+      .finally(() => setLoadingMore(false))
+  }
 
   if (loading) return <div className="flex justify-center py-8"><Spinner size={6} /></div>
   if (!rows) return null
@@ -126,6 +154,8 @@ function CoinSection({ showToast }: Props) {
         </p>
         <CoinTable data={houseCut} />
       </div>
+
+      {cursor && <LoadMore onClick={loadMore} busy={loadingMore} />}
     </div>
   )
 }
@@ -135,6 +165,8 @@ function CoinSection({ showToast }: Props) {
 function CashSection({ showToast }: Props) {
   const [rows, setRows] = useState<AdminCashTransaction[] | null>(null)
   const [loading, setLoading] = useState(false)
+  const [cursor, setCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const { query: cashSearch, handleChange: handleCashSearch, filtered: filteredCash } =
     useSearch(rows ?? [], (r, q) =>
@@ -144,11 +176,19 @@ function CashSection({ showToast }: Props) {
 
   useEffect(() => {
     setLoading(true)
-    fetchApi<AdminCashTransaction[]>('/admin/owner/cash-transactions')
-      .then(setRows)
+    fetchApi<OwnerPage<AdminCashTransaction>>('/admin/owner/cash-transactions')
+      .then((res) => { setRows(res.data); setCursor(res.nextCursor) })
       .catch((err) => showToast(err instanceof Error ? err.message : 'Fehler', false))
       .finally(() => setLoading(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function loadMore() {
+    setLoadingMore(true)
+    fetchApi<OwnerPage<AdminCashTransaction>>(withCursor('/admin/owner/cash-transactions', cursor))
+      .then((res) => { setRows((prev) => [...(prev ?? []), ...res.data]); setCursor(res.nextCursor) })
+      .catch((err) => showToast(err instanceof Error ? err.message : 'Fehler', false))
+      .finally(() => setLoadingMore(false))
+  }
 
   if (loading) return <div className="flex justify-center py-8"><Spinner size={6} /></div>
   if (!rows) return null
@@ -204,6 +244,8 @@ function CashSection({ showToast }: Props) {
       </TableWrapper>
       </div>
       )}
+
+      {cursor && <LoadMore onClick={loadMore} busy={loadingMore} />}
     </div>
   )
 }

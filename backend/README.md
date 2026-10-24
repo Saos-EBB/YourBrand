@@ -442,8 +442,8 @@ All admin routes require JWT with `role: admin`.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/admin/admins` | **Owner only.** Paginated list of admin accounts with profile info. Query: `page`, `limit`. |
-| GET | `/admin/owner/coin-transactions` | **Owner only.** Coin transactions with nickname. |
-| GET | `/admin/owner/cash-transactions` | **Owner only.** Cash payments with nickname. |
+| GET | `/admin/owner/coin-transactions` | **Owner only.** Coin transactions with nickname, paginated: `{ data, nextCursor }`, 200 newest first; `?cursor=` for the next page. |
+| GET | `/admin/owner/cash-transactions` | **Owner only.** Cash payments with nickname, paginated like coin-transactions. |
 
 **Conversations**
 

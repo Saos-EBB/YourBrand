@@ -1,3 +1,12 @@
+## 2026-10-24 — feat(admin): Owner-Transaktionen seitenweise
+**Was:** Audit B7 / N1. `admin/owner/coin-transactions` und `cash-transactions` liefern `{ data, nextCursor }`, 200 je
+Seite, neueste zuerst (Cursor: `created_at::text` + ID). Owner-Tab „Coins & Cash“ mit „Weitere laden“. Geprueft:
+Coin 59 Seiten = 11.776 Zeilen = DB, Cash 18 Seiten = 3.595 = DB, alle eindeutig; erste Seite 39 KB statt 1,97 MB.
+Frontend-Typecheck gruen. Beobachtet: Neustart der ganzen heavy-Gruppe auf einmal → heavy-Routen kurz 502
+(`no live upstreams`), schnelle Routen unberuehrt; Gruppen einzeln neu starten.
+**Nicht gebaut:** keine Suche auf dem Server (Tab-Suche filtert nur geladene Zeilen, Zaehler ebenso), kein Index auf
+`created_at` (Migration). Im Browser nicht durchgeklickt.
+
 ## 2026-10-24 — feat(chat): Chat-Verlauf seitenweise
 **Was:** Audit B7. `GET /chat/conversations/:id/messages` liefert `{ data, nextCursor }`, die neuesten 50 aufsteigend;
 `?before=` laedt aeltere. Cursor mit exaktem `sent_at::text`, Sortierung auf der rohen Spalte (Index greift);
