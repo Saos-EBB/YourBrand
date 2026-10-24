@@ -1,3 +1,11 @@
+## 2026-10-24 — fix(loadtest): Ueberlast fuehrt nicht mehr zum Totalausfall
+**Was:** nginx-Fehler aus Phase 1 (Eintrag in `errors.md`). Gemessen `coin/balance` auf 6 fast-Instanzen: 1.200 und
+1.500 req/s 0 Fehler (p95 3-3,7 s, Laptop am Limit), 2.000/2.500 req/s 504 nach 5 s statt 502-Welle (vorher 14-43 % 502).
+fast-Instanz gestoppt bei 800 req/s: 9 von 20.000 mit 504 (bis zum DNS-Refresh), p95 142 ms; heavy-Gruppe weg: Suche 504
+nach 1 s, schnelle Routen unberuehrt, danach von selbst wieder da.
+**Nicht gebaut:** kein Wiederholen nach Connect-Timeout (nginx trennt Connect- und Lese-Timeout dafuer nicht), keine
+aktiven Healthchecks.
+
 ## 2026-10-24 — feat(notifications): Benachrichtigungen seitenweise
 **Was:** Audit B7. `GET /notifications` liefert `{ data, nextCursor }`, 100 je Seite, ungelesene zuerst, dann neueste
 (Cursor: is_read + `created_at::text` + ID). Glocke nimmt die erste Seite, Seite /notifications hat „Weitere laden“

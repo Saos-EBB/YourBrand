@@ -1,5 +1,15 @@
 # Fehler
 
+## 2026-10-24 — Ueberlast wurde zum Totalausfall (502 „no live upstreams“)
+**Symptom:** Nach der Phase-1-Aufteilung bei 1.200-2.500 req/s auf `coin/balance` 14-43 % 502, nginx-Log: zehntausende
+„no live upstreams“. Vorher (8 gemeinsame Instanzen) bis 1.800 req/s ohne Fehler.
+**Ursache:** `max_fails=3 fail_timeout=5s` zusammen mit kurzen Timeouts (Connect 1 s, Lesen 5 s) und `timeout` in
+`proxy_next_upstream`: unter Ueberlast liefen Verbindungsaufbau und Antworten in Timeouts, nginx zaehlte das als Fehler
+der Instanz, warf eine nach der anderen fuer 5 s aus dem Pool und wiederholte GETs (doppelte Last). Erster Fix (nur
+`timeout` aus `proxy_next_upstream`) reichte nicht: Connect-Timeouts zaehlten weiter.
+**Fix:** `max_fails=0` (keine passive Ausmusterung, tote Instanzen lehnen sofort ab bzw. fallen nach 10 s per Resolver
+raus), `proxy_next_upstream error` (fast: `error http_502`), kein Wiederholen nach Timeout.
+
 ## 2026-10-24 — Redis haengt, ganze API haengt
 **Symptom:** Redis per `docker pause` angehalten: jeder eingeloggte Request bekam keine Antwort (000 nach 15 s),
 `/tenant` ohne Redis lief weiter.
