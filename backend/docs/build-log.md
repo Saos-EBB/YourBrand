@@ -1,3 +1,12 @@
+## 2026-10-24 — perf(auth): Last-Active hoechstens einmal pro Minute und User
+**Was:** Audit B13. `LastActiveService.touch` schreibt pro User und Instanz hoechstens alle 60 s nach Redis (vorher
+SET + SADD bei jedem eingeloggten Request); `flush()` uebertraegt ohnehin nur minuetlich. Test 1/1. Gemessen
+`coin/balance` 1.000 req/s, warm: Redis 3.000 → 1.000-1.470 Befehle/s, CPU der 5 fast-Replikas 402 % → 294 %, p95
+410 ms → 11-87 ms, 0 Fehler (erster Lauf direkt nach Neustart war kalt: p95 2,5 s).
+**Nicht gebaut:** kein Pipelining des Exists-Checks, keine Bann-Pruefung pro Request (`token_version`). Phase-2-Punkte
+B12 (Deck) und B14 (Paar-Abfragen) bewusst nicht umgesetzt: Deck 150/s bei p95 15 ms, Paar-Abfragen laufen seit der
+Such-Pagination nur noch fuer 30 Profile; Umbau ohne gemessenen Grund wuerde Ranking bzw. Abfragen aendern.
+
 ## 2026-10-24 — fix(loadtest): Ueberlast fuehrt nicht mehr zum Totalausfall
 **Was:** nginx-Fehler aus Phase 1 (Eintrag in `errors.md`). Gemessen `coin/balance` auf 6 fast-Instanzen: 1.200 und
 1.500 req/s 0 Fehler (p95 3-3,7 s, Laptop am Limit), 2.000/2.500 req/s 504 nach 5 s statt 502-Welle (vorher 14-43 % 502).

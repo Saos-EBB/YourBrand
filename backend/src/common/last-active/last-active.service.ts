@@ -7,6 +7,10 @@ import { REDIS_CLIENT } from '../redis/redis.constants';
 
 const DIRTY_SET_KEY = 'last_active:dirty';
 const TS_KEY_PREFIX = 'last_active:ts:';
+// Pro User und Instanz hoechstens ein touch() je Intervall: flush() schreibt ohnehin nur einmal pro Minute in die DB,
+// haeufigere Redis-Schreibvorgaenge aendern das Ergebnis nicht (vorher 2 Redis-Befehle bei jedem Request).
+const TOUCH_INTERVAL_MS = 60_000;
+const TOUCH_MEMORY_MAX = 50_000;
 
 /**
  * Batches profiles.last_active_at writes. The JWT guards call touch() on
@@ -21,8 +25,15 @@ export class LastActiveService {
         @InjectDataSource() private readonly dataSource: DataSource,
     ) { }
 
+    private readonly lastTouch = new Map<string, number>();
+
     async touch(userId: string): Promise<void> {
-        await this.redis.set(`${TS_KEY_PREFIX}${userId}`, Date.now().toString());
+        const now = Date.now();
+        const last = this.lastTouch.get(userId);
+        if (last !== undefined && now - last < TOUCH_INTERVAL_MS) return;
+        if (this.lastTouch.size >= TOUCH_MEMORY_MAX) this.lastTouch.clear();
+        this.lastTouch.set(userId, now);
+        await this.redis.set(`${TS_KEY_PREFIX}${userId}`, now.toString());
         await this.redis.sadd(DIRTY_SET_KEY, userId);
     }
 
