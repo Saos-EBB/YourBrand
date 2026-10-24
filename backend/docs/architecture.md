@@ -132,6 +132,11 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-10-24 — Das Dockerfile hat zwei Ziele: `dev` (Default, Seeds + Full-Reset + Watch, fuer Demo und Loadtest) und
+  `prod` (`node dist/main`, ohne Seeds, ohne `.env` im Image). Grund: Der einzige Deploy-Pfad startete bisher einen
+  Dev-Server, der bei jedem Start alle nicht kuratierten User loescht. Umstellung der Tenant-Compose auf `prod` und ein
+  eigener Demo-Reset-Dienst sind bewusst noch offen.
+
 - 2026-10-24 — Loadtest-Modus nur per Handshake (`common/loadtest/`): Throttling aus, 12-h-Access-Token und
   `POST /hidden/coin/test-purchase` gibt es nur fuer Requests, deren Header `X-Loadtest-Key` gleich `LOADTEST_KEY`
   ist, und nur bei `LOADTEST_MODE=true`. Grund: Vorher hob `LOADTEST_MODE` allein alle Limits fuer jeden auf; jetzt

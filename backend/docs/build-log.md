@@ -1,3 +1,12 @@
+## 2026-10-24 — feat(docker): Prod-Ziel im Dockerfile
+**Was:** Audit B1, erster Schritt. `docker build --target prod`: `npm ci` → `nest build` → Laufzeit-Stage mit
+`npm ci --omit=dev`, `node dist/main` als User `node`, ohne Seeds und Full-Reset; Worker per `node dist/worker`. Dev
+bleibt das letzte Ziel und damit Default, alle Compose-Dateien laufen unveraendert. Getestet neben dem Loadtest-Stack:
+bereit nach 3,9 s, 99 MiB (Dev ~800 MiB), `/ready` ok, Request 200, Stopp 440 ms, Image 491 MB statt 857 MB.
+`.env` ist (per `.dockerignore`) nicht im Image, Prod braucht die Werte von aussen (`env_file`/Secrets).
+**Nicht gebaut:** keine Compose-Datei nutzt `prod`, kein Migrations-Dienst, Demo-Reset weiter im Dev-Entrypoint
+(Entscheidung 2026-10-24: erst nur das Ziel bauen).
+
 ## 2026-10-24 — feat(ops): sauberer Shutdown, Keep-Alive ueber dem Proxy, Readiness mit DB und Redis
 **Was:** Audit B10. `enableShutdownHooks()` (vorher ignorierte node als PID 1 SIGTERM und wurde nach 10 s hart beendet),
 ab SIGTERM `Connection: close` auf jeder Antwort, damit Proxy-Verbindungen frei werden; `keepAliveTimeout` 65 s.
