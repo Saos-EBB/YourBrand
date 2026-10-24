@@ -21,7 +21,7 @@ const COMPOSE_ARGS = ['compose', '-f', 'docker-compose.yml', '-f', 'docker-compo
 const SERVICE = 'XXX_backend_load';
 // Replikas laufen `node dist/main` ohne Watch (dist/ baut XXX_backend_load),
 // nginx loest ihre IPs nur beim Start auf — beide muessen mit neu starten.
-const RECREATE_SERVICES = [SERVICE, 'XXX_backend_load_replica', 'XXX_lb_load'];
+const RECREATE_SERVICES = [SERVICE, 'XXX_backend_load_replica', 'XXX_backend_load_heavy', 'XXX_lb_load'];
 
 class ResetRunner extends EventEmitter {
   constructor() {

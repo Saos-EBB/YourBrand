@@ -195,10 +195,33 @@ services:
     networks:
       - XXX_load_network
 
+  # Eigene Instanzen fuer die schweren Routen (Suche, Deck, Admin-Listen, siehe nginx-lb.conf), damit sie den
+  # Event-Loop der schnellen Routen nicht blockieren. Gleiches Image und dist/ wie die Replikas.
+  XXX_backend_load_heavy:
+    image: xxx_backend_load:local
+    restart: unless-stopped
+    command: ["node", "dist/main"]
+    deploy:
+      replicas: ${BACKEND_HEAVY_REPLICAS:-2}
+    environment:
+      <<: *backend_load_env
+      SEED_USERS: 0
+    healthcheck:
+      <<: *backend_load_healthcheck
+      start_period: 120s
+    depends_on:
+      XXX_backend_load:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./tenants:/tenants:ro
+    networks:
+      - XXX_load_network
+
   # Load Balancer auf :3100 (dort, wo frueher XXX_backend_load direkt lag) —
-  # Loadtest-Skripte und Dashboard bleiben unveraendert. nginx loest den
-  # Replika-Servicenamen beim Start auf, deshalb muss er nach einem
-  # Replika-Neustart/-Skalieren mit neu gestartet werden.
+  # Loadtest-Skripte und Dashboard bleiben unveraendert. Zwei Upstreams (fast/heavy),
+  # Servicenamen werden alle 10 s neu aufgeloest (nginx-lb.conf).
   XXX_lb_load:
     image: nginx:1.27-alpine
     container_name: XXX_lb_load
@@ -211,6 +234,8 @@ services:
       XXX_backend_load:
         condition: service_healthy
       XXX_backend_load_replica:
+        condition: service_healthy
+      XXX_backend_load_heavy:
         condition: service_healthy
     networks:
       - XXX_load_network

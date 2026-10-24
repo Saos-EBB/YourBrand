@@ -1,3 +1,14 @@
+## 2026-10-24 — feat(loadtest): eigene Instanzen fuer schwere Routen
+**Was:** Audit Phase 1, S3 + N2. `XXX_backend_load_heavy` (`BACKEND_HEAVY_REPLICAS`, Default 2) bedient Suche, Deck,
+Admin-Listen/-Dashboards, Owner-Transaktionen, Shop-Admin-Listen; nginx mit zwei Upstreams, Timeouts je Klasse (fast 5 s,
+heavy 15 s, Login 10 s, Upload 30 s), `max_fails=3 fail_timeout=5s`, `limit_conn` 64 auf heavy und Resolver
+(`resolve`, alle 10 s neu). Gemessen mit 6 fast + 2 heavy: 50 Suchen/s plus 400 req/s schnelle Routen → schnelle Routen
+p95 25 ms, 0 Fehler (gemeinsame Instanzen: p95 10 s, 14 % Timeouts); Suche ~8,5/s, Rest sofort 503. heavy-Gruppe
+gestoppt → Suche 504/502 nach hoechstens 2 s, schnelle Routen p95 18 ms; nach Neustart mit neuen IPs ohne nginx-Neustart
+wieder erreichbar.
+**Nicht gebaut:** keine Sticky Sessions fuer Socket.IO, keine heavy-Gruppe in Demo-/Tenant-Compose. Die Routenliste in
+`nginx-lb.conf` muss von Hand zu `@RouteClass('heavy')` passen.
+
 ## 2026-10-24 — feat(ops): Routen-Klassen mit Gate je Instanz
 **Was:** Audit Phase 1, S1+S2. `@RouteClass('heavy' | 'auth' | 'upload')` an Suche, Deck, Admin-Listen/-Dashboards,
 Owner-Transaktionen, Shop-Admin-Listen, Login/Registrierung/Passwort, Foto- und Audio-Upload; globaler `RouteClassGate`

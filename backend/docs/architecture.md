@@ -132,6 +132,11 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-10-24 — Schwere Routen (Suche, Deck, Admin-Listen) laufen im Loadtest-Stack auf eigenen Instanzen, nginx
+  trennt per Pfad. Grund: Bei gemeinsamen Instanzen blockierten laufende Suchen den Event-Loop fuer alle Routen; das
+  Gate je Instanz (`RouteClassGate`) begrenzt nur die Anzahl, nicht die Blockade. Die Pfadliste in `nginx-lb.conf`
+  und die `@RouteClass`-Decorators beschreiben dieselbe Einteilung und muessen zusammen geaendert werden.
+
 - 2026-10-24 — Das Dockerfile hat zwei Ziele: `dev` (Default, Seeds + Full-Reset + Watch, fuer Demo und Loadtest) und
   `prod` (`node dist/main`, ohne Seeds, ohne `.env` im Image). Grund: Der einzige Deploy-Pfad startete bisher einen
   Dev-Server, der bei jedem Start alle nicht kuratierten User loescht. Umstellung der Tenant-Compose auf `prod` und ein
