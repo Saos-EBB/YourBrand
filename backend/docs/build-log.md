@@ -1,3 +1,11 @@
+## 2026-10-24 — feat(db): Zeitlimit je Instanz-Gruppe per Env
+**Was:** Audit Phase 1, S4 in der kleinen Form (Entscheidung 2026-10-24: Env statt DB-Rollen). `DB_STATEMENT_TIMEOUT_MS`
+(Default 5 s); Loadtest-Stack: schnelle Instanzen 2 s, heavy 10 s, Worker unveraendert 120 s. In den Containern
+geprueft: Replika 2.000 ms, heavy 10.000 ms. Full Load 400 req/s ueber alle 64 Endpunkte nach Phase 1: schnelle Routen
+p95 22 ms, 0 Fehler; schwere p95 618 ms, 382 x 503 vom Gate; 0 Timeouts (vor Phase 1: 26-40 % Timeouts).
+**Nicht gebaut:** keine DB-Rollen, kein PgBouncer, kein Env fuer den Worker. `XXX_backend_load` bekommt die 2 s erst beim
+naechsten Neu-Erzeugen (das seedet neu), bis dahin 5 s.
+
 ## 2026-10-24 — feat(loadtest): eigene Instanzen fuer schwere Routen
 **Was:** Audit Phase 1, S3 + N2. `XXX_backend_load_heavy` (`BACKEND_HEAVY_REPLICAS`, Default 2) bedient Suche, Deck,
 Admin-Listen/-Dashboards, Owner-Transaktionen, Shop-Admin-Listen; nginx mit zwei Upstreams, Timeouts je Klasse (fast 5 s,

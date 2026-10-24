@@ -110,10 +110,11 @@ const enabledFeatureModules = TENANT_MODULES.flatMap((m) => (isModuleEnabled(m) 
         username: configService.get('database.user'),
         password: configService.get('database.password'),
         // Zeitlimits pro Verbindung (node-postgres setzt sie beim Connect): eine haengende Abfrage gibt ihre
-        // Verbindung nach 5 s frei statt den Pool zu blockieren; offene Transaktionen ohne Aktivitaet nach 10 s.
+        // Verbindung nach DB_STATEMENT_TIMEOUT_MS (Default 5 s) frei statt den Pool zu blockieren; offene
+        // Transaktionen ohne Aktivitaet nach 10 s.
         extra: {
           max: configService.get<number>('database.poolMax'),
-          statement_timeout: 5_000,
+          statement_timeout: configService.get<number>('database.statementTimeoutMs'),
           idle_in_transaction_session_timeout: 10_000,
         },
         entities: [__dirname + '/**/*.entity{.ts,.js}'],

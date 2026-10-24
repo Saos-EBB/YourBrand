@@ -113,6 +113,8 @@ services:
       DB_USER:     ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_POOL_MAX: ${DB_POOL_MAX:-20}
+      # Schnelle Routen: Abfrage nach 2 s abbrechen (503), die heavy-Gruppe ueberschreibt das mit 10 s.
+      DB_STATEMENT_TIMEOUT_MS: 2000
       REDIS_HOST:  XXX_redis_load
       REDIS_PORT:  6379
       S3_ENDPOINT: http://minio-load:9000
@@ -206,6 +208,7 @@ services:
     environment:
       <<: *backend_load_env
       SEED_USERS: 0
+      DB_STATEMENT_TIMEOUT_MS: 10000
     healthcheck:
       <<: *backend_load_healthcheck
       start_period: 120s
