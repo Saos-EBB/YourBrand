@@ -631,6 +631,7 @@ export const ja = {
 
   chat: {
     title: 'メッセージ',
+    loadOlder: '以前のメッセージを読み込む',
     empty: '会話はまだありません',
     emptyDesc: '他のユーザーとつながってチャットを始めましょう',
     loadError: '読み込みエラー',

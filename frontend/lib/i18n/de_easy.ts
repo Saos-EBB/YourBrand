@@ -630,6 +630,7 @@ export const deEasy = {
 
   chat: {
     title: 'Nachrichten',
+    loadOlder: 'Ältere Nachrichten zeigen',
     empty: 'Noch keine Gespräche',
     emptyDesc: 'Finde andere Nutzer, um zu schreiben.',
     loadError: 'Fehler beim Laden',

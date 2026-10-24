@@ -22,6 +22,20 @@ import { TypedEventBus, AppEvents } from '../../shared/events/app-events';
 import { ConversationsService } from './conversations.service';
 import { isModuleEnabled } from '../../../common/tenant/tenant-config.loader';
 
+const MESSAGES_PAGE = 50;
+
+function encodeMessageCursor(t: string, id: string): string {
+    return Buffer.from(JSON.stringify([t, id])).toString('base64url');
+}
+
+function decodeMessageCursor(cursor: string): { t: string; id: string } {
+    try {
+        const [t, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+        if (typeof t === 'string' && typeof id === 'string') return { t, id };
+    } catch { /* faellt unten durch */ }
+    throw new BadRequestException('Ungueltiger Cursor');
+}
+
 @Injectable()
 export class ChatService {
     constructor(
@@ -311,23 +325,48 @@ export class ChatService {
         return { ...conversation, is_blocked, blocked_by };
     }
 
-    async getMessages(userId: string, conversationId: string) {
+    // Seitenweise, neueste zuerst geholt, je Seite aufsteigend geliefert. before = nextCursor der vorigen Seite
+    // (aeltere Nachrichten). Vorher kam immer der ganze Verlauf. Der Cursor traegt den exakten Zeitstempel aus
+    // Postgres (sent_at::text), damit Nachrichten in derselben Millisekunde weder doppelt noch verloren sind;
+    // sortiert wird auf der rohen Spalte, damit der Index (conversation_id, sent_at DESC) greift.
+    async getMessages(userId: string, conversationId: string, before?: string) {
         await this.verifyConversationAccess(userId, conversationId);
 
-        const messages = await this.messageRepository.find({
-            where: { conversation_id: conversationId },
-            order: { sent_at: 'ASC' },
-        });
+        const qb = this.messageRepository
+            .createQueryBuilder('msg')
+            .addSelect('msg.sent_at::text', 'cursor_ts')
+            .where('msg.conversation_id = :conversationId', { conversationId });
+        if (before) {
+            const c = decodeMessageCursor(before);
+            qb.andWhere('(msg.sent_at, msg.id) < (CAST(:cursorT AS timestamptz), CAST(:cursorId AS uuid))', {
+                cursorT: c.t,
+                cursorId: c.id,
+            });
+        }
+        qb.orderBy('msg.sent_at', 'DESC').addOrderBy('msg.id', 'DESC').limit(MESSAGES_PAGE + 1);
+        const { entities, raw } = await qb.getRawAndEntities<{ cursor_ts: string }>();
 
-        await this.messageRepository.update(
-            { conversation_id: conversationId, sender_id: Not(userId), read_at: IsNull() },
-            { read_at: new Date() },
-        );
+        const newestFirst = entities.slice(0, MESSAGES_PAGE);
+        const oldest = newestFirst.length - 1;
+        const nextCursor = entities.length > MESSAGES_PAGE && oldest >= 0
+            ? encodeMessageCursor(raw[oldest].cursor_ts, newestFirst[oldest].id)
+            : null;
 
-        return messages.map(msg => ({
-            ...msg,
-            content: msg.is_deleted ? null : msg.content,
-        }));
+        // Gelesen nur beim Oeffnen (neueste Seite), nicht beim Nachladen aelterer.
+        if (!before) {
+            await this.messageRepository.update(
+                { conversation_id: conversationId, sender_id: Not(userId), read_at: IsNull() },
+                { read_at: new Date() },
+            );
+        }
+
+        return {
+            nextCursor,
+            data: newestFirst.reverse().map(msg => ({
+                ...msg,
+                content: msg.is_deleted ? null : msg.content,
+            })),
+        };
     }
 
     async sendMessage(userId: string, conversationId: string, dto: SendMessageDto) {

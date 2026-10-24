@@ -622,6 +622,7 @@ export interface Translations {
   }
   chat: {
     title: string
+    loadOlder: string
     empty: string
     emptyDesc: string
     loadError: string

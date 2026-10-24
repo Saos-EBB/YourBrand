@@ -631,6 +631,7 @@ export const fr = {
 
   chat: {
     title: 'Messages',
+    loadOlder: 'Charger les messages précédents',
     empty: 'Pas encore de conversations',
     emptyDesc: 'Connectez-vous avec d’autres utilisateurs pour commencer à discuter',
     loadError: 'Erreur de chargement',

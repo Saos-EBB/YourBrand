@@ -9,6 +9,8 @@ import {
     Request,
     UseGuards,
     ParseUUIDPipe,
+    Query,
+    BadRequestException,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
@@ -62,8 +64,13 @@ export class ChatController {
     }
 
     @Get('conversations/:id/messages')
-    getMessages(@Request() req: any, @Param('id', ParseUUIDPipe) id: string) {
-        return this.chatService.getMessages(req.user.sub, id);
+    getMessages(
+        @Request() req: any,
+        @Param('id', ParseUUIDPipe) id: string,
+        @Query('before') before?: string,
+    ) {
+        if (before !== undefined && before.length > 300) throw new BadRequestException('Ungueltiger Cursor');
+        return this.chatService.getMessages(req.user.sub, id, before);
     }
 
     @Post('conversations/:id/messages')

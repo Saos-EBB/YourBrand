@@ -641,6 +641,7 @@ export const de = {
 
   chat: {
     title: 'Nachrichten',
+    loadOlder: 'Ältere Nachrichten laden',
     empty: 'Noch keine Gespräche',
     emptyDesc: 'Verbinde dich mit anderen Nutzern, um zu chatten',
     loadError: 'Fehler beim Laden',

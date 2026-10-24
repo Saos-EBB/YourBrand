@@ -1,3 +1,13 @@
+## 2026-10-24 — feat(chat): Chat-Verlauf seitenweise
+**Was:** Audit B7. `GET /chat/conversations/:id/messages` liefert `{ data, nextCursor }`, die neuesten 50 aufsteigend;
+`?before=` laedt aeltere. Cursor mit exaktem `sent_at::text`, Sortierung auf der rohen Spalte (Index greift);
+Gelesen-Markierung nur fuer die neueste Seite. Chat-Seite: „Aeltere Nachrichten laden“ oben (`chat.loadOlder`, 9
+Sprachen), ohne Sprung ans Ende; Beef-Erstellung nimmt die neueste Seite. Geprueft mit 159 Nachrichten (43 teilen sich
+ihre Millisekunde): 4 Seiten, alle eindeutig, aufsteigend; Frontend-Typecheck gruen. Testdaten: 130 Nachrichten
+„pagetest N“ in einem Loadtest-Chat (makima).
+**Nicht gebaut:** kein Infinite Scroll, Care-Chat (`care/clients/:id/conversations/:id/messages`) unveraendert. Im
+Browser nicht durchgeklickt.
+
 ## 2026-10-24 — feat(search): Profilsuche seitenweise
 **Was:** Audit B2. `GET /profile/search` liefert `{ data, nextCursor }` mit 30 Profilen, zuletzt Aktive zuerst
 (Keyset auf `last_active_at` in ms + Profil-ID), Fotos/Interessen/Verbindungsstatus nur fuer diese 30. Discover-Seite

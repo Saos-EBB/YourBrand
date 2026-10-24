@@ -613,6 +613,7 @@ export const leetspeak = {
 
   chat: {
     title: 'M3554g35',
+    loadOlder: 'L04d 0ld3r m3554g35',
     empty: 'N0 c0nv3r5471on5 y37',
     emptyDesc: 'C0nn3c7 w17h 07h3r u53r5 70 574r7 ch4771n6',
     loadError: '3rr0r l04d1n6',

@@ -25,13 +25,8 @@ interface LocalMessage extends Message {
   _status?: 'pending' | 'error'
 }
 
-type MsgEnvelope = Message[] | { data: Message[] }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function normalise(res: MsgEnvelope): Message[] {
-  return Array.isArray(res) ? res : (res?.data ?? [])
-}
+// Eine Seite des Verlaufs, aufsteigend; nextCursor laedt aeltere Nachrichten (null = Anfang erreicht).
+type MsgPage = { data: Message[]; nextCursor: string | null }
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
@@ -203,6 +198,10 @@ export default function ConversationPage() {
   ]
 
   const [messages, setMessages] = useState<LocalMessage[]>([])
+  const [olderCursor, setOlderCursor] = useState<string | null>(null)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  // Beim Voranstellen aelterer Nachrichten nicht ans Ende springen (siehe Auto-Scroll).
+  const prependingRef = useRef(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState('')
@@ -293,10 +292,11 @@ export default function ConversationPage() {
     async function load() {
       try {
         const [msgRes, conv] = await Promise.all([
-          fetchApi<MsgEnvelope>(`/chat/conversations/${conversationId}/messages`),
+          fetchApi<MsgPage>(`/chat/conversations/${conversationId}/messages`),
           fetchApi<{ user_a_id: string; user_b_id: string; is_blocked: boolean; blocked_by: 'me' | 'them' | null }>(`/chat/conversations/${conversationId}`),
         ])
-        setMessages(normalise(msgRes))
+        setMessages(msgRes.data)
+        setOlderCursor(msgRes.nextCursor)
         setIsBlocked(conv.is_blocked)
         setBlockedBy(conv.blocked_by)
         const myId = selectUserId(useAuthStore.getState())
@@ -370,8 +370,32 @@ export default function ConversationPage() {
 
   // ── Auto-scroll ────────────────────────────────────────────────────────────
 
+  async function loadOlder() {
+    if (!olderCursor) return
+    setLoadingOlder(true)
+    try {
+      const res = await fetchApi<MsgPage>(
+        `/chat/conversations/${conversationId}/messages?before=${encodeURIComponent(olderCursor)}`,
+      )
+      prependingRef.current = true
+      setMessages((prev) => {
+        const known = new Set(prev.map((m) => m.id))
+        return [...res.data.filter((m) => !known.has(m.id)), ...prev]
+      })
+      setOlderCursor(res.nextCursor)
+    } catch {
+      // Knopf bleibt, naechster Versuch per Klick
+    } finally {
+      setLoadingOlder(false)
+    }
+  }
+
   useEffect(() => {
     if (messages.length === 0) return
+    if (prependingRef.current) {
+      prependingRef.current = false
+      return
+    }
     bottomRef.current?.scrollIntoView({
       behavior: isFirstScroll.current ? 'instant' : 'smooth',
     })
@@ -685,7 +709,16 @@ export default function ConversationPage() {
             {t.chat.startConversation}
           </p>
         ) : (
-          messages.map((msg) => (
+          <>
+          {olderCursor && (
+            <div className="flex justify-center">
+              <button onClick={loadOlder} disabled={loadingOlder} aria-busy={loadingOlder}
+                className="px-4 py-2 rounded-full bg-surface-container-high text-on-surface text-sm font-semibold min-h-[44px] hover:opacity-90 transition-opacity disabled:opacity-50">
+                {t.chat.loadOlder}
+              </button>
+            </div>
+          )}
+          {messages.map((msg) => (
             <MessageBubble
               key={msg.id}
               msg={msg}
@@ -696,7 +729,8 @@ export default function ConversationPage() {
               avatarUrl={partnerPhotoUrl}
               avatarInitial={(partnerNickname ?? '').charAt(0).toUpperCase() || undefined}
             />
-          ))
+          ))}
+          </>
         )}
         {partnerTyping && (
           <div className="flex items-end gap-2 justify-start" aria-label={t.chat.typingAriaLabel}>

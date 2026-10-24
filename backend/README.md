@@ -301,7 +301,7 @@ All chat routes require JWT.
 | PATCH | `/chat/requests/:id/decline` | Decline a contact request. |
 | GET | `/chat/conversations` | List own conversations. Each entry includes `partner_is_online`, `partner_status_visible`, `partner_status_message`, `partner_last_active_at`. |
 | GET | `/chat/conversations/:id` | Get a single conversation. Returns `is_blocked: boolean` and `blocked_by: 'me' \| 'them' \| null`. |
-| GET | `/chat/conversations/:id/messages` | Get messages for a conversation. |
+| GET | `/chat/conversations/:id/messages` | Get messages for a conversation, paginated: `{ data, nextCursor }` with the newest 50 (ascending within the page); pass `nextCursor` as `?before=` for older ones. Marks messages as read only for the newest page. |
 | POST | `/chat/conversations/:id/messages` | Send a message in a conversation. |
 | DELETE | `/chat/messages/:id` | Delete own message. |
 | DELETE | `/chat/connections/:userId` | Disconnect from a connected user. Sets `deleted_at_a`, `deleted_at_b`, and `purged_at` on the conversation; reverts the accepted contact request to `declined`. Deletes chat history for both sides. |

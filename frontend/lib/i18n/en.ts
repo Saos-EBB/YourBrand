@@ -630,6 +630,7 @@ export const en = {
 
   chat: {
     title: 'Messages',
+    loadOlder: 'Load older messages',
     empty: 'No conversations yet',
     emptyDesc: 'Connect with other users to start chatting',
     loadError: 'Error loading',

@@ -210,11 +210,12 @@ export default function BeefPage() {
           ? convs.find(c => c.user_a_id === createForm.targetUserId || c.user_b_id === createForm.targetUserId)
           : undefined
         if (!conv) { setNoConversation(true); setLoadingChat(false); return undefined }
-        return fetchApi<ChatMessage[]>(`/chat/conversations/${conv.id}/messages`)
+        // Neueste Seite (50) reicht fuer die Passagen-Auswahl
+        return fetchApi<{ data: ChatMessage[] }>(`/chat/conversations/${conv.id}/messages`)
       })
-      .then(msgs => {
-        if (cancelled || !msgs) return
-        setChatMessages(msgs.filter(m => !m.is_deleted && m.content && m.type === 'text'))
+      .then(page => {
+        if (cancelled || !page) return
+        setChatMessages(page.data.filter(m => !m.is_deleted && m.content && m.type === 'text'))
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoadingChat(false) })
