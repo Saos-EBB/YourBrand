@@ -84,4 +84,8 @@ export class User {
     @Column({ type: 'timestamptz', nullable: true })
     exile_until!: Date | null;
 
+    // Wie oft der User einen Beef als Ziel ausgeschlagen hat (BeefService.chickenBeef).
+    @Column({ type: 'int', default: 0 })
+    chicken_count!: number;
+
 }

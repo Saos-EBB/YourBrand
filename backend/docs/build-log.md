@@ -1,3 +1,8 @@
+## 2026-10-24 — fix(beef): Beef ausschlagen funktioniert wieder
+**Was:** Altfehler (Eintrag in `errors.md`): `User` kennt jetzt `chicken_count`, damit laufen manuelles Chicken und der
+Auto-Chicken-Cron durch.
+**Nicht gebaut:** keine Anzeige des Zaehlers, kein Abgleich weiterer Entity-Spalten.
+
 ## 2026-10-24 — perf(auth): Last-Active hoechstens einmal pro Minute und User
 **Was:** Audit B13. `LastActiveService.touch` schreibt pro User und Instanz hoechstens alle 60 s nach Redis (vorher
 SET + SADD bei jedem eingeloggten Request); `flush()` uebertraegt ohnehin nur minuetlich. Test 1/1. Gemessen

@@ -1,5 +1,12 @@
 # Fehler
 
+## 2026-10-24 — Beef ausschlagen („Chicken“) endete immer mit 500
+**Symptom:** `POST /hidden/beef/:id/respond` mit `chicken` → 500; der 5-Minuten-Cron `autoChickenExpired` scheiterte
+bei jedem Lauf, wartende Beefs wurden nach 24 h nie geschlossen. Gefunden beim Loadtest von Phase 3.
+**Ursache:** `chickenBeef` erhoeht `users.chicken_count` per `manager.increment(User, …)`, die `User`-Entity hatte die
+Spalte nicht (in der DB vorhanden) → `TypeORMError: Column chicken_count was not found in User entity`.
+**Fix:** Spalte in `user.entity.ts` gemappt, keine Migration noetig.
+
 ## 2026-10-24 — Ueberlast wurde zum Totalausfall (502 „no live upstreams“)
 **Symptom:** Nach der Phase-1-Aufteilung bei 1.200-2.500 req/s auf `coin/balance` 14-43 % 502, nginx-Log: zehntausende
 „no live upstreams“. Vorher (8 gemeinsame Instanzen) bis 1.800 req/s ohne Fehler.
