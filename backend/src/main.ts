@@ -43,14 +43,31 @@ async function bootstrap() {
   // Frontend-Offline-Fallback, ohne den /api/v1-Umweg) — der Status unter
   // /api/v1 (AppController.getStatus) ist davon unberuehrt.
   app.setGlobalPrefix('api/v1', {
-    exclude: [{ path: 'health', method: RequestMethod.GET }],
+    exclude: [{ path: 'health', method: RequestMethod.GET }, { path: 'ready', method: RequestMethod.GET }],
   });
+
+  // SIGTERM (docker stop, Deploy) schliesst den Server sauber: keine neuen Verbindungen, laufende Requests
+  // werden fertig. Vorher ignorierte node als PID 1 das Signal und wurde nach 10 s hart beendet.
+  // Ab dem Signal bekommt jede Antwort "Connection: close": sonst schickt der Proxy ueber seine Keep-Alive-
+  // Verbindungen weiter Requests, die Verbindungen werden nie frei und close() wartet bis zum harten Kill.
+  let shuttingDown = false;
+  process.once('SIGTERM', () => { shuttingDown = true; });
+  app.use((_req: unknown, res: { setHeader(k: string, v: string): void }, next: () => void) => {
+    if (shuttingDown) res.setHeader('Connection', 'close');
+    next();
+  });
+  app.enableShutdownHooks();
 
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
   await app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   await app.listen(process.env.PORT ?? 3000);
+  // Laenger als jeder Proxy davor seine Keep-Alive-Verbindungen offen haelt (nginx im Loadtest: 4 s,
+  // typische Cloud-LBs: 60 s), sonst schliesst Node eine Verbindung, die der Proxy gerade benutzt → 502.
+  const server = app.getHttpServer();
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
   new Logger('Tenant').log(describeTenantInfra());
 }
 bootstrap();

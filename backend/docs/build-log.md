@@ -1,3 +1,12 @@
+## 2026-10-24 — feat(ops): sauberer Shutdown, Keep-Alive ueber dem Proxy, Readiness mit DB und Redis
+**Was:** Audit B10. `enableShutdownHooks()` (vorher ignorierte node als PID 1 SIGTERM und wurde nach 10 s hart beendet),
+ab SIGTERM `Connection: close` auf jeder Antwort, damit Proxy-Verbindungen frei werden; `keepAliveTimeout` 65 s.
+`GET /ready` (ungeprefixt): DB weg → 503, Redis weg → 200 `degraded`, je hoechstens 500 ms; Loadtest-Compose prueft
+darauf. Gemessen bei 300 req/s mit POST/PUT: Neustart einer Replika 10,8 s → meist 0,8 s (einmal 5 s), 1 von 4
+Neustarts traf noch einen POST (502, vorher ebenfalls 1 von 1).
+**Nicht gebaut:** kein Abmelden beim Load Balancer vor dem Stopp (noetig fuer 0 × 502 bei POST, nginx OSS hat keine
+aktiven Healthchecks); `XXX_backend_load` nutzt den neuen Healthcheck erst beim naechsten Neu-Erzeugen (das seedet neu).
+
 ## 2026-10-24 — fix(media): Upload-Grenze beim Einlesen, Medien gestreamt ausliefern
 **Was:** Audit B6. Profilfoto-Upload begrenzt schon im Interceptor auf 5 MB (vorher erst nach dem kompletten Einlesen
 im Service), `serveFile` streamt das S3-Objekt mit `Content-Length`, `ETag` und `Cache-Control: public, max-age=3600`,

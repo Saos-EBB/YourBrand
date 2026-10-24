@@ -137,7 +137,7 @@ services:
     # Kein Host-Port mehr — :3100 gehoert jetzt XXX_lb_load (nginx), der auf
     # diese Instanz + alle Replikas verteilt.
     healthcheck: &backend_load_healthcheck
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/v1/tenant"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/ready"]
       interval: 5s
       timeout: 5s
       retries: 3
