@@ -254,10 +254,21 @@ export class BeefGameService {
         const playerToMove = handler.getPlayerToMove(game.state, beef.initiator_id, beef.target_id);
         const winnerId = playerToMove === beef.initiator_id ? beef.target_id : beef.initiator_id;
 
+        if (!(await this.claimExpiredMoveDeadline(beefId))) return;
         game.winner_id = winnerId;
         game.move_deadline_at = null;
         await this.gameRepo.save(game);
         this.eventBus.emit(AppEvents.beefGameFinished, { beefId, winnerId });
+    }
+
+    // Setzt eine abgelaufene Zugfrist atomar auf NULL. true nur fuer den einen Aufrufer, der sie eingeloest hat.
+    private async claimExpiredMoveDeadline(beefId: string): Promise<boolean> {
+        const [, changed] = (await this.gameRepo.query(
+            `UPDATE beef_games SET move_deadline_at = NULL
+             WHERE beef_id = $1 AND move_deadline_at IS NOT NULL AND move_deadline_at <= now()`,
+            [beefId],
+        )) as [unknown[], number];
+        return changed > 0;
     }
 
     private async advanceToNextRound(beefId: string, initiatorId: string, targetId: string): Promise<void> {
@@ -323,9 +334,9 @@ export class BeefGameService {
         const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         const playerToMove = state.turn === 'initiator' ? initiatorId : targetId;
 
-        // Clear deadline so applyMove doesn't reject the move as expired
-        game.move_deadline_at = null;
-        await this.gameRepo.save(game);
+        // Frist atomar einloesen (und damit loeschen, sonst lehnt applyMove den Zug als abgelaufen ab): Timer und
+        // Cron-Backstop koennen auf verschiedenen Instanzen gleichzeitig feuern, nur einer setzt den Zufallszug.
+        if (!(await this.claimExpiredMoveDeadline(beefId))) return;
 
         await this.applyMove(beefId, playerToMove, { position: randomCell });
     }
@@ -334,6 +345,14 @@ export class BeefGameService {
         const beef = await this.beefRepo.findOne({ where: { id: beefId } });
         if (!beef || beef.status !== BeefStatus.GAME_PENDING) return;
         if (!beef.game_deadline_at || beef.game_deadline_at > new Date()) return;
+
+        // Frist atomar einloesen, damit parallele Cron-Laeufe das Spiel nur einmal beenden.
+        const [, changed] = (await this.beefRepo.query(
+            `UPDATE beefs SET game_deadline_at = NULL
+             WHERE id = $1 AND status = $2 AND game_deadline_at IS NOT NULL AND game_deadline_at <= now()`,
+            [beefId, BeefStatus.GAME_PENDING],
+        )) as [unknown[], number];
+        if (!changed) return;
 
         const game = await this.gameRepo.findOne({ where: { beef_id: beefId } });
         if (!game) return;

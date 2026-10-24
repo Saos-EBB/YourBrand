@@ -27,3 +27,4 @@ COPY migrations/006_board_and_care.sql                     /docker-entrypoint-in
 COPY migrations/007_shop.sql                               /docker-entrypoint-initdb.d/007_shop.sql
 COPY migrations/008_premium_codes.sql                      /docker-entrypoint-initdb.d/008_premium_codes.sql
 COPY migrations/009_payment_provider_stripe.sql            /docker-entrypoint-initdb.d/009_payment_provider_stripe.sql
+COPY migrations/010_beef_games_unique_beef.sql             /docker-entrypoint-initdb.d/010_beef_games_unique_beef.sql

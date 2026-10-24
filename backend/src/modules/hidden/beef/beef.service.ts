@@ -264,7 +264,13 @@ export class BeefService {
 
         this.stateMachine.transition(beef, BeefEvent.START_GAME);
         beef.game_deadline_at = new Date(Date.now() + 30 * 60 * 1000);
-        await this.beefRepo.save(beef);
+        // Atomar: nur wer den Wechsel aus ACTIVE wirklich macht, legt das Spiel an (Cron kann parallel laufen).
+        // TypeORM liefert fuer UPDATE [rows, rowCount]
+        const [, changed] = (await this.beefRepo.query(
+            `UPDATE beefs SET status = $2, game_deadline_at = $3 WHERE id = $1 AND status = $4`,
+            [beefId, beef.status, beef.game_deadline_at, BeefStatus.ACTIVE],
+        )) as [unknown[], number];
+        if (!changed) return;
 
         const handler = this.gameRegistry.get(beef.game_type);
         const initialState = handler.createInitialState(beef.initiator_id, beef.target_id);
@@ -291,7 +297,13 @@ export class BeefService {
         this.stateMachine.transition(beef, BeefEvent.CHICKEN);
         const exile_until = new Date(Date.now() + 24 * 60 * 60 * 1000);
         await this.dataSource.transaction(async (manager) => {
-            await manager.update(Beef, { id: beefId }, { status: beef.status });
+            // Atomar: Zaehler und Exil nur, wenn dieser Lauf den Wechsel aus WAITING wirklich macht
+            // (Cron und manuelle Antwort koennen sich ueberschneiden).
+            const [, changed] = (await manager.query(
+                `UPDATE beefs SET status = $2 WHERE id = $1 AND status = $3`,
+                [beefId, beef.status, BeefStatus.WAITING],
+            )) as [unknown[], number];
+            if (!changed) return;
             await manager.increment(User, { id: beef.target_id }, 'chicken_count', 1);
             // TODO: emit hidden.beef.exile event — Candidate 5 zone boundary
             await manager.update(User, { id: beef.initiator_id }, { exile_until });

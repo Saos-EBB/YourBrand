@@ -56,6 +56,13 @@ export class BeefResolutionService {
         const exile_until = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         await this.dataSource.transaction(async (manager) => {
+            // Atomar abschliessen: ein zweiter Abschluss (Ready-/Zug-Timeout, Cron auf anderer Instanz) wartet hier
+            // auf die Zeilensperre, sieht danach CLOSED und tut nichts, also keine doppelten Badges oder Exil-Updates.
+            const [, changed] = (await manager.query(
+                `UPDATE beefs SET status = $2 WHERE id = $1 AND status <> $2`,
+                [beef.id, BeefStatus.CLOSED],
+            )) as [unknown[], number];
+            if (!changed) return;
             beef.status = BeefStatus.CLOSED;
             beef.winner_id = result.winnerId;
             beef.comment_window_until = new Date(Date.now() + 5 * 60 * 1000);

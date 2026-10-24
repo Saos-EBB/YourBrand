@@ -1,3 +1,13 @@
+## 2026-10-24 — fix(beef): Zustandswechsel atomar, ein Spiel pro Beef
+**Was:** Audit B3, erster Teil. `startGamePhase` und `chickenBeef` wechseln den Status per `UPDATE … WHERE status = …`
+und machen nur weiter, wenn sie die Zeile geaendert haben; Zug- und Ready-Timeout loesen ihre Frist atomar ein
+(`claimExpiredMoveDeadline`, `game_deadline_at`); `resolve` schliesst per `UPDATE … WHERE status <> 'closed'` in der
+Transaktion ab (keine doppelten Badges/Exil). Migration `010_beef_games_unique_beef.sql` (UNIQUE `beef_id`, im DB-Image,
+im Loadtest-Stack von Hand angewandt; vorher 5 Spiele / 5 Beefs). Gemessen, 8 gleichzeitige Chicken-Antworten: alte Logik
+`chicken_count` +5, neue +1.
+**Nicht gebaut:** Crons laufen noch auf jeder Instanz (naechster Step); `ACCEPT`/`APPROVE`-Wechsel nicht umgestellt
+(kommen nicht aus Crons). Migration 010 auf `XXX_db` (Dev-DB) und Tenants noch nicht angewandt.
+
 ## 2026-10-24 — fix(beef): Beef ausschlagen funktioniert wieder
 **Was:** Altfehler (Eintrag in `errors.md`): `User` kennt jetzt `chicken_count`, damit laufen manuelles Chicken und der
 Auto-Chicken-Cron durch.
