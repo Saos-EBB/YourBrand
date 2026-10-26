@@ -1,3 +1,10 @@
+## 2026-10-26 — test: drei veraltete Tests an den Code angepasst
+**Was:** Audit N3. `tictactoe.handler.spec.ts` erwartete den Brett-Reset direkt nach dem Rundenende; seit 8c1e001 bleibt
+das Brett mit `round_over` stehen und `beef-game.service` ruft nach dem Banner `startNextRound` — der Test macht das jetzt
+auch. `demo-seed-path.spec.ts` lief seit 3533655 (keine `tenants/*/seed` mehr) mit leerem `it.each` rot; prueft jetzt
+den mitgelieferten Datensatz plus eventuelle Mandanten-Sets. Unit-Suite: 229 gruen, 0 rot.
+**Nicht gebaut:** keine Aenderung am Handler oder am Seed-Code.
+
 ## 2026-10-26 — feat(test): Parallel-Tests fuer Erst-Anlage und Beef-Zustandswechsel
 **Was:** Audit B15, dritter Teil. Zwei Integrationstests gegen echtes Postgres (nur mit `IT_DB`,
 `docker exec -e IT_DB=1 XXX_backend_load npx jest concurrency.integration`), je 8 gleichzeitige Aufrufe: Coin-Konto,

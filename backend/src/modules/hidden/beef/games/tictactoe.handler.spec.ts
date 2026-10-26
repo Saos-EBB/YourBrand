@@ -10,6 +10,8 @@ describe('TicTacToeHandler', () => {
         let finished = false;
         for (const m of moves) {
             ({ newState: state, finished } = h.applyMove(state, { position: m.idx }, m.role));
+            // Runde vorbei: beef-game.service setzt nach dem Ergebnis-Banner zurueck
+            if (state.round_over) state = h.startNextRound(state);
         }
         return { state, finished };
     }

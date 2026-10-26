@@ -33,14 +33,19 @@ describe('demoSeedPath', () => {
     });
 });
 
-// Die eingecheckten Mandanten-Datensaetze muessen zu ihren Relations passen —
-// sonst scheitert demo-relations-seed erst beim Container-Start.
-describe('tenants/*/seed im Repo', () => {
+// Die eingecheckten Datensaetze (mitgelieferter + tenants/*/seed) muessen zu ihren
+// Relations passen — sonst scheitert demo-relations-seed erst beim Container-Start.
+describe('Demo-Datensaetze im Repo', () => {
     const tenantsDir = path.resolve(__dirname, '../../../../tenants');
-    const sets = fs.readdirSync(tenantsDir).filter((d) => fs.existsSync(path.join(tenantsDir, d, 'seed', 'demo-users.yaml')));
+    const sets: [string, string][] = [
+        ['mitgeliefert', __dirname],
+        ...fs.readdirSync(tenantsDir)
+            .filter((d) => fs.existsSync(path.join(tenantsDir, d, 'seed', 'demo-users.yaml')))
+            .map((d): [string, string] => [d, path.join(tenantsDir, d, 'seed')]),
+    ];
 
-    it.each(sets)('%s: alle Nicknames in demo-relations.yaml existieren', (set) => {
-        const read = (f: string) => yaml.load(fs.readFileSync(path.join(tenantsDir, set, 'seed', f), 'utf8')) as Record<string, unknown[]>;
+    it.each(sets)('%s: alle Nicknames in demo-relations.yaml existieren', (_name, dir) => {
+        const read = (f: string) => yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) as Record<string, unknown[]>;
         const nicknames = new Set((read('demo-users.yaml').users as { nickname: string }[]).map((u) => u.nickname));
         const relations = JSON.stringify(read('demo-relations.yaml'));
         const keys = ['sender', 'receiver', 'user_a', 'user_b', 'initiator', 'target', 'winner', 'voter', 'user', 'blocker', 'blocked'];
