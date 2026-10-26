@@ -99,6 +99,8 @@ NestJS REST API + WebSocket gateway for the XXX platform.
 | `CoinModule` | `src/modules/hidden/coin` | Hidden zone: coin balance ledger and transactions |
 | `TeethModule` | `src/modules/hidden/teeth` | Hidden zone: tooth collection and tooth-chain crafting |
 | `BadgeModule` | `src/modules/hidden/badge` | Hidden zone: winner/loser/chicken badges with expiry; `GET /hidden/badge/mine` |
+| `ShopModule` | `src/modules/core/shop` | Tenant module `shop`: catalog with filters, checkout (Stripe reserves only), risk rules hold suspicious orders for a human, fulfillment (keys, codes, delivery), invoices/credit notes in the worker, refunds, shop blocks, alerts and follow-up cron. Details: [`docs/shop.md`](docs/shop.md) |
+| `ModuleBroker` | `src/modules/shared/broker` | The only link between feature modules (on/off per tenant): providers register (`providePayments`, `provideUnlock`), users ask the broker (`payments()`, `canUnlock`/`unlock`, payment events). A disabled module just isn't registered → `ModuleUnavailableError` instead of a boot crash |
 
 ---
 
@@ -703,6 +705,8 @@ Copy `.env.example` to `.env` and fill in all values.
 | `RUN_CRONS` | `false` turns off all scheduled jobs (`@Cron`) in this instance. Not needed for several instances: each job runs on one instance per tick (Redis lock, `CronLockService`); while Redis is down, jobs are skipped |
 | `BCRYPT_MAX_THREADS` | Max. bcrypt worker threads per instance (default: `os.availableParallelism()`, which in a container is the host's core count). Set to the instance's CPU share when several instances share one machine |
 | `LOADTEST_TOKEN_TTL_S` | Access-token lifetime in seconds for logins with a matching `X-Loadtest-Key` (default `43200` = 12 h) |
+| `DB_STATEMENT_TIMEOUT_MS` | Postgres `statement_timeout` per connection (default `5000`). Aborted queries answer 503 instead of blocking the pool; open transactions idle for 10 s are closed too |
+| `GATE_HEAVY` / `GATE_AUTH` / `GATE_UPLOAD` | Max. concurrent requests per route class and instance (defaults 4 / 8 / 2, `@RouteClass`). Above that the instance answers 503 with `Retry-After` right away instead of blocking the event loop for every other route |
 
 Tenants other than `default` don't use `backend/.env` — `scripts/tenant.sh` generates `tenants/<slug>/.env` with their own secrets.
 
@@ -764,12 +768,22 @@ Handoff notes: [`../docs/console-uebergabe.md`](../docs/console-uebergabe.md).
 
 ## Load Testing
 
-`backend/scripts/loadtest/` — a self-contained load-testing suite plus a live web dashboard, running against its **own** isolated stack (`docker-compose.loadtest.yml`: `XXX_db_load` + `XXX_backend_load`, own Postgres volume and Docker network, port `3100`) — never the demo stack or demo DB.
+`backend/scripts/loadtest/` — a self-contained load-testing suite plus a live web dashboard, running against its **own** isolated stack (`docker-compose.loadtest.yml`: own Postgres, Redis, MinIO, worker and Docker network) — never the demo stack or demo DB.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.loadtest.yml up -d XXX_db_load XXX_backend_load
+docker compose -f docker-compose.yml -f docker-compose.loadtest.yml up -d \
+  XXX_db_load XXX_redis_load minio-load minio-load-init XXX_worker_load \
+  XXX_backend_load XXX_backend_load_replica XXX_backend_load_heavy XXX_lb_load
 cd backend/scripts/loadtest/dashboard && node server.js   # http://127.0.0.1:4300
 ```
+
+Port `3100` is an nginx load balancer (`XXX_lb_load`, config in `scripts/loadtest/nginx-lb.conf`) in front of several backend instances, running the built `dist/` like production:
+
+- **fast** — `XXX_backend_load` + `XXX_backend_load_replica` (`BACKEND_REPLICAS`, default 3), `least_conn`
+- **heavy** — `XXX_backend_load_heavy` (`BACKEND_HEAVY_REPLICAS`, default 2) for search, deck and admin lists, so they can't block the fast routes. The path list in `nginx-lb.conf` and the `@RouteClass('heavy')` decorators must change together
+- Socket.IO runs over the Redis adapter, nginx keeps `/socket.io/` sticky per client IP; cron jobs run on one instance per tick (Redis lock)
+
+The scripts and the backend share a handshake: `LOADTEST_MODE=true` alone opens nothing, only requests with `X-Loadtest-Key` = `LOADTEST_KEY` skip throttling, get long-lived tokens and may use the coin test purchase.
 
 Three modes, all controllable from the dashboard or directly as bash scripts:
 
@@ -789,6 +803,28 @@ The dashboard (`dashboard/`, plain Node `http`, zero dependencies, no build step
 ---
 
 ## Changelog
+
+### 2026-10-24 – 10-26 — Load Test Audit: Scaling Fixes
+- feat(loadtest): nginx load balancer with backend replicas and separate instances for heavy routes; `@RouteClass` gate per instance (503 + `Retry-After` when full)
+- feat(auth): load-test mode only with a matching `X-Loadtest-Key`
+- fix(db/redis): statement and idle-transaction timeouts; Redis with timeouts and fail-open, an outage no longer takes the API down; DB conflicts answer 409, aborted queries 503
+- fix(coin,notifications,profile): first-time account/settings creation safe under parallel requests; coin bookings inside the outer transaction
+- fix(beef): state changes atomic, one game per beef, stakes booked atomically with the beef, declining works again
+- feat(search,chat,notifications,admin): growing lists paginated with keyset cursors (`{ data, nextCursor }`)
+- feat(realtime): Socket.IO over Redis, sticky sessions in nginx; feat(cron): crons on every instance, one run per tick via Redis lock
+- feat(ops): clean shutdown, keep-alive above the proxy, readiness checks DB and Redis; `prod` target in the Dockerfile
+- fix(auth): bcrypt threads limited per instance; last-active written at most once a minute; a ban takes effect immediately (Redis ban list, refresh checks the ban)
+- fix(media): upload limit while reading, media streamed; unapproved media only for owner and admins (migration 012)
+- test: parallel tests for first-time creation and beef state changes
+
+### 2026-10-10 – 10-19 — Shop Module, Module Broker
+- feat(shop): tenant module `shop` — catalog, filters, ratings, cart and checkout with Stripe reservation (migration 007)
+- feat(shop): risk rules approve clean orders and hold the rest for a human; Stripe webhook via the broker
+- feat(shop): fulfillment (keys, codes, stock, delivery status), refunds, shop blocks, alerts, follow-up cron
+- feat(shop): invoices and credit notes from the worker with gapless numbers and PDF
+- feat(shop): premium codes unlock premium directly (migration 008); fix(payment): `stripe` in the `payment_provider` enum
+- feat(broker): `ModuleBroker` in `src/modules/shared/broker` — feature modules no longer import each other
+- test(shop): integration test against real Postgres; `scripts/shop_demo.sh` / `scripts/shop_test.sh`
 
 ### 2026-10-09 — Password Reset Link
 - fix(mail): reset email linked to `/auth/reset-password`, which doesn't exist in the frontend — now `/reset-password`

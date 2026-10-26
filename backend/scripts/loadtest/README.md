@@ -26,6 +26,13 @@ Three independent modes (see each script's header comment for usage/env vars), a
 media upload, contact requests, admin) that Mode 2 and Mode 3 both fire —
 sourced, not duplicated, so they can't drift apart.
 
+All modes go to `http://localhost:3100`, the nginx load balancer
+(`nginx-lb.conf`) in front of the fast and heavy backend instances. The
+backend lifts throttling, issues long-lived tokens and allows the coin test
+purchase only for requests whose `X-Loadtest-Key` header matches
+`LOADTEST_KEY` (set in the external load generator). These scripts don't
+send that header, so against this stack they run with normal limits.
+
 Run Mode 1 first to find a safe login rate, then pass it to Mode 2's
 prefetch step, e.g. `BATCH_SIZE=30 BATCH_PAUSE=1 ./run-loadtest.sh 1000 300`.
 

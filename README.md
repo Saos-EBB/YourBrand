@@ -31,6 +31,9 @@ GDPR-compliant infrastructure (AES-256, pseudonymization, Art. 15 export), acces
 **Dark Mode** — the engagement & monetization layer
 Live public "beef" battle system (15min–48h), coin economy with Stripe coin packages, weighted lottery payouts, hidden zone access (rotating film passwords), highscore leaderboard, exile mechanic with auto-resolution. Hidden Zone also exposes a live CSS theme editor (Colors panel) directly in the sidebar.
 
+**Shop** — optional module per tenant
+Food (pickup/delivery), merch, license keys and unlock codes. Stripe only reserves the payment; the system approves clean orders and holds suspicious ones for a human. Invoices and credit notes are generated automatically. Details: [`backend/docs/shop.md`](backend/docs/shop.md).
+
 ### License Tiers
 
 | Tier | Light Mode | Dark Mode |
@@ -49,7 +52,7 @@ Live public "beef" battle system (15min–48h), coin economy with Stripe coin pa
 - **Cache & queues** — Redis (rate limits, caches, BullMQ)
 - **Object storage** — S3-compatible, MinIO locally
 - **Multi-tenant** — silo model: one stack, database, bucket and Redis prefix per tenant
-- **Real-time** — Socket.io WebSockets
+- **Real-time** — Socket.io WebSockets (Redis adapter, works across several instances)
 - **Payments** — Stripe (subscriptions + webhooks)
 - **Security** — AES-256-CBC, bcrypt, JWT + HttpOnly refresh tokens, SHA-256+salt email hashing
 - **Deployment** — Docker Compose (local, self-hosted)
@@ -65,7 +68,7 @@ Monorepo combining frontend and backend in subfolders, with the full commit hist
 ├── frontend/   # Next.js application
 ├── backend/    # NestJS API + WebSocket gateway (+ tenant console in src/console/)
 ├── tenants/    # one tenant.json (+ logo/favicon) per branded tenant
-├── scripts/    # demo.sh / tenant.sh
+├── scripts/    # demo.sh / tenant.sh / shop_demo.sh / shop_test.sh
 ├── showcase/   # Playwright screenshots + videos of every tenant
 └── docs/       # design notes, findings, handoffs
 ```
@@ -156,7 +159,7 @@ Details: [`docs/console-uebergabe.md`](./docs/console-uebergabe.md).
 
 ## Load Testing & Dashboard
 
-A second, fully isolated stack (`docker-compose.loadtest.yml`, own DB/network/port) exists purely to stress-test the API — three modes (login-capacity ramp, mixed endpoint load, single-endpoint rate ramp for isolating a specific bottleneck), driven from a small live web dashboard with no dependencies of its own. Built to answer "how much can this actually take" with real numbers rather than guesses — see [`backend/README.md`'s Load Testing section](backend/README.md#load-testing) for how to run it.
+A second, fully isolated stack (`docker-compose.loadtest.yml`, own DB/Redis/MinIO/network, an nginx load balancer in front of several backend replicas plus separate instances for heavy routes) exists purely to stress-test the API — three modes (login-capacity ramp, mixed endpoint load, single-endpoint rate ramp for isolating a specific bottleneck), driven from a small live web dashboard with no dependencies of its own. Built to answer "how much can this actually take" with real numbers rather than guesses — see [`backend/README.md`'s Load Testing section](backend/README.md#load-testing) for how to run it.
 
 ---
 

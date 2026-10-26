@@ -759,6 +759,16 @@ Posts to `POST /hidden/beef/dev/quick-fight` (backend returns 404 in production)
 
 ## Changelog
 
+### 2026-10-24 – 10-26 — Paginated Lists, Protected Media
+- feat(search,chat,notifications,admin): profile search, chat history, notifications and owner transactions load page by page (`{ data, nextCursor }`)
+- fix(media): pending/rejected photos and audio load with the token as blob URLs (`AuthedImg` / `AuthedAudio`) — only in admin moderation and on the own profile
+
+### 2026-10-10 – 10-19 — Shop
+- feat(shop): shop page with filters, product detail and buyer reviews; cart with one delivery type per order, checkout form per mode and embedded Stripe
+- feat(shop): buyer order pages with delivery status, cases UI (report problems, chat with the team)
+- feat(shop): admin product management with CSV import, order inbox with timeline, approve/reject/refund, cases tab
+- feat(tenant): `shop` module flag (needs `payments` and a tax ID)
+
 ### 2026-10-09 — GDPR Export & Password Reset Fixes
 - fix(settings): GDPR export no longer tries to download a PDF blob — shows the backend's confirmation that the PDF is coming by email
 - feat(auth): `/reset-password` page, so the link from the reset email works
