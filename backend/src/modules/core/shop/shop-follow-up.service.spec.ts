@@ -19,7 +19,8 @@ function setup(answers: Record<string, Answer>, opts: { stripeFails?: boolean } 
     const alerts = { send: jest.fn(async () => undefined) };
     const buyerMail = { declined: jest.fn(async () => undefined) };
     const intake = { hold: jest.fn(async () => undefined) };
-    const service = new ShopFollowUpService(ds as any, { payments: () => payments } as any, alerts as any, buyerMail as any, intake as any);
+    const cronLock = { runOnce: (_n: string, _g: number, fn: () => Promise<void>) => fn() };
+    const service = new ShopFollowUpService(ds as any, { payments: () => payments } as any, alerts as any, buyerMail as any, intake as any, cronLock as any);
     return { service, calls, payments, alerts, buyerMail, intake };
 }
 

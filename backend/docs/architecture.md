@@ -138,6 +138,11 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
   Board-Update erreicht ueber den Redis-Adapter jeden Client. Ein Job braeuchte einen Processor in der API (gegen die
   Regel in `worker.module.ts`) und spart nur die Verzoegerung nach einem Neustart (bis 85 s statt 25 s).
 
+- 2026-10-26 — Geplante Jobs planen alle Instanzen; pro Termin laeuft jeder Job in genau einer (`CronLockService`:
+  `SET cron:<job> NX`, gehalten waehrend des Laufs und bis kurz vor den naechsten Termin). Loest die Entscheidung vom
+  2026-10-24 (nur eine Cron-Instanz) ab: dort lief bei deren Ausfall kein Job. Redis weg heisst Jobs pausieren — lieber
+  ein ausgelassener Lauf als doppelte Buchungen. Kein Umzug in den Worker (Grund wie unten).
+
 - 2026-10-26 — Socket.IO laeuft ueber den Redis-Adapter; nginx verteilt `/socket.io/` per `hash $remote_addr` auf die
   schnellen Instanzen. Grund: Events entstehen auf der Instanz, die den Request bearbeitet (auch heavy), der Empfaenger
   haengt an einer beliebigen anderen. Sticky noetig, weil der Polling-Handshake sonst auf wechselnden Instanzen landet.

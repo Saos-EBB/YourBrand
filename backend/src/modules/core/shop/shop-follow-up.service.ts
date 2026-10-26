@@ -6,6 +6,7 @@ import { ModuleBroker } from '../../shared/broker/module-broker';
 import { ShopAlertService } from './shop-alert.service';
 import { ShopBuyerMailService } from './shop-buyer-mail.service';
 import { ShopIntakeService } from './shop-intake.service';
+import { CronLockService } from '../../../common/redis/cron-lock.service';
 
 // So viele verfallene Bestellungen pro Lauf — der Rest kommt in der naechsten Minute
 const EXPIRE_BATCH = 20;
@@ -29,23 +30,26 @@ export class ShopFollowUpService {
         private readonly alerts: ShopAlertService,
         private readonly buyerMail: ShopBuyerMailService,
         private readonly intake: ShopIntakeService,
+        private readonly cronLock: CronLockService,
     ) { }
 
     @Cron(CronExpression.EVERY_MINUTE)
     async run(): Promise<void> {
-        // Stripe kann laenger brauchen als eine Minute: Laeufe nicht stapeln
-        if (this.running) return;
-        this.running = true;
-        try {
-            await this.holdStuck();
-            await this.remindDecisions();
-            await this.expireHeld();
-            await this.alertOverdueCases();
-        } catch (err) {
-            this.logger.error(`Nachfass-Lauf: ${(err as Error).message}`);
-        } finally {
-            this.running = false;
-        }
+        await this.cronLock.runOnce('shop:follow-up', 50_000, async () => {
+            // Stripe kann laenger brauchen als eine Minute: Laeufe nicht stapeln
+            if (this.running) return;
+            this.running = true;
+            try {
+                await this.holdStuck();
+                await this.remindDecisions();
+                await this.expireHeld();
+                await this.alertOverdueCases();
+            } catch (err) {
+                this.logger.error(`Nachfass-Lauf: ${(err as Error).message}`);
+            } finally {
+                this.running = false;
+            }
+        });
     }
 
     // Reserviert, aber weder angenommen noch angehalten (Absturz zwischen Webhook und Abbuchen):

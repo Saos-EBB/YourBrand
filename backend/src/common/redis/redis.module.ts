@@ -1,6 +1,7 @@
 import { Global, Inject, Module, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from './redis.constants';
+import { CronLockService } from './cron-lock.service';
 import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 @Global()
@@ -24,8 +25,9 @@ import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
                     maxRetriesPerRequest: 1,
                 }),
         },
+        CronLockService,
     ],
-    exports: [REDIS_CLIENT],
+    exports: [REDIS_CLIENT, CronLockService],
 })
 export class RedisModule implements OnModuleDestroy {
     constructor(@Inject(REDIS_CLIENT) private readonly client: Redis) { }

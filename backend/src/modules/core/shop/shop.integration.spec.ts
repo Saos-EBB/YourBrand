@@ -82,7 +82,7 @@ run('Shop Integration (echtes Postgres)', () => {
             admin: new ShopAdminService(ds),
             buyerOrders: new ShopOrdersService(ds),
             redeem: new ShopRedeemService(ds, broker),
-            followUp: new ShopFollowUpService(ds, broker, alerts, buyerMail, intake),
+            followUp: new ShopFollowUpService(ds, broker, alerts, buyerMail, intake, { runOnce: (_n: string, _g: number, fn: () => Promise<void>) => fn() } as any),
         };
     }
 

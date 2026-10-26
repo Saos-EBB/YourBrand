@@ -700,7 +700,7 @@ Copy `.env.example` to `.env` and fill in all values.
 | `SEED_RESET` | Rebuild the load-volume seed data (`seed-extra-users` etc.) on start |
 | `LOADTEST_MODE` | Only for the load-test stack — mounts the Stripe-free coin test purchase |
 | `LOADTEST_KEY` | Load-test handshake, at least 32 characters. Only with `LOADTEST_MODE=true`: requests whose `X-Loadtest-Key` header matches skip all throttling, get long-lived access tokens on login and may use the coin test purchase. Without a matching header everything behaves normally |
-| `RUN_CRONS` | `false` turns off all scheduled jobs (`@Cron`) in this instance. With several backend instances set it on all but one, otherwise every job runs once per instance |
+| `RUN_CRONS` | `false` turns off all scheduled jobs (`@Cron`) in this instance. Not needed for several instances: each job runs on one instance per tick (Redis lock, `CronLockService`); while Redis is down, jobs are skipped |
 | `BCRYPT_MAX_THREADS` | Max. bcrypt worker threads per instance (default: `os.availableParallelism()`, which in a container is the host's core count). Set to the instance's CPU share when several instances share one machine |
 | `LOADTEST_TOKEN_TTL_S` | Access-token lifetime in seconds for logins with a matching `X-Loadtest-Key` (default `43200` = 12 h) |
 

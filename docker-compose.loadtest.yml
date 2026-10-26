@@ -173,10 +173,8 @@ services:
   # Code-Aenderungen die Replikas neu starten (Dashboard "Reset backend"
   # macht das mit).
   #
-  # Bekannte Grenzen (fuer den HTTP-Loadtest egal): Socket.io-Gateways haben
-  # keinen Redis-Adapter, Events erreichen nur Clients derselben Instanz; und
-  # die @Cron-Jobs (last-active flush jede Minute, pseudonymization 02:00)
-  # laufen in jeder Instanz.
+  # Crons planen alle Instanzen, pro Termin laeuft jeder Job in einer
+  # (Redis-Sperre, CronLockService).
   XXX_backend_load_replica:
     image: xxx_backend_load:local
     restart: unless-stopped
@@ -186,7 +184,6 @@ services:
     environment:
       <<: *backend_load_env
       SEED_USERS: 0
-      RUN_CRONS: "false"   # Crons laufen nur in XXX_backend_load
     healthcheck:
       <<: *backend_load_healthcheck
       start_period: 120s
@@ -212,7 +209,6 @@ services:
       <<: *backend_load_env
       SEED_USERS: 0
       DB_STATEMENT_TIMEOUT_MS: 10000
-      RUN_CRONS: "false"   # Crons laufen nur in XXX_backend_load
     healthcheck:
       <<: *backend_load_healthcheck
       start_period: 120s

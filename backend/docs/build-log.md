@@ -1,3 +1,14 @@
+## 2026-10-26 — feat(cron): Crons auf allen Instanzen, ein Lauf pro Termin
+**Was:** Offen aus Phase 3 (Audit B3). `CronLockService.runOnce` (im globalen `RedisModule`): `SET cron:<job> NX`,
+gehalten waehrend des Laufs und bis `minGapMs` nach dem Start (50 s bei Minuten-Jobs, 4 min beim 5-Minuten-Job, 1 h bei
+den taeglichen), freigegeben per Lua nur vom eigenen Token, Obergrenze 10 min. Alle 8 `@Cron`-Jobs laufen darueber;
+`RUN_CRONS=false` aus Replikas und heavy im Loadtest-Compose entfernt, bleibt als Ausschalter. Gemessen per Redis
+`MONITOR`: pro Termin und Job SET von 8 Instanzen, genau ein Lauf, verteilt auf verschiedene Instanzen. Gewinner
+(heavy-2) pausiert: 7 Instanzen versuchen, eine andere laeuft, je einmal pro Termin. Redis pausiert: jede Instanz
+loggt pro Job `Lauf ausgelassen` (WARN), kein Absturz, danach wieder normal. Unit-Suite gruen, Check bestanden.
+**Nicht gebaut:** keine Verlaengerung der Sperre bei Laeufen ueber 10 min; kein Nachholen ausgelassener Laeufe. Der
+Shop-Nachfass-Job ist im Loadtest-Mandanten aus (Modul nicht aktiv), nur per Spec abgedeckt.
+
 ## 2026-10-26 — chore(db): Migrationen 010 und 011 auf XXX_db angewandt
 **Was:** Vorher geprueft: keine doppelten `beef_games` pro Beef, `uq_user_interest` vorhanden. Dann 010
 (`uq_beef_games_beef`) und 011 (Drop `user_interests_user_id_interest_id_key`) in einer Transaktion per `psql -1`.

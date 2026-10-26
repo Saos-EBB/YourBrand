@@ -10,6 +10,7 @@ import { StripeService } from './stripe.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ModuleBroker } from '../../shared/broker/module-broker';
 import { toPaymentEvent } from './payment-events';
+import { CronLockService } from '../../../common/redis/cron-lock.service';
 
 const PRICE_IDS: Record<string, string> = {
     monthly: 'price_1TRsRsCOHQFsQZnIt9XUXTFZ',
@@ -27,6 +28,7 @@ export class PaymentService {
         private readonly stripeService: StripeService,
         private readonly notificationsService: NotificationsService,
         private readonly broker: ModuleBroker,
+        private readonly cronLock: CronLockService,
     ) { }
 
     async getActiveSubscription(userId: string) {
@@ -167,25 +169,27 @@ export class PaymentService {
 
     @Cron('0 8 * * *')
     async handleSubscriptionExpiryCheck(): Promise<void> {
-        const now = new Date();
-        const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+        await this.cronLock.runOnce('payment:subscription-expiry', 60 * 60_000, async () => {
+            const now = new Date();
+            const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-        const expiringSoon = await this.subscriptionRepository.find({
-            where: { status: 'active', expires_at: Between(now, in3Days) },
+            const expiringSoon = await this.subscriptionRepository.find({
+                where: { status: 'active', expires_at: Between(now, in3Days) },
+            });
+
+            for (const sub of expiringSoon) {
+                await this.notificationsService.createNotification(sub.user_id, 'system', 'notifications.subscription_expiring', undefined, undefined, {});
+            }
+
+            const expired = await this.subscriptionRepository.find({
+                where: { status: 'active', expires_at: LessThan(now) },
+            });
+
+            for (const sub of expired) {
+                sub.status = 'expired';
+                await this.subscriptionRepository.save(sub);
+                await this.notificationsService.createNotification(sub.user_id, 'system', 'notifications.subscription_expired', undefined, undefined, {});
+            }
         });
-
-        for (const sub of expiringSoon) {
-            await this.notificationsService.createNotification(sub.user_id, 'system', 'notifications.subscription_expiring', undefined, undefined, {});
-        }
-
-        const expired = await this.subscriptionRepository.find({
-            where: { status: 'active', expires_at: LessThan(now) },
-        });
-
-        for (const sub of expired) {
-            sub.status = 'expired';
-            await this.subscriptionRepository.save(sub);
-            await this.notificationsService.createNotification(sub.user_id, 'system', 'notifications.subscription_expired', undefined, undefined, {});
-        }
     }
 }
