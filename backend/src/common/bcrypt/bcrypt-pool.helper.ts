@@ -1,3 +1,4 @@
+import * as os from 'os';
 import * as path from 'path';
 import Piscina from 'piscina';
 
@@ -13,7 +14,13 @@ function getPool(): Piscina {
         // loader), so it needs ts-node registered in the worker thread too
         // when running the .ts variant.
         const isTs = __filename.endsWith('.ts');
+        // Piscina nimmt sonst bis 1,5 × os.availableParallelism() Threads; im Container sind das die Kerne des
+        // Hosts, also pro Instanz so viele bcrypt-Threads wie der ganze Rechner Kerne hat (Loadtest-Audit B15).
+        // BCRYPT_MAX_THREADS = CPU-Kontingent der Instanz.
+        const maxThreads = parseInt(process.env.BCRYPT_MAX_THREADS ?? '', 10) || os.availableParallelism();
         pool = new Piscina({
+            minThreads: 1,
+            maxThreads,
             filename: path.join(__dirname, isTs ? 'bcrypt.worker.ts' : 'bcrypt.worker.js'),
             execArgv: isTs ? ['-r', 'ts-node/register', '-r', 'tsconfig-paths/register'] : [],
         });

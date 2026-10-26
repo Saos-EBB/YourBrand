@@ -115,6 +115,8 @@ services:
       DB_POOL_MAX: ${DB_POOL_MAX:-20}
       # Schnelle Routen: Abfrage nach 2 s abbrechen (503), die heavy-Gruppe ueberschreibt das mit 10 s.
       DB_STATEMENT_TIMEOUT_MS: 2000
+      # bcrypt-Threads pro Instanz: alle Backend-Instanzen teilen sich die Kerne eines Rechners.
+      BCRYPT_MAX_THREADS: 2
       REDIS_HOST:  XXX_redis_load
       REDIS_PORT:  6379
       S3_ENDPOINT: http://minio-load:9000

@@ -1,3 +1,10 @@
+## 2026-10-26 — fix(auth): bcrypt-Threads pro Instanz begrenzen
+**Was:** Audit B15, zweiter Teil. `BCRYPT_MAX_THREADS` (Default `os.availableParallelism()` statt Piscinas 1,5-fach),
+`minThreads: 1`; im Loadtest-Stack 2 pro Instanz. Gemessen, Login mit 80/s über nginx: vorher 1.000 × 200, p50 597 ms,
+p95 1.459 ms; nachher 951–974 × 200, p50 556–567 ms, p95 1.282–1.314 ms; Rest jeweils 503 vom Auth-Gate. Durchsatz
+unveraendert (~50 Logins/s, Grenze ist die CPU), Threads im Leerlauf 19 → 12 pro Instanz.
+**Nicht gebaut:** kein Auslesen der cgroup-CPU-Quote. `XXX_backend_load` hat die Env erst nach dem naechsten Neu-Erzeugen.
+
 ## 2026-10-26 — fix(db): doppelten UNIQUE auf user_interests entfernen
 **Was:** Audit B15, erster Teil. Migration `011_user_interests_drop_duplicate_unique.sql` entfernt
 `user_interests_user_id_interest_id_key`, `uq_user_interest` bleibt (im DB-Image, im Loadtest-Stack von Hand angewandt).
