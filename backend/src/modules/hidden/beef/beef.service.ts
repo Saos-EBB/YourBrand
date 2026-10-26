@@ -86,6 +86,7 @@ export class BeefService {
         if (!this.gameRegistry.has(gameType))
             throw new BadRequestException(`Unbekannter Game-Typ: ${gameType}`);
 
+        const entryCost = await this.systemSettings.getNumber('beef.entry_cost', 50);
         const beef = this.beefRepo.create({
             initiator_id: initiatorId,
             target_id: dto.target_id,
@@ -94,17 +95,14 @@ export class BeefService {
             status: BeefStatus.PENDING_APPROVAL,
             duration_seconds: dto.duration_seconds ?? 86400,
             game_type: gameType,
+            pot_coins: entryCost,
         });
-        const saved = await this.beefRepo.save(beef);
-        const entryCost = await this.systemSettings.getNumber('beef.entry_cost', 50);
-        try {
-            await this.coinService.spendCoins(initiatorId, entryCost, 'spent_beef_open', saved.id, `beef:${saved.id}:open:${initiatorId}`);
-        } catch (err) {
-            await this.beefRepo.delete({ id: saved.id });
-            throw err;
-        }
-        await this.beefRepo.update({ id: saved.id }, { pot_coins: entryCost });
-        return saved;
+        // Beef und Einsatz in einer Transaktion: kein Beef ohne Buchung, keine Buchung ohne Beef
+        return this.dataSource.transaction(async (manager) => {
+            const saved = await manager.save(beef);
+            await this.coinService.spendCoins(initiatorId, entryCost, 'spent_beef_open', saved.id, `beef:${saved.id}:open:${initiatorId}`, manager);
+            return saved;
+        });
     }
 
     @OnEvent(AppEvents.beefGameFinished)
@@ -147,16 +145,24 @@ export class BeefService {
             return (await this.beefRepo.findOne({ where: { id: beefId } }))!;
         }
         const entryCost = await this.systemSettings.getNumber('beef.entry_cost', 50);
-        await this.coinService.spendCoins(userId, entryCost, 'spent_beef_accept', beefId, `beef:${beefId}:accept:${userId}`);
-        await this.beefRepo.increment({ id: beefId }, 'pot_coins', entryCost);
         this.stateMachine.transition(beef, BeefEvent.ACCEPT);
-        beef.ends_at = new Date(Date.now() + beef.duration_seconds * 1000);
+        const ends_at = new Date(Date.now() + beef.duration_seconds * 1000);
+        await this.dataSource.transaction(async (manager) => {
+            // Einsatz, Pot und Status zusammen und nur aus WAITING. Den Pot per SQL addieren: ein save() des
+            // geladenen Beefs schrieb den alten pot_coins zurueck, der Einsatz des Targets war weg.
+            const [, changed] = (await manager.query(
+                `UPDATE beefs SET status = $2, ends_at = $3, pot_coins = pot_coins + $4 WHERE id = $1 AND status = $5`,
+                [beefId, beef.status, ends_at, entryCost, BeefStatus.WAITING],
+            )) as [unknown[], number];
+            if (!changed) throw new BadRequestException('Beef nicht im Waiting-Status');
+            await this.coinService.spendCoins(userId, entryCost, 'spent_beef_accept', beefId, `beef:${beefId}:accept:${userId}`, manager);
+        });
         const [acceptorProfile] = await this.dataSource.query<{ nickname: string }[]>(
             'SELECT nickname FROM profiles WHERE user_id = $1 LIMIT 1',
             [beef.target_id],
         );
         await this.notificationsService.notifyBeefAccepted(beef.initiator_id, beef.id, acceptorProfile?.nickname ?? '');
-        return this.beefRepo.save(beef);
+        return (await this.beefRepo.findOne({ where: { id: beefId } }))!;
     }
 
     async approve(beefId: string): Promise<Beef> {
@@ -319,14 +325,17 @@ export class BeefService {
             where: { beef_id: beefId, voter_id: voterId },
         });
         if (existing) throw new ConflictException('Bereits gevotet');
-        await this.coinService.spendCoins(voterId, dto.coins_wagered, 'spent_vote', beefId, `beef:${beefId}:vote:${voterId}`);
         const vote = this.voteRepo.create({
             beef_id: beefId,
             voter_id: voterId,
             side: dto.side,
             coins_wagered: dto.coins_wagered,
         });
-        const saved = await this.voteRepo.save(vote);
+        // Einsatz und Vote zusammen: scheitert das Speichern, ist auch nichts abgebucht
+        const saved = await this.dataSource.transaction(async (manager) => {
+            await this.coinService.spendCoins(voterId, dto.coins_wagered, 'spent_vote', beefId, `beef:${beefId}:vote:${voterId}`, manager);
+            return manager.save(vote);
+        });
         const allVotes = await this.voteRepo.find({ where: { beef_id: beefId } });
         const iC = allVotes.filter(v => v.side === 'initiator').reduce((s, v) => s + v.coins_wagered, 0);
         const tC = allVotes.filter(v => v.side === 'target').reduce((s, v) => s + v.coins_wagered, 0);
@@ -349,11 +358,15 @@ export class BeefService {
             user_id: userId,
             content: dto.content,
         });
-        const saved = await this.commentRepo.save(comment);
-        const count = await this.commentRepo.count({ where: { beef_id: beefId, user_id: userId } });
-        if (count <= 3) {
-            await this.coinService.addCoins(userId, 5, 'earned_comment', beefId, `beef:${beefId}:comment:${userId}:${count}`);
-        }
+        // Kommentar und Belohnung zusammen
+        const saved = await this.dataSource.transaction(async (manager) => {
+            const c = await manager.save(comment);
+            const count = await manager.count(BeefComment, { where: { beef_id: beefId, user_id: userId } });
+            if (count <= 3) {
+                await this.coinService.addCoins(userId, 5, 'earned_comment', beefId, `beef:${beefId}:comment:${userId}:${count}`, manager);
+            }
+            return c;
+        });
         this.typedEventBus.emit(AppEvents.beefComment, {
             beefId,
             comment: {

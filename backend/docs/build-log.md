@@ -1,3 +1,15 @@
+## 2026-10-26 — fix(beef): Einsaetze atomar mit dem Beef buchen
+**Was:** Audit B8. Eroeffnen, Annehmen, Voten und Kommentieren buchen in einer Transaktion mit dem Beef-, Vote- bzw.
+Kommentar-Datensatz (`CoinService` mit `outer`-Manager). Annehmen wechselt per `UPDATE … WHERE status = 'waiting'` und
+addiert den Pot per SQL. Dabei gefunden: das alte `beefRepo.save(beef)` nach `increment` schrieb den vorher geladenen
+`pot_coins` zurueck — jeder angenommene Beef hatte 50 statt 100 im Pot, der Einsatz des Targets war weg (gemessen: zwei
+Buchungen je -50, `pot_coins` 50; jetzt 100). Gemessen ausserdem: zweites Annehmen 400, Vote ueber Kontostand 400 ohne
+Vote-Zeile und ohne Abbuchung, doppelter Vote 409 mit einer Abbuchung, Eroeffnen ohne Geld 400 ohne Beef-Zeile.
+Beef-Unit-Tests und die Parallel-Tests gruen, `./lt yourbrand check` bestanden.
+**Nicht gebaut:** keine Korrektur der Pots bestehender Beefs (im Loadtest-Stack nur Seed-Daten). Vote prueft den Status
+weiter vor der Transaktion (kein Row-Lock gegen ein gleichzeitiges Schliessen). Die Doppel-Pruefung beim Eroeffnen
+(laufender Beef zwischen A und B) bleibt ohne Sperre.
+
 ## 2026-10-26 — test: drei veraltete Tests an den Code angepasst
 **Was:** Audit N3. `tictactoe.handler.spec.ts` erwartete den Brett-Reset direkt nach dem Rundenende; seit 8c1e001 bleibt
 das Brett mit `round_over` stehen und `beef-game.service` ruft nach dem Banner `startNextRound` — der Test macht das jetzt
