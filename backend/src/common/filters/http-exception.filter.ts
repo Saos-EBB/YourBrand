@@ -10,6 +10,9 @@ const PG_STATUS: Record<string, { status: HttpStatus; message: string }> = {
     '57014': { status: HttpStatus.SERVICE_UNAVAILABLE, message: 'Zeitlimit ueberschritten, bitte erneut versuchen' },
 };
 
+// Erwartbar unter Last und von Clients ausgeloest; im Log nur mit Level debug (main.ts schaltet debug aus).
+const QUIET_STATUS = new Set([401, 403, 404, 429]);
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
     private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -39,12 +42,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? (exceptionResponse as any).error ?? HttpStatus[status]
             : HttpStatus[status];
 
-        const line = `${new Date().toISOString()} | ${request.method} ${request.url.split('?')[0]} | ${status} | userId:${(request['user'] as any)?.sub ?? 'unauthenticated'} | ${Array.isArray(message) ? message.join(', ') : message}`;
-        // Bei echten Serverfehlern den Stack mitloggen, sonst ist die Ursache nur aus Nebenlogs zu raten.
-        if (status === HttpStatus.INTERNAL_SERVER_ERROR && exception instanceof Error) {
-            this.logger.error(line, exception.stack);
+        const line = `${new Date().toISOString()} | req:${request.headers?.['x-request-id'] ?? '-'} | ${request.method} ${request.url.split('?')[0]} | ${status} | userId:${(request['user'] as any)?.sub ?? 'unauthenticated'} | ${Array.isArray(message) ? message.join(', ') : message}`;
+        // Nur Serverfehler sind ERROR, mit Stack (sonst ist die Ursache nur aus Nebenlogs zu raten). Erwartbare 4xx
+        // (Token abgelaufen, Rate-Limit, Bot auf falschen Pfaden) fluteten sonst das Log, gerade wenn es brennt.
+        if (status >= 500) {
+            this.logger.error(line, exception instanceof Error ? exception.stack : undefined);
+        } else if (QUIET_STATUS.has(status)) {
+            this.logger.debug(line);
         } else {
-            this.logger.error(line);
+            this.logger.warn(line);
         }
 
         if (status === HttpStatus.SERVICE_UNAVAILABLE && pg) response.set('Retry-After', '2');

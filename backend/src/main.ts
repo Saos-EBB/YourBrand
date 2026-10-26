@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { getCorsOrigins } from './common/config/cors-origins.helper';
 import { describeTenantInfra } from './common/tenant/tenant-infra.helper';
@@ -14,7 +15,21 @@ async function bootstrap() {
   if (!process.env.CORS_ORIGIN) throw new Error('CORS_ORIGIN env var is not set');
   const corsOrigin = getCorsOrigins('http://localhost:3001');
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  // Ohne debug/verbose: der Exception-Filter loggt erwartbare 4xx auf debug (Loadtest-Audit B11).
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+    logger: ['fatal', 'error', 'warn', 'log'],
+  });
+
+  // Request-ID: von nginx uebernehmen (X-Request-Id) oder neu vergeben, in jeder Fehlerzeile und in der Antwort.
+  // Nur kurze, harmlose IDs uebernehmen, damit niemand ueber den Header ins Log schreibt.
+  app.use((req: any, res: any, next: () => void) => {
+    const given = req.headers['x-request-id'];
+    const id = typeof given === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(given) ? given : randomUUID();
+    req.headers['x-request-id'] = id;
+    res.setHeader('X-Request-Id', id);
+    next();
+  });
 
   app.use(cookieParser());
 

@@ -1,3 +1,11 @@
+## 2026-10-26 — feat(logging): Log-Stufe nach Status, Request-ID
+**Was:** Audit B11. Der Exception-Filter loggt nur 5xx als ERROR (mit Stack), 401/403/404/429 als debug (im Nest-Logger
+abgeschaltet), andere 4xx als WARN; jede Zeile traegt `req:<id>`. Die ID kommt von nginx (`X-Request-Id $request_id`) oder
+wird vergeben und in der Antwort zurueckgegeben. Gemessen: 61 × 401 ueber nginx erzeugen 0 Logzeilen (vorher laut Code je eine ERROR-Zeile),
+ein 400 steht als WARN mit derselben ID wie im Antwort-Header.
+**Nicht gebaut:** kein pino/JSON-Format (Entscheidung: keine Dependency), kein Sampling, kein Env-Schalter fuer debug,
+keine Request-ID in WebSocket-Events oder im Worker.
+
 ## 2026-10-26 — chore(beef): Zugtimer bleibt im Speicher
 **Was:** Audit B4, letzter Teil. Entscheidung statt Umbau (siehe `architecture.md`): Der Timer ist seit dem atomaren
 Einloesen der Frist mehrinstanzfaehig, der Cron faengt verlorene Timer auf.
