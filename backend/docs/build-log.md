@@ -1,3 +1,12 @@
+## 2026-10-26 — feat(test): Parallel-Tests fuer Erst-Anlage und Beef-Zustandswechsel
+**Was:** Audit B15, dritter Teil. Zwei Integrationstests gegen echtes Postgres (nur mit `IT_DB`,
+`docker exec -e IT_DB=1 XXX_backend_load npx jest concurrency.integration`), je 8 gleichzeitige Aufrufe: Coin-Konto,
+Notification-Settings, Interesse (je eine Zeile, ein Startbonus) sowie `chickenBeef`, `startGamePhase`, `resolve` (Zaehler
++1, ein Spiel, Badges/Zahn einmal). Gegenprobe mit dem Code vor den Fixes: alle sechs rot (`duplicate key`, Zaehler +8,
+31 Spiele, 16 Badges); mit dem aktuellen Code 6/6 gruen, dreimal hintereinander. Der Pool wird vorgewaermt, sonst laeuft
+der erste Aufruf durch, bevor die anderen verbunden sind, und das Rennen findet nicht statt.
+**Nicht gebaut:** kein eigener Test-Container oder Test-DB, kein CI-Job; Zug- und Ready-Timeout nicht abgedeckt.
+
 ## 2026-10-26 — fix(auth): bcrypt-Threads pro Instanz begrenzen
 **Was:** Audit B15, zweiter Teil. `BCRYPT_MAX_THREADS` (Default `os.availableParallelism()` statt Piscinas 1,5-fach),
 `minThreads: 1`; im Loadtest-Stack 2 pro Instanz. Gemessen, Login mit 80/s über nginx: vorher 1.000 × 200, p50 597 ms,
