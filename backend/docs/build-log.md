@@ -1,3 +1,8 @@
+## 2026-10-26 — chore(db): Migrationen 010 und 011 auf XXX_db angewandt
+**Was:** Vorher geprueft: keine doppelten `beef_games` pro Beef, `uq_user_interest` vorhanden. Dann 010
+(`uq_beef_games_beef`) und 011 (Drop `user_interests_user_id_interest_id_key`) in einer Transaktion per `psql -1`.
+**Nicht gebaut:** Tenant-DBs nicht angefasst (Entscheidung: nur XXX_db). Kein Migrations-Tracking fuer die SQL-Dateien.
+
 ## 2026-10-26 — fix(beef): Einsaetze atomar mit dem Beef buchen
 **Was:** Audit B8. Eroeffnen, Annehmen, Voten und Kommentieren buchen in einer Transaktion mit dem Beef-, Vote- bzw.
 Kommentar-Datensatz (`CoinService` mit `outer`-Manager). Annehmen wechselt per `UPDATE … WHERE status = 'waiting'` und
