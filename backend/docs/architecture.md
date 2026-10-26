@@ -132,6 +132,12 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-10-26 — Der TicTacToe-Zugtimer (25 s, Zufallszug) bleibt ein In-Memory-`setTimeout`, kein BullMQ-Job. Grund: Er
+  ist ueber Instanzen hinweg schon sicher (Zufallszug nur nach atomarem `claimExpiredMoveDeadline`, veraltete Timer tun
+  nichts), ein bei Neustart verlorener Timer wird vom Minuten-Cron `handleExpiredMoveDeadlines` aufgefangen, das
+  Board-Update erreicht ueber den Redis-Adapter jeden Client. Ein Job braeuchte einen Processor in der API (gegen die
+  Regel in `worker.module.ts`) und spart nur die Verzoegerung nach einem Neustart (bis 85 s statt 25 s).
+
 - 2026-10-26 — Socket.IO laeuft ueber den Redis-Adapter; nginx verteilt `/socket.io/` per `hash $remote_addr` auf die
   schnellen Instanzen. Grund: Events entstehen auf der Instanz, die den Request bearbeitet (auch heavy), der Empfaenger
   haengt an einer beliebigen anderen. Sticky noetig, weil der Polling-Handshake sonst auf wechselnden Instanzen landet.

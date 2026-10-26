@@ -1,3 +1,8 @@
+## 2026-10-26 — chore(beef): Zugtimer bleibt im Speicher
+**Was:** Audit B4, letzter Teil. Entscheidung statt Umbau (siehe `architecture.md`): Der Timer ist seit dem atomaren
+Einloesen der Frist mehrinstanzfaehig, der Cron faengt verlorene Timer auf.
+**Nicht gebaut:** kein BullMQ-Job, kein kuerzerer Cron-Takt.
+
 ## 2026-10-26 — feat(realtime): Socket.IO ueber Redis, Sticky Sessions in nginx
 **Was:** Audit B4. `RedisIoAdapter` (`@socket.io/redis-adapter`, Kanalpraefix pro Mandant) verteilt Raum-Events ueber alle
 Instanzen; vorher kam z. B. `user_typing` nur an, wenn beide Clients zufaellig an derselben Instanz hingen. nginx hatte fuer
