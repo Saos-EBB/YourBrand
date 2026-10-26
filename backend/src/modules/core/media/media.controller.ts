@@ -22,8 +22,9 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
+import { OptionalJwtGuard } from '../../../common/guards/optional-jwt.guard';
 import { MediaService, MAX_SIZE_BYTES } from './media.service';
-import { streamObject, guessContentType } from '../../../common/storage/object-storage.helper';
+import { streamObject, guessContentType, publicUrlForKey } from '../../../common/storage/object-storage.helper';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -71,7 +72,8 @@ export class MediaController {
         return this.mediaService.uploadProfilePhoto(req.user.sub, file);
     }
 
-    // Oeffentlich (kein Guard) — S3_PUBLIC_URL_BASE zeigt hierher statt direkt auf
+    // Freigegebene Medien oeffentlich (img-Tags schicken keinen Token), pending/abgelehnte nur fuer Besitzer und
+    // Admins mit Login, sonst 404 wie eine fehlende Datei (Loadtest-Audit B6). S3_PUBLIC_URL_BASE zeigt hierher statt direkt auf
     // MinIO, das nie oeffentlich erreichbar ist (nur im Docker-Netz, nur HTTP).
     // Das Backend ist damit die einzige Origin fuer Medien. Wildcard-Key per
     // req.path statt @Param — path-to-regexp-Wildcard-Syntax variiert je
@@ -80,12 +82,19 @@ export class MediaController {
     // mehreren Profilfotos verbraucht sonst pro geladenem Bild ein Kontingent
     // vom globalen 100-Requests/60s-Limit pro IP.
     @SkipThrottle()
+    @UseGuards(OptionalJwtGuard)
     @Get('file/*')
     async serveFile(@Req() req: ExpressRequest, @Res() res: Response) {
         const marker = '/media/file/';
         const idx = req.path.indexOf(marker);
         const key = decodeURIComponent(req.path.slice(idx + marker.length));
         if (!key) throw new NotFoundException('Datei nicht gefunden');
+
+        const access = await this.mediaService.fileAccess(publicUrlForKey(key));
+        const user = (req as ExpressRequest & { user?: { sub: string; role?: string } }).user;
+        const allowed = access && (access.public
+            || (user && (user.sub === access.uploaded_by || user.role === 'admin' || user.role === 'owner')));
+        if (!allowed) throw new NotFoundException('Datei nicht gefunden');
 
         // Gestreamt statt ganz in den Speicher geladen; Browser duerfen eine Stunde cachen.
         let object: Awaited<ReturnType<typeof streamObject>>;
@@ -96,7 +105,7 @@ export class MediaController {
             throw err;
         }
         res.set('Content-Type', guessContentType(key));
-        res.set('Cache-Control', 'public, max-age=3600');
+        res.set('Cache-Control', access.public ? 'public, max-age=3600' : 'private, no-store');
         if (object.etag) res.set('ETag', object.etag);
         if (object.length !== undefined) res.set('Content-Length', String(object.length));
         object.body.on('error', () => res.destroy());

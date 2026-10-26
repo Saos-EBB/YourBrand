@@ -46,6 +46,18 @@ export class MediaService {
         return false;
     }
 
+    // Fuer den Media-Proxy: freigegeben und nicht geloescht ist oeffentlich, sonst nur fuer Besitzer und Admins.
+    // Mehrere Zeilen zur selben Datei: eine freigegebene genuegt. Keine Zeile oder geloescht: null.
+    async fileAccess(fileUrl: string): Promise<{ public: boolean; uploaded_by: string } | null> {
+        const [row] = await this.mediaRepository.query<{ uploaded_by: string; approved: boolean }[]>(
+            `SELECT uploaded_by, moderation_status = 'approved' AS approved FROM media_uploads
+             WHERE file_url = $1 AND deleted_at IS NULL
+             ORDER BY moderation_status = 'approved' DESC LIMIT 1`,
+            [fileUrl],
+        );
+        return row ? { public: row.approved, uploaded_by: row.uploaded_by } : null;
+    }
+
     // Uploads the raw file immediately under its final key so the response
     // stays fast — resize/watermark happens in MediaProcessor (worker
     // process), which overwrites this same object a few seconds later. No

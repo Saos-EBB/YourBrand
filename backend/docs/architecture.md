@@ -138,6 +138,12 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
   Board-Update erreicht ueber den Redis-Adapter jeden Client. Ein Job braeuchte einen Processor in der API (gegen die
   Regel in `worker.module.ts`) und spart nur die Verzoegerung nach einem Neustart (bis 85 s statt 25 s).
 
+- 2026-10-26 — Media-Proxy prueft den Freigabe-Status: freigegebene Medien bleiben oeffentlich und cachebar (img-Tags
+  schicken keinen Token), pending/abgelehnte nur fuer Besitzer und Admins (`OptionalJwtGuard`, `Cache-Control: private,
+  no-store`), sonst 404. Das Frontend laedt diese an den zwei Stellen, die sie zeigen (Admin-Moderation, eigenes Profil),
+  per fetch mit Token als Blob-URL (`AuthedImg`/`AuthedAudio`). Keine signierten URLs. Lookup ueber
+  `idx_media_uploads_file_url` (Migration 012).
+
 - 2026-10-26 — Ein Bann wirkt sofort: `BanListService` setzt `user:banned:<id>` in Redis (TTL = laengste moegliche
   Token-Laufzeit, bei kuerzerem Zeit-Bann bis zu dessen Ende), die JWT-Guards lesen es per `MGET` mit dem
   Existenz-Cache in einem Roundtrip; `refresh` prueft den Bann in der DB. Keine `token_version`-Spalte (keine Migration,

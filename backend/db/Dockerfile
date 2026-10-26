@@ -29,3 +29,4 @@ COPY migrations/008_premium_codes.sql                      /docker-entrypoint-in
 COPY migrations/009_payment_provider_stripe.sql            /docker-entrypoint-initdb.d/009_payment_provider_stripe.sql
 COPY migrations/010_beef_games_unique_beef.sql             /docker-entrypoint-initdb.d/010_beef_games_unique_beef.sql
 COPY migrations/011_user_interests_drop_duplicate_unique.sql  /docker-entrypoint-initdb.d/011_user_interests_drop_duplicate_unique.sql
+COPY migrations/012_media_uploads_file_url_index.sql      /docker-entrypoint-initdb.d/012_media_uploads_file_url_index.sql

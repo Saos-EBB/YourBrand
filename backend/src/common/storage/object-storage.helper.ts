@@ -40,7 +40,7 @@ export async function uploadObject(key: string, body: Buffer, contentType: strin
         Body: body,
         ContentType: contentType,
     }));
-    return `${getPublicUrlBase()}/${key}`;
+    return publicUrlForKey(key);
 }
 
 /** Downloads the object at `key` into memory. */
@@ -68,6 +68,11 @@ export async function deleteObject(key: string): Promise<void> {
         Bucket: getBucket(),
         Key: key,
     }));
+}
+
+/** The public URL (= media_uploads.file_url) for a storage key. */
+export function publicUrlForKey(key: string): string {
+    return `${getPublicUrlBase()}/${key}`;
 }
 
 /** Strips getPublicUrlBase() off a stored file_url to recover the S3 key. */

@@ -9,6 +9,7 @@ import { fetchApi } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { ModalOverlay } from './shared/ModalOverlay'
 import { Spinner } from './shared/Spinner'
+import { AuthedImg, AuthedAudio } from '@/components/ui/AuthedMedia'
 import { btnPrimary, btnOutline, inputCls, fmtDate } from './shared/utils'
 import type { PendingMedia, MediaFilter } from './shared/types'
 
@@ -195,8 +196,7 @@ function SwipeView({
                       : <Play className="h-6 w-6" aria-hidden="true" />}
                   </div>
                   <p className="text-xs text-on-surface-variant/60">{t.admin.swipeSpacePlay}</p>
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <audio
+                  <AuthedAudio
                     ref={audioRef}
                     src={current.file_url}
                     onEnded={() => setIsPlaying(false)}
@@ -205,8 +205,7 @@ function SwipeView({
                   />
                 </div>
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <AuthedImg
                   src={current.file_url}
                   alt={t.admin.mediaAlt.replace('{nickname}', current.nickname ?? current.uploaded_by)}
                   loading="lazy"
@@ -390,12 +389,10 @@ export function MediaTab({ showToast }: Props) {
               {m.file_type === 'audio' ? (
                 <div className="w-full aspect-square bg-surface-container flex flex-col items-center justify-center gap-2 p-3">
                   <Music className="h-8 w-8 text-on-surface-variant" aria-hidden="true" />
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <audio controls src={m.file_url} className="w-full" />
+                  <AuthedAudio controls src={m.file_url} className="w-full" />
                 </div>
               ) : (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
+                <AuthedImg
                   src={m.file_url}
                   alt={t.admin.mediaAlt.replace('{nickname}', m.nickname ?? m.uploaded_by)}
                   loading="lazy"

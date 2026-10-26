@@ -1,3 +1,16 @@
+## 2026-10-26 — fix(media): Proxy liefert nicht freigegebene Medien nur an Besitzer und Admins
+**Was:** Audit B6 (`need to fix.txt` Punkt 1). `GET /media/file/*` sucht die Zeile zur Datei
+(`MediaService.fileAccess`, Migration `012_media_uploads_file_url_index.sql`, im DB-Image, Loadtest-DB und `XXX_db`
+angewandt). Gemessen gegen das Backend: freigegeben 200 `public` fuer alle; pending und abgelehnt anonym 404, Besitzer 200
+`private`, fremder User 404, Admin 200 `private`; geloescht 404 fuer alle; unbekannter Schluessel 404. Vorher geprueft:
+alle 64 Objekte im Bucket haben eine Zeile, im Bucket liegen nur Profilfotos und Audio. Frontend: `fetchMediaObjectUrl`,
+`useAuthedMediaSrc`, `AuthedImg`/`AuthedAudio` in der Admin-Moderation (Swipe und Liste) und fuers eigene Profilfoto.
+Chat-Partnerliste zeigt nur noch freigegebene Fotos (vorher `needs_review = false`, also auch abgelehnte).
+Frontend-Typecheck gruen, Unit-Suite gruen, Check bestanden.
+**Nicht gebaut:** keine signierten URLs, kein CDN. Im Browser nicht durchgeklickt (kein Frontend im Loadtest-Stack).
+Media-Proxy nicht unter Last gemessen (im Katalog aus, der Loadtest-Stack liefert Medien direkt aus MinIO). Freigegebene
+Bilder bleiben nach einer spaeteren Ablehnung bis zu 1 h im Browser-Cache.
+
 ## 2026-10-26 — fix(auth): Bann wirkt sofort
 **Was:** Audit B13. Laut Code pruefte der JWT-Guard keinen Bann (nur ob der User existiert) und `refresh` auch nicht:
 ein eingeloggter gebannter User blieb per Refresh beliebig lange drin, nur der Login lehnte ab. Jetzt: `BanListService`

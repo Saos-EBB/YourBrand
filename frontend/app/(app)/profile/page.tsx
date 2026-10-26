@@ -6,6 +6,7 @@ import { fetchApi, normalise } from '@/lib/api'
 import { useAuthStore } from '@/lib/store/authStore'
 import { OnlineIndicator } from '@/components/ui/OnlineIndicator'
 import AudioPlayer from '@/components/ui/AudioPlayer'
+import { AuthedImg } from '@/components/ui/AuthedMedia'
 import { useTranslation } from '@/lib/i18n'
 import { CityAutocomplete } from '@/components/ui/CityAutocomplete'
 import { useHiddenStore } from '@/lib/store/hiddenStore'
@@ -526,7 +527,8 @@ export default function ProfilePage() {
           {/* ── Photo ──────────────────────────────────────────────────────── */}
           <div className="relative w-full aspect-square mb-5">
             {displayPhoto ? (
-              <img
+              // Eigenes Foto ist vor der Freigabe nur mit Login abrufbar
+              <AuthedImg
                 src={displayPhoto}
                 alt={t.profile.profilePhoto}
                 loading="lazy"

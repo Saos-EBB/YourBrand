@@ -3,8 +3,13 @@ NEED TO FIX
 Gefunden am 2026-10-22 beim Erstellen der API-Liste (Commit e1aeb9f)
 
 
-1. GET /api/v1/media/file/* ist komplett offen  [WICHTIG]
+1. GET /api/v1/media/file/* ist komplett offen  [ERLEDIGT 2026-10-26]
 -----------------------------------------------------------
+Erledigt (Audit B6): freigegeben oeffentlich, pending/abgelehnt nur Besitzer
+und Admins mit Login, geloescht/unbekannt 404. Im Bucket liegen nur Profilfotos
+und Audio (alle mit media_uploads-Zeile), keine Rechnungen oder Exporte.
+Signierte URLs nicht gebaut.
+
 Datei: backend/src/modules/core/media/media.controller.ts:78 (serveFile)
 
 Der Endpunkt ist der Proxy fuer alle Dateien im S3-Bucket. Er liefert jeden

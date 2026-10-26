@@ -88,6 +88,14 @@ export async function fetchApi<T>(
   return res.json() as Promise<T>
 }
 
+// Medium mit Login laden (pending/abgelehnt liefert /media/file nur Besitzer und Admins) und als Blob-URL zurueckgeben.
+// file_url ist absolut oder ein Pfad unter /api/v1; der Aufrufer gibt die URL mit URL.revokeObjectURL frei.
+export async function fetchMediaObjectUrl(fileUrl: string): Promise<string> {
+  const path = new URL(fileUrl, window.location.href).pathname.replace(/^.*?\/api\/v1(?=\/)/, '')
+  const blob = await (await request(path, { rawBody: true })).blob()
+  return URL.createObjectURL(blob)
+}
+
 // Datei mit Login laden und als Download speichern (z. B. Rechnungs-PDF)
 export async function downloadApiFile(path: string, filename: string): Promise<void> {
   const blob = await (await request(path)).blob()
