@@ -1,3 +1,10 @@
+## 2026-10-26 — fix(db): doppelten UNIQUE auf user_interests entfernen
+**Was:** Audit B15, erster Teil. Migration `011_user_interests_drop_duplicate_unique.sql` entfernt
+`user_interests_user_id_interest_id_key`, `uq_user_interest` bleibt (im DB-Image, im Loadtest-Stack von Hand angewandt).
+Gemessen: 20 User × 5 gleichzeitige `POST /profile/me/interests/:id` → 100 × 201, genau eine Zeile pro User.
+**Nicht gebaut:** `idx_user_interests_user (user_id)` bleibt, obwohl der UNIQUE mit `user_id` vorne ihn abdeckt (nicht
+Teil der Entscheidung). Migration 011 auf `XXX_db` und Tenants noch nicht angewandt.
+
 ## 2026-10-26 — feat(logging): Log-Stufe nach Status, Request-ID
 **Was:** Audit B11. Der Exception-Filter loggt nur 5xx als ERROR (mit Stack), 401/403/404/429 als debug (im Nest-Logger
 abgeschaltet), andere 4xx als WARN; jede Zeile traegt `req:<id>`. Die ID kommt von nginx (`X-Request-Id $request_id`) oder
