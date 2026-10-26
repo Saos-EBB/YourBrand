@@ -8,6 +8,7 @@ import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { getCorsOrigins } from './common/config/cors-origins.helper';
 import { describeTenantInfra } from './common/tenant/tenant-infra.helper';
+import { RedisIoAdapter } from './common/realtime/redis-io.adapter';
 
 async function bootstrap() {
   if (!process.env.CORS_ORIGIN) throw new Error('CORS_ORIGIN env var is not set');
@@ -30,6 +31,10 @@ async function bootstrap() {
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
+
+  const ioAdapter = new RedisIoAdapter(app);
+  ioAdapter.connectToRedis();
+  app.useWebSocketAdapter(ioAdapter);
 
   app.useGlobalFilters(new HttpExceptionFilter());
 

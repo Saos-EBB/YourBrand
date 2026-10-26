@@ -1,5 +1,15 @@
 # Fehler
 
+## 2026-10-26 — Neue Dependency legt Replikas und heavy im Loadtest-Stack lahm
+**Symptom:** Nach `npm install @socket.io/redis-adapter` hingen alle Replikas und heavy-Instanzen in einer Restart-Schleife
+(`MODULE_NOT_FOUND` aus `dist/common/realtime/redis-io.adapter.js`); `XXX_backend_load` meldete im Watcher weiter
+„Found 1 error“, obwohl das Paket per `docker exec … npm install` im Container lag.
+**Ursache:** Replikas und heavy starten `dist/` aus dem Bind-Mount, haben aber `node_modules` als anonymes Volume aus dem
+Image; sobald der Watcher Code mit neuem Import kompiliert, fehlt ihnen das Paket. Warum der Watcher den Modulfehler nach
+dem Install nicht neu bewertet hat, ist unklar.
+**Fix:** Image neu bauen, `XXX_backend_load` neu erzeugen, Replikas und heavy mit `--force-recreate -V` neu erzeugen.
+Bei jeder neuen Dependency diese Reihenfolge einhalten.
+
 ## 2026-10-24 — Beef ausschlagen („Chicken“) endete immer mit 500
 **Symptom:** `POST /hidden/beef/:id/respond` mit `chicken` → 500; der 5-Minuten-Cron `autoChickenExpired` scheiterte
 bei jedem Lauf, wartende Beefs wurden nach 24 h nie geschlossen. Gefunden beim Loadtest von Phase 3.

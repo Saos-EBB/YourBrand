@@ -1,3 +1,12 @@
+## 2026-10-26 — feat(realtime): Socket.IO ueber Redis, Sticky Sessions in nginx
+**Was:** Audit B4. `RedisIoAdapter` (`@socket.io/redis-adapter`, Kanalpraefix pro Mandant) verteilt Raum-Events ueber alle
+Instanzen; vorher kam z. B. `user_typing` nur an, wenn beide Clients zufaellig an derselben Instanz hingen. nginx hatte fuer
+`/socket.io/` gar keinen WebSocket-Upgrade; jetzt eigene Location mit Upgrade und `hash $remote_addr consistent` (Polling-
+Handshake landet auf derselben Instanz). Gemessen, Client A und B an verschiedenen Instanzen: Haupt↔Replika, Replika↔Haupt,
+Replika↔heavy und ueber nginx kommt `user_typing` an.
+**Nicht gebaut:** heavy-Instanzen nicht im WebSocket-Upstream (sie senden nur, ueber den Adapter); kein Redis-Streams-Adapter,
+keine Session-Wiederherstellung; TicTacToe-Zugtimer ist noch ein In-Memory-`setTimeout` (naechster Step).
+
 ## 2026-10-24 — feat(ops): Crons nur in einer Instanz
 **Was:** Audit B3, zweiter Teil. `ScheduleModule` nur ohne `RUN_CRONS=false`; im Loadtest-Stack laufen die Crons nur in
 `XXX_backend_load`, Replikas und heavy setzen `RUN_CRONS=false`. Gemessen (Beef-Ablauf-Cron, 2,5 min): vorher in allen 8

@@ -132,6 +132,10 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
 
 ## Entscheidungen
 
+- 2026-10-26 — Socket.IO laeuft ueber den Redis-Adapter; nginx verteilt `/socket.io/` per `hash $remote_addr` auf die
+  schnellen Instanzen. Grund: Events entstehen auf der Instanz, die den Request bearbeitet (auch heavy), der Empfaenger
+  haengt an einer beliebigen anderen. Sticky noetig, weil der Polling-Handshake sonst auf wechselnden Instanzen landet.
+
 - 2026-10-24 — Geplante Jobs (`@Cron`) laufen im API-Prozess, aber nur in einer Instanz (`RUN_CRONS=false` auf allen
   anderen). Grund: Im Worker kaemen ihre Socket-Events (Spielstart, Ergebnis) nicht bei den Clients an; mehrfach
   laufen darf aber kein Job. Zustandswechsel, die sie ausloesen, sind zusaetzlich atomar (`UPDATE … WHERE status = …`),
