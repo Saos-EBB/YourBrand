@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 import { Request } from 'express';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
-import { extractToken, userExistsCached } from './jwt-verify.helper';
+import { extractToken, userStatusCached } from './jwt-verify.helper';
 import { LastActiveService } from '../last-active/last-active.service';
 
 @Injectable()
@@ -30,14 +30,14 @@ export class OptionalJwtGuard {
                 secret: process.env.JWT_SECRET,
             });
 
-            const exists = await userExistsCached(payload.sub, this.redis, this.dataSource);
-            if (!exists) return true;
+            const status = await userStatusCached(payload.sub, this.redis, this.dataSource);
+            if (status !== 'ok') return true;
 
             request['user'] = payload;
 
             this.lastActive.touch(payload.sub).catch(() => {});
         } catch {
-            // invalid or expired token, or user no longer exists — leave req.user undefined
+            // invalid or expired token, or user no longer exists or banned — leave req.user undefined
         }
 
         return true;

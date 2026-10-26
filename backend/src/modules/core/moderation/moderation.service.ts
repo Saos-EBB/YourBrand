@@ -14,6 +14,7 @@ import { CreateReportDto } from './dto/create-report.dto';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { CreateStrikeDto, StrikeType } from './dto/create-strike.dto';
 import { AUTO_SUSPEND_QUEUE } from '../../../common/queue/queue.constants';
+import { BanListService } from '../../../common/redis/ban-list.service';
 
 @Injectable()
 export class ModerationService {
@@ -34,6 +35,7 @@ export class ModerationService {
         private readonly eventEmitter: EventEmitter2,
         @InjectQueue(AUTO_SUSPEND_QUEUE)
         private readonly autoSuspendQueue: Queue,
+        private readonly banList: BanListService,
     ) { }
 
     async createReport(reporterId: string, dto: CreateReportDto) {
@@ -117,6 +119,7 @@ export class ModerationService {
             user.ban_reason = dto.reason;
             user.ban_expires_at = dto.expires_at ?? null;
             await this.userRepository.save(user);
+            await this.banList.ban(dto.user_id, user.ban_expires_at);
         }
 
         return strike;

@@ -12,6 +12,7 @@ import { MailService } from '../../../common/mail/mail.service';
 import { SystemSettingsService } from '../system-settings/system-settings.service';
 import { decryptEmail } from '../../../common/crypto/crypto.helper';
 import { AUTO_SUSPEND_QUEUE } from '../../../common/queue/queue.constants';
+import { BanListService } from '../../../common/redis/ban-list.service';
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -41,6 +42,7 @@ export class AutoSuspendProcessor extends WorkerHost {
         private readonly mailService: MailService,
         private readonly eventEmitter: EventEmitter2,
         private readonly systemSettingsService: SystemSettingsService,
+        private readonly banList: BanListService,
     ) {
         super();
     }
@@ -69,6 +71,7 @@ export class AutoSuspendProcessor extends WorkerHost {
             user.ban_reason     = `Automatische Sperre: ${threshold} unabhängige Meldungen eingegangen.`;
             user.ban_expires_at = null;
             await this.userRepository.save(user);
+            await this.banList.ban(reportedUserId, null);
             this.eventEmitter.emit('user.banned', { userId: reportedUserId });
         }
 

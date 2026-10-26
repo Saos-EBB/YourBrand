@@ -37,6 +37,7 @@ import { collectDashboardAnalytics, type AnalyticsRange, type DashboardAnalytics
 import { UserDashboardStatsDto } from './dto/user-dashboard-stats.dto';
 import { AdminStatsDto } from './dto/admin-stats.dto';
 import { ConversationsService } from '../chat/conversations.service';
+import { BanListService } from '../../../common/redis/ban-list.service';
 
 const OWNER_PAGE = 200;
 
@@ -63,6 +64,7 @@ export class AdminService {
         private readonly profanityService: ProfanityService,
         private readonly systemSettingsService: SystemSettingsService,
         private readonly conversationsService: ConversationsService,
+        private readonly banList: BanListService,
     ) {}
 
     private calcBanExpiry(duration: BanDuration): Date | null {
@@ -323,6 +325,7 @@ export class AdminService {
         user.ban_reason     = dto.reason;
         user.ban_expires_at = ban_expires_at;
         await this.userRepo.save(user);
+        await this.banList.ban(userId, ban_expires_at);
 
         const strike = this.strikeRepo.create({
             user_id:    userId,
@@ -363,6 +366,7 @@ export class AdminService {
         user.ban_reason     = null;
         user.ban_expires_at = null;
         await this.userRepo.save(user);
+        await this.banList.unban(userId);
 
         await this.dataSource.query(
             `UPDATE strikes SET ban_lifted_at = NOW()
@@ -596,6 +600,7 @@ export class AdminService {
             user.ban_reason     = dto.reason;
             user.ban_expires_at = dto.expires_at ?? null;
             await this.userRepo.save(user);
+            await this.banList.ban(dto.user_id, user.ban_expires_at);
 
             if (dto.type === StrikeType.PERMANENT) {
                 await this.notificationsService.notifyBanPermanent(dto.user_id, dto.reason);

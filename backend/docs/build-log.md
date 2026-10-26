@@ -1,3 +1,14 @@
+## 2026-10-26 — fix(auth): Bann wirkt sofort
+**Was:** Audit B13. Laut Code pruefte der JWT-Guard keinen Bann (nur ob der User existiert) und `refresh` auch nicht:
+ein eingeloggter gebannter User blieb per Refresh beliebig lange drin, nur der Login lehnte ab. Jetzt: `BanListService`
+(globales `RedisModule`) schreibt beim Bann `user:banned:<id>` (Admin-Bann, Admin-Strike, Moderations-Strike,
+Auto-Suspend im Worker) und loescht es beim Entbannen; `JwtGuard` antwortet 403, `OptionalJwtGuard` behandelt den User
+als anonym; `refresh` antwortet 403 bei aktivem Bann. Gemessen ueber nginx: vorher 8 × 200, direkt nach dem Bann
+8 × 403 (alle Instanzen), Refresh 403, Login 403, nach dem Entbannen 8 × 200. Unit-Suite gruen, Check bestanden.
+**Nicht gebaut:** bestehende WebSocket-Verbindungen werden nicht getrennt (es bleibt beim Event `user.banned` an den
+Client). Refresh-Tokens werden beim Bann nicht widerrufen (Refresh lehnt ab, solange der Bann gilt). Kein Test fuer
+Redis-Ausfall beim Bann.
+
 ## 2026-10-26 — feat(cron): Crons auf allen Instanzen, ein Lauf pro Termin
 **Was:** Offen aus Phase 3 (Audit B3). `CronLockService.runOnce` (im globalen `RedisModule`): `SET cron:<job> NX`,
 gehalten waehrend des Laufs und bis `minGapMs` nach dem Start (50 s bei Minuten-Jobs, 4 min beim 5-Minuten-Job, 1 h bei

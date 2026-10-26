@@ -198,6 +198,11 @@ export class AuthService {
 
         const user = await this.userRepository.findOne({ where: { id: stored.user_id, deleted_at: IsNull() } });
         if (!user) throw new UnauthorizedException('User nicht gefunden');
+        // Gesperrt: kein neues Access-Token (vorher pruefte nur der Login, ein eingeloggter User blieb per Refresh drin).
+        // Einen abgelaufenen Zeit-Bann hebt weiter nur der Login auf.
+        if (user.is_banned && (!user.ban_expires_at || user.ban_expires_at > new Date())) {
+            throw new ForbiddenException('Ihr Account ist gesperrt');
+        }
 
         await this.refreshTokenRepository.update({ token_hash: stored.token_hash }, { is_revoked: true });
 

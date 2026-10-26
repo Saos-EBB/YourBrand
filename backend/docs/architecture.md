@@ -138,6 +138,11 @@ keine Rearchitektur; sie laufen parallel und blockieren die Tabelle oben nicht.
   Board-Update erreicht ueber den Redis-Adapter jeden Client. Ein Job braeuchte einen Processor in der API (gegen die
   Regel in `worker.module.ts`) und spart nur die Verzoegerung nach einem Neustart (bis 85 s statt 25 s).
 
+- 2026-10-26 — Ein Bann wirkt sofort: `BanListService` setzt `user:banned:<id>` in Redis (TTL = laengste moegliche
+  Token-Laufzeit, bei kuerzerem Zeit-Bann bis zu dessen Ende), die JWT-Guards lesen es per `MGET` mit dem
+  Existenz-Cache in einem Roundtrip; `refresh` prueft den Bann in der DB. Keine `token_version`-Spalte (keine Migration,
+  kein DB-Lookup pro Request). Redis weg: der Bann wirkt erst mit dem Token-Ablauf.
+
 - 2026-10-26 — Geplante Jobs planen alle Instanzen; pro Termin laeuft jeder Job in genau einer (`CronLockService`:
   `SET cron:<job> NX`, gehalten waehrend des Laufs und bis kurz vor den naechsten Termin). Loest die Entscheidung vom
   2026-10-24 (nur eine Cron-Instanz) ab: dort lief bei deren Ausfall kein Job. Redis weg heisst Jobs pausieren — lieber

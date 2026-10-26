@@ -2,6 +2,7 @@ import { Global, Inject, Module, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from './redis.constants';
 import { CronLockService } from './cron-lock.service';
+import { BanListService } from './ban-list.service';
 import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
 
 @Global()
@@ -26,8 +27,9 @@ import { tenantInfra } from '../../common/tenant/tenant-infra.helper';
                 }),
         },
         CronLockService,
+        BanListService,
     ],
-    exports: [REDIS_CLIENT, CronLockService],
+    exports: [REDIS_CLIENT, CronLockService, BanListService],
 })
 export class RedisModule implements OnModuleDestroy {
     constructor(@Inject(REDIS_CLIENT) private readonly client: Redis) { }

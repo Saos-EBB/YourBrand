@@ -1,11 +1,11 @@
-import { Injectable, ExecutionContext, Inject, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ExecutionContext, ForbiddenException, Inject, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Request } from 'express';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
-import { extractToken, userExistsCached } from './jwt-verify.helper';
+import { extractToken, userStatusCached } from './jwt-verify.helper';
 import { LastActiveService } from '../last-active/last-active.service';
 
 @Injectable()
@@ -34,8 +34,9 @@ export class JwtGuard {
             throw new UnauthorizedException('Token ungültig oder abgelaufen');
         }
 
-        const exists = await userExistsCached(payload.sub, this.redis, this.dataSource);
-        if (!exists) throw new UnauthorizedException('User nicht gefunden');
+        const status = await userStatusCached(payload.sub, this.redis, this.dataSource);
+        if (status === 'missing') throw new UnauthorizedException('User nicht gefunden');
+        if (status === 'banned') throw new ForbiddenException('Ihr Account ist gesperrt');
 
         request['user'] = payload;
 
