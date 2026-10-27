@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>YourBrand Backend — Endpoint-Kapazitäts-Audit — 2026-09-13</title>
+<title>YourBrand Backend — Belastbarkeits-Audit — 2026-10-27</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -26,367 +26,364 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     font-size:14px; line-height:1.5;
   }
-  header{max-width:1200px; margin:0 auto; padding-top:28px;}
+  header, .tabs, main, footer{max-width:1200px; margin-left:auto; margin-right:auto;}
+  header{padding-top:28px;}
   h1{font-size:22px; margin:0 0 4px;}
+  h2{font-size:15px; margin:0 0 10px;}
   .meta{color:var(--text-dim); font-size:13px; margin-bottom:20px;}
-  .summary-grid{
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:10px; margin-bottom:20px;
-  }
-  .summary-card{
-    background:var(--panel); border:1px solid var(--border); border-radius:8px;
-    padding:10px 12px;
-  }
-  .summary-card .num{font-size:20px; font-weight:700;}
+  code, .path{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12.5px;}
+  code{background:var(--panel-2); padding:1px 5px; border-radius:4px;}
+  .summary-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-bottom:20px;}
+  .summary-card{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px 12px;}
+  .summary-card .num{font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;}
   .summary-card .label{color:var(--text-dim); font-size:12px;}
-  .top5{
-    background:var(--panel); border:1px solid var(--border); border-radius:8px;
-    padding:14px 18px; margin-bottom:22px;
-  }
-  .top5 h2{font-size:15px; margin:0 0 10px;}
-  .top5 ol{margin:0; padding-left:20px;}
-  .top5 li{margin-bottom:6px;}
-  .tabs{display:flex; gap:8px; max-width:1200px; margin:0 auto 14px; border-bottom:1px solid var(--border);}
-  .tab-btn{
-    background:none; border:none; color:var(--text-dim); font-size:14px;
-    padding:10px 4px; cursor:pointer; border-bottom:2px solid transparent;
-    margin-right:16px;
-  }
+  .box{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-bottom:22px;}
+  .box ol{margin:0; padding-left:20px;}
+  .box li{margin-bottom:7px;}
+  .tabs{display:flex; flex-wrap:wrap; gap:0 16px; margin-bottom:14px; border-bottom:1px solid var(--border);}
+  .tab-btn{background:none; border:none; color:var(--text-dim); font-size:14px; padding:10px 4px; cursor:pointer; border-bottom:2px solid transparent;}
   .tab-btn.active{color:var(--text); border-bottom-color:var(--accent); font-weight:600;}
-  .controls{
-    max-width:1200px; margin:0 auto 14px; display:flex; flex-wrap:wrap;
-    gap:10px; align-items:center;
-  }
-  #search{
-    flex:1; min-width:220px; background:var(--panel); border:1px solid var(--border);
-    color:var(--text); padding:8px 12px; border-radius:6px; font-size:14px;
-  }
-  .filter-btn{
-    background:var(--panel); border:1px solid var(--border); color:var(--text-dim);
-    padding:7px 12px; border-radius:6px; cursor:pointer; font-size:13px;
-  }
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px;}
+  #search{flex:1; min-width:200px; background:var(--panel); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:6px; font-size:14px;}
+  .filter-btn{background:var(--panel); border:1px solid var(--border); color:var(--text-dim); padding:7px 12px; border-radius:6px; cursor:pointer; font-size:13px;}
   .filter-btn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
-  main{max-width:1200px; margin:0 auto;}
-  table{width:100%; border-collapse:collapse; background:var(--panel); border-radius:8px; overflow:hidden;}
-  thead th{
-    text-align:left; padding:10px 12px; background:var(--panel-2);
-    border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase;
-    letter-spacing:.03em; color:var(--text-dim); cursor:pointer; user-select:none;
-    white-space:nowrap;
-  }
-  thead th:hover{color:var(--text);}
+  .table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:8px; margin-bottom:12px;}
+  table{width:100%; border-collapse:collapse; background:var(--panel);}
+  thead th{text-align:left; padding:9px 11px; background:var(--panel-2); border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-dim); white-space:nowrap;}
+  thead th.sortable{cursor:pointer; user-select:none;}
+  thead th.sortable:hover{color:var(--text);}
   thead th.sorted::after{content:" ▾"; color:var(--accent);}
   thead th.sorted-asc::after{content:" ▴"; color:var(--accent);}
-  tbody td{padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  tbody td{padding:9px 11px; border-bottom:1px solid var(--border); vertical-align:top;}
   tbody tr:last-child td{border-bottom:none;}
   tbody tr:hover{background:var(--panel-2);}
-  .path{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12.5px;}
-  .evidence{color:var(--text-dim); font-size:12.5px; max-width:340px;}
-  .badge{
-    display:inline-block; padding:2px 9px; border-radius:20px; font-size:11.5px;
-    font-weight:600; white-space:nowrap;
-  }
-  .badge.risk-hoch{background:var(--hoch-bg); color:var(--hoch);}
-  .badge.risk-mittel{background:var(--mittel-bg); color:var(--mittel);}
-  .badge.risk-niedrig{background:var(--niedrig-bg); color:var(--niedrig);}
-  .badge.risk-none{background:var(--none-bg); color:var(--none);}
-  .badge.conf-hoch{background:var(--niedrig-bg); color:var(--niedrig);}
-  .badge.conf-mittel{background:var(--mittel-bg); color:var(--mittel);}
-  .badge.conf-niedrig{background:var(--none-bg); color:var(--none);}
+  td.n, th.n{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .dim{color:var(--text-dim); font-size:12.5px;}
+  .badge{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11.5px; font-weight:600; white-space:nowrap;}
+  .b-hoch{background:var(--hoch-bg); color:var(--hoch);}
+  .b-mittel{background:var(--mittel-bg); color:var(--mittel);}
+  .b-niedrig{background:var(--niedrig-bg); color:var(--niedrig);}
+  .b-none{background:var(--none-bg); color:var(--none);}
+  .bad{color:var(--hoch); font-weight:600;}
+  .warn{color:var(--mittel); font-weight:600;}
+  .ok{color:var(--niedrig);}
   .cat-tag{color:var(--accent); font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.02em;}
-  .no-rows{padding:24px; text-align:center; color:var(--text-dim);}
-  #panel-b{display:none;}
-  .pattern-card{
-    background:var(--panel); border:1px solid var(--border); border-radius:8px;
-    padding:16px 20px; margin-bottom:14px;
-  }
-  .pattern-card h3{margin:0 0 4px; font-size:16px;}
-  .pattern-card .tagline{color:var(--text-dim); font-size:12.5px; margin-bottom:10px;}
-  .pattern-card ul{margin:6px 0 10px; padding-left:20px;}
-  .pattern-card li{margin-bottom:4px;}
-  .pattern-card .kv{font-size:12.5px; color:var(--text-dim); margin-top:8px;}
-  .pattern-card .kv b{color:var(--text);}
-  .pattern-card code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:var(--panel-2); padding:1px 5px; border-radius:4px;}
-  .gap-note{
-    border-left:3px solid var(--mittel); background:var(--mittel-bg); color:var(--text);
-    padding:10px 14px; border-radius:0 6px 6px 0; font-size:13px; margin-bottom:14px;
-  }
-  footer{max-width:1200px; margin:30px auto 0; color:var(--text-dim); font-size:12px;}
+  .note{border-left:3px solid var(--accent); background:var(--panel); padding:10px 14px; border-radius:0 6px 6px 0; font-size:13px; margin-bottom:14px;}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px 20px; margin-bottom:14px;}
+  .card h3{margin:0 0 4px; font-size:16px;}
+  .card .tagline{color:var(--text-dim); font-size:12.5px; margin-bottom:10px;}
+  .card ul{margin:6px 0 10px; padding-left:20px;}
+  .card li{margin-bottom:4px;}
+  .card .kv{font-size:12.5px; color:var(--text-dim); margin-top:8px;}
+  .card .kv b{color:var(--text);}
+  footer{margin-top:30px; color:var(--text-dim); font-size:12px;}
 </style>
 </head>
 <body>
 <header>
-  <h1>YourBrand Backend — Endpoint-Kapazitäts-Audit</h1>
-  <div class="meta">Session-Datum: 2026-09-13 · Load-Test gegen den Loadtest-Docker-Stack (localhost:3100/3102), Tool: <code>scripts/loadtest/endpoint-rate.sh</code> · Baseline: 1 Node-Prozess · Vergleich: 2- und 8-Worker-Cluster-Experiment (Node <code>cluster</code>-Modul, kompilierter Build, DB_POOL_MAX=10-15/Worker)</div>
+  <h1>YourBrand Backend — Belastbarkeits-Audit</h1>
+  <div class="meta">Messung am 2026-10-27 gegen den Loadtest-Stack (nginx <code>XXX_lb_load</code> auf :3100 → fast-Pool: <code>XXX_backend_load</code> + 5 Replikas, heavy-Pool: 2 Instanzen; Postgres <code>max_connections=300</code>, <code>DB_POOL_MAX=20</code>; Redis, MinIO). Lastgenerator: C++-<code>loadgen</code> mit festem Takt über den Endpunkt-Katalog (64 Endpunkte, gleichverteilt), auf <b>demselben Host</b> (16 Kerne, 30 GB). Stack vor der Messung frisch neu gestartet, Seed-Bestand danach: 5.046 User.</div>
 
-  <div class="summary-grid" id="summary-grid"></div>
+  <div class="summary-grid">
+    <div class="summary-card"><div class="num">500 req/s</div><div class="label">Nutzer-Mix mit Chat: alle Budgets gehalten (≈ 2.500–3.300 gleichzeitige Nutzer, geschätzt)</div></div>
+    <div class="summary-card"><div class="num">~400 req/s</div><div class="label">gleichverteilter Mix (Admin/Dashboard 20 % des Verkehrs)</div></div>
+    <div class="summary-card"><div class="num">ab ~800 req/s</div><div class="label">Chat-Race löst den Zusammenbruch aus</div></div>
+    <div class="summary-card"><div class="num">~1.200 req/s</div><div class="label">Grenze eines einfachen DB-Reads allein (<code>coin/balance</code>)</div></div>
+    <div class="summary-card"><div class="num">2.000+ req/s</div><div class="label"><code>/health</code> mit p95 1 ms: nginx und Node-Grunddurchsatz sind kein Engpass</div></div>
+  </div>
 
-  <div class="top5">
-    <h2>Wichtigste Funde dieser Session</h2>
+  <div class="box">
+    <h2>Wichtigste Funde</h2>
     <ol>
-      <li><b>GET /admin/media/pending bricht bei 20 r/s zusammen</b> — <code>AdminService.getMediaPending()</code> hat kein <code>LIMIT</code>/Pagination, lädt alle 159.107 pending media_uploads-Zeilen bei jedem Aufruf. 80% Timeout, 9,2s Ø-Latenz selbst bei nur 20 gleichzeitigen Requests. <span class="badge risk-hoch">kritisch</span></li>
-      <li><b>Race Condition in zwei Services</b> — <code>ConversationsService.getOrCreate()</code> und <code>ChatService.sendContactRequest()</code> prüfen Existenz und inserten ohne Lock/Transaktion; unter Last kollidieren parallele Requests auf <code>uq_conversation_users</code>/<code>uq_contact_request_active</code> und werfen unbehandelte 500er. <span class="badge risk-mittel">mittel</span></li>
-      <li><b>Single-Node-Prozess war der eigentliche Flaschenhals, nicht die DB</b> — DB_POOL_MAX=40 hatte bei 1 Worker durchgehend >2x Headroom gegenüber der beobachteten Grenze. Skalierung auf 8 Worker hob praktisch jeden Endpoint von 200-580 r/s auf ≥1000-1950 r/s (Grenze meist nicht erreicht, sondern nur der Test ausgereizt). <span class="badge risk-niedrig">bestätigt</span></li>
-      <li><b>HttpExceptionFilter verschluckt Stacktraces</b> — bei jedem nicht-HttpException-Fehler wird nur eine generische Ein-Zeilen-Message geloggt; die beiden Race-Condition-500er mussten aus Schema + Timing rekonstruiert werden, nicht aus den Logs. <span class="badge risk-mittel">mittel</span></li>
-      <li><b>Load-Test-Harness selbst hatte zwei Bugs</b> (im Tool, nicht im Produkt) — O(n²)-Bubble-Sort in <code>endpoint-rate.sh</code> hing bei hohem Requestvolumen &gt;2h (gepatcht auf <code>asort()</code>); Token-TTL (15 min) kontaminierte lange Ramps mit 401ern, die der Aggregator fälschlich als „success“ zählte. <span class="badge risk-niedrig">gefixt/dokumentiert</span></li>
+      <li><b>Die Kapazität liegt bei ~400–450 req/s, danach kippt das System hart.</b> Bei 400 req/s hält jede Routen-Klasse ihr Budget. Bei 500 reißen fast (p95 166 ms) und auth (1,8 s), und das heavy-Gate wirft 1,9 % mit 503 ab. Ab 600 req/s laufen 19–40 % der Requests in den 5-s-Timeout von nginx (504). Der fast-Pool hängt dann bei 120–140 % CPU je Instanz, die heavy-Instanzen haben mit 30–40 % noch Luft. <span class="badge b-hoch">hoch</span></li>
+      <li><b>Neu: <code>GET /chat/conversations/:id/messages</code> liefert unter Last 500 und löst den Zusammenbruch aus.</b> <code>read_at</code> kommt aus der Node-Uhr (<code>new Date()</code>), <code>sent_at</code> aus Postgres (<code>DEFAULT now()</code>). Wird eine Nachricht zwischen den beiden Zeitpunkten eingefügt, verletzt das Update <code>chk_message_read_after_sent</code>. Im Nutzer-Mix gab es 156–533 × 500 pro 30-s-Stufe ab 800 req/s, und jeder Lauf, der zusammenbrach, hatte sie. Läufe ohne die Race blieben bis 1.000–1.200 req/s ohne 5xx. <span class="badge b-hoch">hoch, offen</span></li>
+      <li><b>Behoben am 27.10.: <code>GET /admin/media/pending</code></b> liefert jetzt eine Seite (50, Cursor <code>after</code>, Migration 013). Mit 150.000 offenen Medien sind es 8 ms und 11 KB statt 1,9 s und 34 MB, 50 r/s laufen ohne Fehler, und der Nachbar <code>coin/balance</code> bleibt bei p95 7 ms. <span class="badge b-niedrig">behoben</span><br><span class="dim">Vorher: Ohne <code>LIMIT</code> lieferte ein Aufruf mit 150.000 offenen Medien 34 MB JSON. Bei 5 r/s scheiterten 75 %, und <code>coin/balance</code> auf derselben Instanz bekam 15 % 504. Die Route war nicht als heavy markiert und lief im fast-Pool.</span></li>
+      <li><b>Viel CPU pro Request in der App.</b> <code>/auth/me</code> (JWT plus Redis-Cache) hält 1.500 r/s bei p95 6 ms. <code>coin/balance</code>, der zusätzlich nur zwei PK-Lookups macht, knickt bei 1.200 r/s ein: Die Node-Instanzen stehen dabei bei ~97 % CPU, Postgres bei 73 %. Den Engpass bildet der App-seitige Overhead pro DB-Query, nicht Postgres. <span class="badge b-mittel">mittel</span></li>
+      <li><b>Login (bcrypt) teilt sich den fast-Pool.</b> Der Login ist nur 0,8 % der Requests, verschärft die Überlast aber stark. Bei 800 req/s gibt es mit Login 7.358 × 5xx, ohne Login 1.933. Die p95 von <code>auth</code> steigt von 800 ms (400 req/s) auf 1,8 s (500) und danach auf den 10-s-Timeout. <span class="badge b-mittel">mittel</span></li>
+      <li><b>39 von 71 Foreign Keys haben keinen Index</b>, darunter <code>messages.media_id</code> und <code>profiles.photo_id/audio_id</code>. Das Löschen von 150k <code>media_uploads</code>-Zeilen dauerte über 2 Minuten. <span class="badge b-mittel">mittel</span></li>
+      <li><b>Die Race in <code>POST /chat/requests</code> liefert weiter echte 500er.</b> In den Überlaststufen waren es 17 × 500, alle auf dieser Route. Laut Log ist die Ursache <code>QueryFailedError … exclusion constraint "uq_contact_request_active"</code>. Der Exception-Filter übersetzt 23505 in 409, das EXCLUDE-Constraint wirft aber <b>23P01</b>, und dafür fehlt die Zuordnung. <span class="badge b-mittel">mittel</span></li>
+      <li><b>Seit dem Audit vom 13.09. behoben:</b> Der Exception-Filter loggt Stacktraces, deshalb war die Ursache oben direkt im Log zu lesen. Unique- und FK-Konflikte (23505/23503) werden zu 409, <code>statement_timeout</code> zu 503. Neu sind das Routen-Klassen-Gate und der getrennte heavy-Pool. <span class="badge b-niedrig">teilweise</span></li>
     </ol>
   </div>
 </header>
 
 <div class="tabs">
-  <button class="tab-btn active" data-tab="a">Endpoint-Kapazität</button>
-  <button class="tab-btn" data-tab="b">Bugs &amp; Methodik</button>
-</div>
-
-<div class="controls">
-  <input id="search" type="text" placeholder="Volltextsuche über alle Spalten…">
-  <button class="filter-btn active" data-conf="alle">Alle</button>
-  <button class="filter-btn" data-conf="hoch">Status: kritisch</button>
-  <button class="filter-btn" data-conf="mittel">Status: Bug gefunden</button>
-  <button class="filter-btn" data-conf="niedrig">Status: gut skaliert</button>
+  <button class="tab-btn active" data-tab="ramp">Kapazitätsrampe</button>
+  <button class="tab-btn" data-tab="ep">Endpunkte</button>
+  <button class="tab-btn" data-tab="iso">Eingrenzung</button>
+  <button class="tab-btn" data-tab="find">Funde &amp; Empfehlungen</button>
+  <button class="tab-btn" data-tab="meth">Methodik</button>
 </div>
 
 <main>
-  <section id="panel-a">
-    <table id="findings-table">
-      <thead>
-        <tr>
-          <th data-key="category">Gruppe</th>
-          <th data-key="path">Endpoint</th>
-          <th data-key="baseline">1 Worker (Baseline)</th>
-          <th data-key="cluster">8-Worker-Ergebnis</th>
-          <th data-key="evidence">Hinweis</th>
-          <th data-key="confidence">Status</th>
-        </tr>
-      </thead>
-      <tbody id="findings-body"></tbody>
-    </table>
-    <div class="no-rows" id="no-rows" style="display:none;">Keine Funde für diesen Filter.</div>
+  <section class="panel active" id="panel-ramp">
+    <div class="note"><b>Nutzer-Mix (gewichtet, mit Chat), nach dem Admin-Fix.</b> Anteile aus <code>targets/yourbrand/weights.tsv</code>: Chat 33 %, Discover 19 %, Profil 17 %, Benachrichtigungen 9 %, Hidden Zone 10 %, Login 0,5 %, Admin 0,6 %. 50 Chat-Paare vor jedem Lauf angelegt (<code>prepare.js</code>). Zwei Durchgänge, je 30 s pro Stufe.</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="n">Rate</th><th>Durchgang</th><th class="n">5xx</th><th class="n">503</th><th class="n">p95 fast</th><th class="n">p95 heavy</th><th class="n">p95 auth</th><th>Auslöser</th><th>Check</th></tr></thead>
+      <tbody id="wramp-body"></tbody>
+    </table></div>
+    <p class="dim" style="margin-bottom:22px">Die Streuung zwischen den Durchgängen kommt von der Chat-Race: Tritt sie auf, kippt die Stufe, sonst bleibt sie knapp am Budget. Mit dem Fix der Race ist eher ~1.000 req/s zu erwarten. Das ist noch nicht gemessen.</p>
+    <div class="note"><b>Gleichverteilter Mix, vor dem Admin-Fix</b> (erste Messung des Tages).</div>
+    <div class="note">Full Load über den Endpunkt-Katalog, je Stufe 30 s mit fester Rate (<code>CHECK_RATE=… CHECK_DURATION=30 ./lt yourbrand check</code>). Budgets: fast p95 ≤ 100 ms, heavy ≤ 500 ms, auth ≤ 1.500 ms, 503 ≤ 1 %, kein 000 und kein 5xx außer 503. Die CPU-Werte sind Mittelwerte aus <code>docker stats</code> während der Stufe (100 % = ein Kern).</div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th class="n">Rate</th><th class="n">Requests</th><th class="n">Fehler</th><th class="n">503</th><th class="n">504/5xx</th>
+        <th class="n">p95 fast</th><th class="n">p95 heavy</th><th class="n">p95 auth</th>
+        <th class="n">CPU fast-Inst.</th><th class="n">CPU heavy-Inst.</th><th class="n">CPU Postgres</th><th class="n">Load (16 K.)</th><th>Check</th>
+      </tr></thead>
+      <tbody id="ramp-body"></tbody>
+    </table></div>
+    <p class="dim">Gegenprobe vor der Rampe, Standard-Check direkt nach dem Neustart: 400 req/s für 180 s (72.000 Requests) <b>bestanden</b>, mit fast p95 20 ms, heavy 88 ms, auth 551 ms und 9 × 503 (0,01 %). Die 400-req/s-Stufe der Rampe hat höhere p95-Werte (29/167/800 ms), weil sie im Lauf direkt nach der Token-Vorbereitung startete.</p>
   </section>
 
-  <section id="panel-b">
-    <div class="gap-note"><b>Hinweis:</b> Dieser Tab dokumentiert die in dieser Session gefundenen Bugs (im Produkt) sowie Probleme im Load-Test-Werkzeug selbst — letztere haben Messungen zeitweise verfälscht und wurden während der Session live gepatcht.</div>
-    <div id="patterns"></div>
+  <section class="panel" id="panel-ep">
+    <div class="controls">
+      <input id="search" type="text" placeholder="Endpunkt suchen…">
+      <button class="filter-btn active" data-cls="alle">Alle</button>
+      <button class="filter-btn" data-cls="fast">fast</button>
+      <button class="filter-btn" data-cls="heavy">heavy</button>
+      <button class="filter-btn" data-cls="auth">auth</button>
+    </div>
+    <div class="table-wrap"><table id="ep-table">
+      <thead><tr>
+        <th class="sortable" data-i="0">Endpunkt</th><th class="sortable" data-i="1">Klasse</th>
+        <th class="n sortable" data-i="3">p50 @400</th><th class="n sortable sorted" data-i="4">p95 @400</th><th class="n sortable" data-i="5">p95 @500</th>
+        <th class="n sortable" data-i="6">Fehler @500</th><th class="n sortable" data-i="7">Fehler @600</th><th class="n sortable" data-i="8">Fehler @800</th>
+      </tr></thead>
+      <tbody id="ep-body"></tbody>
+    </table></div>
+    <p class="dim">Zeiten in ms, Fehler = 000 + 5xx (inkl. 503) in Prozent der Requests des Endpunkts. Pro Endpunkt rund 190 Requests je 30-s-Stufe. Bei 600 und 800 req/s sind die Fehler über fast alle fast-Routen gleich verteilt: Dort ist der Pool voll und es versagt nicht ein einzelner Endpunkt. Nicht gemessen wurden Endpunkte ohne Testdaten, z. B. Beef-Detail, Board, Orgs, Care und Shop (Modul aus oder leer nach dem Seed-Reset).</p>
   </section>
+
+  <section class="panel" id="panel-iso">
+    <div class="note">Einzel-Endpunkte mit fester Rate (<code>loadgen --path …</code>), je 15 s. So lässt sich trennen, was nginx und Node grundsätzlich schaffen, was die Auth kostet und was ein DB-Zugriff kostet.</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Test</th><th class="n">Rate</th><th class="n">Erfolg</th><th class="n">p50</th><th class="n">p95</th><th class="n">p99</th><th>Einordnung</th></tr></thead>
+      <tbody id="iso-body"></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" id="panel-find"><div id="cards"></div></section>
+
+  <section class="panel" id="panel-meth"><div id="meth"></div></section>
 </main>
 
-<footer>Erzeugt aus einer Load-Test-Session gegen den Docker-Loadtest-Stack (XXX_backend_load / XXX_backend_cluster_experiment, XXX_db_load, XXX_redis_load, minio-load). Ersetzt die vorherige Codebase-Audit-Version dieser Datei vollständig.</footer>
+<footer>Erzeugt aus der Loadtest-Session vom 2026-10-27 (Repo <code>~/dev/loadtest</code>, Logs unter <code>data/yourbrand/check-logs/</code> und <code>data/yourbrand/audit-logs/</code>). Ersetzt das Endpoint-Kapazitäts-Audit vom 2026-09-13 vollständig.</footer>
 
 <script>
-const findings = [
-  {category:"Discover", path:"GET /discover/deck", baseline:"~220-340 r/s (Kollaps ab 340 r/s, PostGIS-Geo-Query, teuerste Query im Set)",
-   cluster:"≥1500 r/s @ 198ms Ø — testseitig tokenlimitiert (15-min-JWT-TTL lief während des Ramps ab), echte Grenze höher/unbekannt",
-   evidence:"Einzige Query mit ST_DWithin/ST_Distance + NOT EXISTS-Subquery (matching.service.ts:36). Trotzdem 4,5-7x höhere Kapazität mit 8 Workern.",
-   confidence:"niedrig"},
-  {category:"Discover", path:"GET /discover/matches", baseline:"~500-580 r/s",
-   cluster:"≥1925 r/s @ 112ms Ø — tokenlimitiert, echte Grenze höher",
-   evidence:"Bestes Verhältnis Baseline→Cluster unter den reinen Read-Endpoints.",
-   confidence:"niedrig"},
-  {category:"Coin", path:"GET /hidden/coin/balance", baseline:"~520-580 r/s",
-   cluster:"≥1950 r/s @ 100ms Ø — tokenlimitiert, echte Grenze höher",
-   evidence:"Einfacher Read, skaliert nahezu linear mit Worker-Anzahl.",
-   confidence:"niedrig"},
-  {category:"Coin", path:"POST /hidden/coin/test-purchase", baseline:"~420-440 r/s",
-   cluster:"≥1000 r/s @ 141ms Ø — Rate-Cap des Tests erreicht (nicht die App-Grenze), 100% Erfolg durchgehend",
-   evidence:"Write-Pfad, dennoch keinerlei Degradation bis zum Cap.",
-   confidence:"niedrig"},
-  {category:"Media", path:"POST /media/upload/profile-photo", baseline:"~340-360 r/s",
-   cluster:"≥1000 r/s @ 278ms Ø — Rate-Cap erreicht, 100% Erfolg",
-   evidence:"Einziger Endpoint mit echtem Datei-I/O (MinIO); höchste Ø-Latenz im Set, aber keine Fehlerquote.",
-   confidence:"niedrig"},
-  {category:"Chat", path:"GET /chat/conversations", baseline:"~420-440 r/s",
-   cluster:"≥1000 r/s @ 185ms Ø — Rate-Cap erreicht",
-   evidence:"—", confidence:"niedrig"},
-  {category:"Chat", path:"GET /chat/conversations/:id/messages", baseline:"~440 r/s",
-   cluster:"≥1000 r/s @ 208ms Ø — Rate-Cap erreicht",
-   evidence:"Verkettetes Szenario (GET conversations → GET messages) — Test zählt pro Ramp-Tick 2 echte HTTP-Calls.",
-   confidence:"niedrig"},
-  {category:"Chat", path:"POST /chat/conversations/:id/messages", baseline:"~260 r/s",
-   cluster:"≥1000 r/s @ 236ms Ø — Rate-Cap erreicht",
-   evidence:"Write-Pfad, größte relative Verbesserung unter den Chat-Endpoints.",
-   confidence:"niedrig"},
-  {category:"Contact Request", path:"POST /chat/requests (send)", baseline:"~60-140 r/s — schwächster Endpoint vor dieser Session",
-   cluster:"≥1000 r/s @ 253ms Ø — Rate-Cap erreicht, ABER 12× echte 500er unter Last",
-   evidence:"Race Condition in sendContactRequest() (chat.service.ts:46) — Check-then-Insert ohne Lock, kollidiert mit uq_contact_request_active.",
-   confidence:"mittel"},
-  {category:"Contact Request", path:"GET /chat/requests/incoming", baseline:"~200-360 r/s",
-   cluster:"≥1000 r/s @ 173ms Ø — Rate-Cap erreicht",
-   evidence:"—", confidence:"niedrig"},
-  {category:"Contact Request", path:"PATCH /chat/requests/:id/accept", baseline:"~160-180 r/s (mit vorab geseedetem Backlog von ~111k pending Requests erstmals sauber gemessen)",
-   cluster:"≥600 r/s @ 147-360ms — Rate-Cap erreicht, 1× echte 500er unter Last",
-   evidence:"Gleiche Race-Condition-Klasse wie oben, diesmal in ConversationsService.getOrCreate() (conversations.service.ts:18) — kollidiert mit uq_conversation_users.",
-   confidence:"mittel"},
-  {category:"Admin", path:"GET /admin/media/pending", baseline:"vorher nie real getestet (Test-Token ohne Admin-Rolle → nur 403-Guard-Pfad gemessen)",
-   cluster:"BRICHT BEI 20 r/s ZUSAMMEN — 80% Timeout (10s), Ø 9236ms Latenz bei den restigen 20%",
-   evidence:"AdminService.getMediaPending() (admin.service.ts:184-193) hat kein LIMIT/Pagination — lädt alle 159.107 pending media_uploads-Zeilen (inkl. JOIN + Sortierung) bei JEDEM Aufruf, unabhängig von der Rate.",
-   confidence:"hoch"},
+// [Rate, Requests, Fehler%, 503, 5xx+000, p95 fast, heavy, auth, CPU fast, CPU heavy, CPU pg, Load, bestanden]
+const ramp = [
+  [400, 12000, 0,    0,    0,    29,   167, 800,   '83–92 %',   '30 %', '176 %', '9,9',  true],
+  [500, 15000, 1.9,  286,  0,    166,  317, 1836,  '115–124 %', '37 %', '272 %', '28,2', false],
+  [600, 18000, 27.6, 1478, 3485, 5006, 435, 10004, '122–123 %', '33 %', '198 %', '33,9', false],
+  [700, 21000, 38.4, 1840, 6221, 5007, 381, 10006, '122–127 %', '34 %', '215 %', '36,2', false],
+  [800, 24000, 40.1, 2254, 7362, 5007, 354, 10006, '133–141 %', '40 %', '223 %', '44,3', false],
+];
+const fastBudget = 100, heavyBudget = 500, authBudget = 1500;
+
+// [Rate, Durchgang, 5xx, 503, p95 fast, heavy, auth, Auslöser, bestanden]
+const wramp = [
+  [400, 1, 0, 1, 22, 37, 474, '—', true],
+  [500, 2, 0, 0, 18, 21, 295, '—', true],
+  [600, 1, 7, 53, 234, 94, 1858, '7 × 500 auf POST /chat/requests (23P01)', false],
+  [800, 1, 156, 295, 1324, 135, 3614, '156 × 500 auf GET …/messages (Chat-Race)', false],
+  [1000, 1, 5928, 409, 5003, 121, 10002, '401 × 500 auf GET …/messages, danach 504-Kaskade', false],
+  [1000, 2, 0, 66, 104, 58, 751, 'keine Race, knapp über Budget', false],
+  [1200, 1, 0, 282, 208, 70, 1073, 'keine Race, über Budget', false],
+  [1200, 2, 545, 427, 2440, 84, 5573, '533 × 500 auf GET …/messages', false],
 ];
 
-const patterns = [
-  {name:"KRITISCH: GET /admin/media/pending — fehlende Pagination",
-   tagline:"Der einzige Endpoint dieser Session, der unter Last real zusammenbricht — und zwar sofort, nicht erst bei hoher Rate.",
-   how:[
-     "<code>AdminService.getMediaPending()</code> (admin.service.ts:184-193): rohe SQL-Query ohne <code>LIMIT</code>/<code>OFFSET</code>/Cursor — <code>SELECT ... FROM media_uploads m LEFT JOIN profiles p ... WHERE m.moderation_status='pending' ... ORDER BY m.uploaded_at ASC</code>.",
-     "Aktueller Bestand in der Loadtest-DB: <b>159.107</b> pending Zeilen (teils durch die eigenen media_upload-Lasttests dieser Session erzeugt, aber das Muster selbst wächst auch organisch mit echtem Nutzerverkehr).",
-     "Test mit 20 echten Admin-Tokens (Rolle vorher via SQL + Re-Login korrekt gesetzt) bei nur 20 r/s: 80 von 100 Requests liefen in den 10s-curl-Timeout, die restlichen 20 brauchten im Schnitt 9,2s.",
-     "Root Cause: jede Anfrage muss die komplette Pending-Queue laden, joinen und als JSON serialisieren — Kosten pro Request skaliert mit der Gesamtgröße der Queue, nicht mit der angefragten Seite."
-   ],
-   files:"backend/src/modules/core/admin/admin.service.ts:184-193, admin.controller.ts:28-30",
-   reuse:"Fix: LIMIT/Cursor-Pagination ergänzen (siehe auch die bereits dokumentierte Pagination-Lücke im Chat-Modul — offenbar ein wiederkehrendes Muster im Repo, unbegrenzte Listen-Endpoints ohne Pagination zu bauen)."},
-
-  {name:"Race Condition — Check-then-Insert ohne Lock (2 Fundstellen)",
-   tagline:"Gleiche Bug-Klasse in zwei unabhängigen Services — beide bestätigt über echte 500er unter konkurrierender Last.",
-   how:[
-     "<code>ConversationsService.getOrCreate()</code> (conversations.service.ts:18-48): SELECT auf existierende Konversation, dann INSERT falls keine gefunden — kein Lock zwischen den beiden Schritten. Zwei parallele <code>accept()</code>-Aufrufe für denselben Sender/Empfänger können beide „nicht gefunden“ sehen und beide inserten → Kollision auf <code>uq_conversation_users</code> → unbehandelter <code>QueryFailedError</code> → roher 500.",
-     "<code>ChatService.sendContactRequest()</code> (chat.service.ts:46-79): identisches Muster — Existenz-Check auf pending Request, dann INSERT. Kollidiert unter Last auf <code>uq_contact_request_active</code> (EXCLUDE-Constraint).",
-     "Beobachtet: 1× 500 bei ~600 r/s auf accept, 12× 500 bei ~1000 r/s auf send — beide reproduzierbar unter genügend Nebenläufigkeit, nicht nur ein Lasttest-Artefakt (dieselbe Race kann in Produktion durch Doppel-Klicks oder Client-Retries entstehen).",
-     "HttpExceptionFilter (siehe unten) loggte für keinen der Fälle mehr als „Internal server error“ — die Diagnose erfolgte über Schema (uq_conversation_users, uq_contact_request_active) und Timing, nicht über Logs."
-   ],
-   files:"backend/src/modules/core/chat/conversations.service.ts:18-48, chat.service.ts:46-79",
-   reuse:"Fix-Optionen: Transaktion mit Row-Lock (<code>SELECT ... FOR UPDATE</code>) um Check+Insert, oder <code>INSERT ... ON CONFLICT DO NOTHING</code> + Re-Select statt Check-then-Insert."},
-
-  {name:"HttpExceptionFilter verschluckt Diagnoseinformationen",
-   tagline:"Jeder unbehandelte 500er landet im Log als eine generische Zeile — kein Stacktrace, keine Fehlerklasse, nirgendwo.",
-   how:[
-     "<code>HttpExceptionFilter.catch()</code> (http-exception.filter.ts:8-38): für alles außer <code>HttpException</code> wird <code>status=500</code> gesetzt und nur <code>message ?? 'Internal server error'</code> geloggt — die eigentliche Exception (Stack, Name, Constraint-Name bei DB-Fehlern) wird nirgends ausgegeben.",
-     "Beide Race-Condition-500er dieser Session mussten daher indirekt rekonstruiert werden (Schema-Constraints + Timing-Analyse der Requests), nicht aus den Logs abgelesen werden.",
-     "In Produktion bedeutet das: jeder unerwartete 500er (nicht nur diese beiden Races) ist aktuell praktisch nicht debugbar aus den Logs allein."
-   ],
-   files:"backend/src/common/filters/http-exception.filter.ts",
-   reuse:"Fix: bei nicht-HttpException-Fehlern zusätzlich <code>exception.stack</code>/<code>exception.message</code> loggen (z.B. via <code>this.logger.error(exception)</code> vor dem sanitisierten Client-Response)."},
-
-  {name:"Bestätigt: Single-Node-Prozess war der Flaschenhals, nicht Postgres",
-   tagline:"DB_POOL_MAX=40 hatte bei 1 Worker durchgehend 2x+ ungenutzten Headroom gegenüber der beobachteten Rate-Grenze — der Node-Event-Loop war der eigentliche Deckel.",
-   how:[
-     "Rechnung: theoretische Pool-Grenze = <code>poolMax / unbelastete_Latenz</code>. Für /discover/matches (35ms) ergibt das ~1140 r/s theoretisch, beobachtet bei 1 Worker aber nur ~500-580 r/s — nur ~46% der Pool-Kapazität ausgenutzt.",
-     "2-Worker-Experiment (Node <code>cluster</code>-Modul, 2 Forks): /discover/matches hielt 100% Erfolg bis mindestens 740 r/s (Test lief in Token-Kontamination, echte Grenze unbekannt) — schon das bestätigte die Hypothese.",
-     "8-Worker-Experiment (gleicher Mechanismus, kompilierter Build statt ts-node — siehe Methodik-Sektion): fast jeder Endpoint sprang von 200-580 r/s auf ≥1000-1950 r/s, ohne dass die DB, Redis oder MinIO sichtbar unter Last gerieten (docker stats blieb durchgehend niedrig).",
-     "Einzige zwei Ausnahmen mit tatsächlich erreichter Grenze: <code>GET /admin/media/pending</code> (Bug, siehe oben) und die beiden Race-Condition-Fälle — beide sind Anwendungslogik-Probleme, keine Infrastruktur-Grenzen."
-   ],
-   files:"src/main.ts (kein Cluster-Modus im Produkt), src/config/database.config.ts (poolMax), app.module.ts (ThrottlerModule/TypeOrmModule)",
-   reuse:"Empfehlung: Node <code>cluster</code>-Modul oder PM2 Cluster-Mode für den echten Backend-Prozess in Betracht ziehen, wenn mehr als ~300-500 r/s pro Instanz gebraucht werden — Postgres/Redis/MinIO haben in diesem Setup deutlich mehr Headroom als der App-Prozess."},
-
-  {name:"Methodik-Hinweise &amp; Grenzen dieser Messung",
-   tagline:"Zwei Bugs im Load-Test-Werkzeug selbst plus eine Host-Kontention-Beobachtung — wichtig für die Einordnung der Zahlen oben.",
-   how:[
-     "<b>O(n²)-Bug in endpoint-rate.sh (gefixt):</b> die Latenz-Aggregation (p95/Ø via Bubble-Sort) skaliert quadratisch mit der Zeilenzahl. Bei hohem Requestvolumen (&gt;700k Zeilen) hing ein einzelner Report-Schritt &gt;2 Stunden. Auf <code>asort()</code> (gawk) umgestellt — seitdem läuft die Aggregation in Sekunden.",
-     "<b>Token-TTL-Kontamination:</b> JWTs laufen nach 15 Minuten ab; lange Ramps (durch obigen Bug künstlich verlangsamt) liefen darüber hinaus und produzierten massenhaft 401er, die der Aggregator als „success“ zählt (nur 000/5xx gelten als Fehler). Betrifft die ersten drei Cluster-Ergebnisse (discover/deck, discover/matches, coin/balance) — deren „≥N r/s“-Werte sind der letzte NACHWEISLICH saubere Messpunkt vor Kontaminationsbeginn, nicht das Ramp-Ende.",
-     "<b>TOKEN_POOL_SIZE-Default:</b> <code>endpoint-rate.sh</code> regeneriert die User-/Token-Datei automatisch, wenn sie kleiner als 500 Zeilen ist (Standardwert) — hat einen eigens für den Admin-Test angelegten 20-User-Pool überschrieben. Fix: <code>TOKEN_POOL_SIZE=20</code> explizit setzen.",
-     "<b>Host-Kontention:</b> bei Raten über ~1900-2000 r/s wuchs die Ausführungszeit pro Ramp-Step linear mit, und die Load Average des Test-Hosts stieg zeitweise auf 46-126 (16 Kerne) — teils durch den Bash/curl-Fork-Overhead des Test-Tools selbst, teils durch parallel laufende Desktop-Prozesse auf derselben Maschine. Zahlen oberhalb von ~1500-2000 r/s sind daher als „mindestens so viel, unter Störeinfluss“ zu lesen, nicht als präzise Obergrenze.",
-     "<b>Cluster-Setup:</b> 8 Node-Worker über das <code>cluster</code>-Modul, kompilierter Build (<code>dist/main.js</code>) statt <code>ts-node</code> — Piscina's Bcrypt-Worker-Threads (bcrypt-pool.helper.ts) laden <code>execArgv</code>-basiert einen ts-node-Loader, der in einem händisch zusammengesetzten ts-node-Wrapper-Prozess nicht zuverlässig in neue Worker-Threads propagiert; der kompilierte Build umgeht das Problem vollständig."
-   ],
-   files:"scripts/loadtest/endpoint-rate.sh, scripts/loadtest/prefetch-tokens.sh, src/common/bcrypt/bcrypt-pool.helper.ts",
-   reuse:"Bei zukünftigen Lasttests: kleinere, dedizierte Token-Pools mit explizitem TOKEN_POOL_SIZE fahren, Ramps kurz genug für die Token-TTL halten (oder TTL für Testzwecke hochsetzen), und bei Raten &gt;1500-2000 r/s einen effizienteren Lastgenerator als bash+curl-per-request in Erwägung ziehen (z.B. autocannon)."},
+// [Test, Rate, Erfolg, p50, p95, p99, Einordnung, Bewertung]
+const iso = [
+  ['GET /health', 2000, '100 %', 1, 1, 3, 'nginx + Node ohne App-Logik: kein Engpass', 'ok'],
+  ['GET /auth/me', 1500, '100 %', 3, 6, 9, 'JWT-Prüfung + Status aus Redis-Cache: kein Engpass', 'ok'],
+  ['GET /hidden/coin/balance', 300, '100 %', 6, 8, 10, 'JWT + 2 PK-Lookups (TypeORM)', 'ok'],
+  ['GET /hidden/coin/balance', 600, '100 %', 5, 9, 18, '', 'ok'],
+  ['GET /hidden/coin/balance', 900, '100 %', 5, 10, 16, '', 'ok'],
+  ['GET /hidden/coin/balance', 1200, '100 %', 8, 95, 358, 'Knick: Node-Instanzen ~97 % CPU, Postgres 73 %', 'warn'],
+  ['GET /hidden/coin/balance', 1500, '92,4 %', 475, 5000, 5001, '1.702 × 504', 'bad'],
+  ['Mix ohne POST /auth/login', 800, '88,4 %', 104, 5002, 5007, 'mit Login 59,9 % Erfolg: bcrypt verschärft, ist aber nicht die alleinige Ursache', 'bad'],
+  ['nach Fix: GET /admin/media/pending (150k offen), einzeln', 1, '100 %', 8, 8, 8, '11 KB, Index-Scan 0,4 ms', 'ok'],
+  ['nach Fix: GET /admin/media/pending (150k offen)', 5, '100 %', 7, 11, '—', 'Nachbar coin/balance @300: p95 8 ms', 'ok'],
+  ['nach Fix: GET /admin/media/pending (150k offen)', 50, '100 %', 6, 7, '—', 'Nachbar coin/balance @300: p95 7 ms', 'ok'],
+  ['vor Fix: GET /admin/media/pending (150k offen), einzeln', 1, '100 %', 1878, 1878, 1878, '34 MB JSON pro Antwort', 'bad'],
+  ['vor Fix: GET /admin/media/pending (150k offen)', 2, '76,7 %', 2561, 3419, '—', '7 × 503 (statement_timeout); Nachbar coin/balance @300: p95 87 ms statt 8', 'bad'],
+  ['vor Fix: GET /admin/media/pending (150k offen)', 5, '25,3 %', 3370, 5013, '—', '41 × 503, 15 × 504; Nachbar coin/balance @300: 15,4 % 504, p95 5.001 ms', 'bad'],
 ];
 
-function badge(kind, val){
-  const text = (val || "—").toString().trim();
-  const known = ['hoch','mittel','niedrig'];
-  const cls = known.includes(text) ? text : 'none';
-  return `<span class="badge ${kind}-${cls}">${text}</span>`;
-}
+// [Endpunkt, Klasse, n@400, p50@400, p95@400, p95@500, err%@500, err%@600, err%@800]
+const endpoints = [["POST /auth/login","auth",188,615,800,1836,0.0,22.7,46.1],["GET /admin/dashboard/analytics","heavy",188,157,287,735,26.2,66.3,67.5],["GET /discover/deck","heavy",187,40,86,280,16.8,63.4,76.3],["GET /profile/search","heavy",188,44,73,266,9.3,42.3,63.7],["PUT /profile/me","fast",188,27,60,395,0.0,26.9,38.7],["GET /admin/owner/cash-transactions","heavy",187,26,57,120,17.7,66.9,68.8],["POST /profile/me/interests/{interestId}","fast",187,22,46,313,0.0,23.3,37.3],["POST /discover/swipe","fast",188,23,45,260,0.0,18.2,38.9],["GET /cities/search","fast",188,27,44,282,0.0,19.4,32.3],["POST /hidden/coin/test-purchase","fast",188,21,44,331,0.0,23.0,33.6],["GET /admin/users","heavy",188,22,43,194,10.2,50.2,55.5],["PUT /notifications/settings","fast",188,23,43,284,0.0,25.2,36.0],["GET /admin/dashboard/stats","heavy",187,17,40,131,8.6,57.7,60.3],["POST /chat/requests","fast",188,13,38,213,0.0,19.8,36.3],["GET /admin/owner/coin-transactions","heavy",187,16,37,101,13.8,64.4,73.1],["DELETE /profile/me/interests/{interestId}","fast",188,21,35,198,0.0,23.9,34.4],["GET /profile/me","fast",188,11,27,242,0.0,22.6,36.3],["GET /profile/{nickname}","fast",188,11,26,174,0.0,28.1,42.1],["GET /admin/dashboard/admin-stats","heavy",187,8,24,55,6.4,51.3,56.8],["GET /profile/user/{otherUserId}","fast",187,8,24,155,0.0,21.1,36.0],["GET /admin/reports","fast",188,8,22,162,0.0,25.3,37.3],["GET /discover/matches","fast",187,9,22,159,0.0,17.9,37.6],["GET /notifications/settings","fast",187,7,22,159,0.0,17.1,36.0],["GET /hidden/beef/pending","fast",188,8,22,118,0.0,23.5,37.1],["GET /admin/strikes","fast",187,7,21,127,0.0,18.9,36.5],["GET /hidden/coin/balance","fast",188,8,21,148,0.0,28.3,31.5],["GET /admin/admins","fast",188,8,20,160,0.0,21.1,30.9],["GET /chat/conversations","fast",187,8,20,148,0.0,19.8,34.1],["GET /chat/conversations/partners","fast",188,8,20,159,0.0,20.4,34.4],["GET /payment/logs","fast",187,8,20,137,0.0,23.4,33.9],["GET /profile/me/interests","fast",187,8,20,141,0.0,23.3,37.3],["GET /hidden/beef/my-active","fast",187,8,20,140,0.0,23.2,38.4],["GET /hidden/beef/exile/status","fast",188,7,19,152,0.0,23.6,34.1],["GET /moderation/reports","fast",187,6,18,124,0.0,18.6,34.1],["PATCH /notifications/read-all","fast",187,7,18,146,0.0,19.2,34.4],["GET /payment/subscriptions","fast",188,7,18,143,0.0,24.5,38.9],["GET /profile/me/blocks","fast",187,7,18,141,0.0,26.4,33.9],["GET /hidden/beef/public","fast",188,8,18,137,0.0,24.6,36.3],["GET /hidden/beef/highscore","fast",187,7,18,161,0.0,23.3,32.8],["GET /hidden/teeth","fast",187,7,18,146,0.0,29.8,26.9],["GET /admin/tickets","fast",188,7,17,150,0.0,16.4,36.3],["GET /admin/dashboard/user-stats","heavy",188,8,17,46,13.7,58.6,64.0],["GET /moderation/strikes","fast",187,7,17,143,0.0,21.1,36.5],["GET /moderation/admin/media/queue","fast",188,7,17,136,0.0,22.1,34.1],["GET /notifications","fast",188,7,17,166,0.0,24.9,36.5],["GET /hidden/badge/mine","fast",188,7,17,129,0.0,31.2,42.9],["GET /hidden/beef","fast",187,7,17,135,0.0,24.4,34.9],["GET /admin/media/pending","fast",187,6,16,138,0.0,22.4,41.1],["GET /admin/profanity","fast",187,5,16,116,0.0,21.4,34.9],["GET /admin/settings","fast",188,6,16,98,0.0,16.5,37.1],["GET /chat/requests/incoming","fast",188,7,16,129,0.0,17.6,33.1],["GET /chat/requests/outgoing","fast",187,7,16,141,0.0,18.7,35.5],["GET /profile/{nickname}/interests","fast",188,6,16,162,0.0,24.2,34.7],["GET /hidden/beef/incoming","fast",187,7,16,137,0.0,25.4,38.4],["GET /hidden/teeth/chains","fast",187,7,16,161,0.0,22.7,37.1],["GET /profile/interests","fast",187,4,12,103,0.0,22.0,40.3],["GET /auth/me","fast",187,5,11,72,0.0,20.9,33.3],["GET /setup/status","fast",187,3,11,132,0.0,25.6,38.9],["GET /auth/agb-versions","fast",187,4,10,81,0.0,20.9,34.4],["GET /system-settings/prices","fast",187,2,10,66,0.0,20.4,33.3],["GET /health","fast",188,2,9,48,0.0,23.8,38.4],["GET /tenant","fast",187,2,7,48,0.0,24.6,33.6],["GET ","fast",188,1,6,54,0.0,25.9,37.1],["GET /moderation/wordlist","fast",188,2,6,54,0.0,25.4,31.5]];
 
-function renderSummary(){
-  const counts = {};
-  findings.forEach(f => counts[f.category] = (counts[f.category]||0)+1);
-  const grid = document.getElementById('summary-grid');
-  grid.innerHTML = `<div class="summary-card"><div class="num">${findings.length}</div><div class="label">Endpoints getestet</div></div>` +
-    Object.entries(counts).map(([cat,n]) =>
-      `<div class="summary-card"><div class="num">${n}</div><div class="label">${cat}</div></div>`
-    ).join('');
-}
+const cards = [
+  {name:'Kapazitätsgrenze im Mix bei ~400–450 req/s', level:'hoch',
+   tagline:'Der fast-Pool (6 Instanzen) ist voll, bevor Postgres oder der heavy-Pool an ihre Grenze kommen.',
+   how:[
+     'Bei 500 req/s sind das rund 70 Requests pro Sekunde und fast-Instanz. Die Instanzen stehen dabei schon bei 115–124 % CPU (Main-Thread plus libuv/GC). Ein Request im Mix kostet im Mittel also über 10 ms CPU in Node.',
+     'Ab 600 req/s staut sich die Warteschlange im Event-Loop über den <code>proxy_read_timeout</code> von 5 s (<code>location /</code> in <code>nginx-lb.conf</code>) hinaus. Ergebnis ist eine 504-Kaskade quer über alle fast-Routen, auch über triviale wie <code>/health</code>, <code>/tenant</code> und <code>/setup/status</code>.',
+     'Gleichzeitig laufen die beiden heavy-Instanzen bei 30–40 % CPU, und ihr Gate wirft trotzdem 503 ab. <code>GATE_HEAVY=4</code> zählt Requests, die auf die DB warten, als belegt. Das Gate begrenzt deshalb nach Parallelität und nicht nach CPU.',
+     'Postgres liegt bei 176–272 % CPU, also 2–3 von 16 Kernen. Von 300 erlaubten Verbindungen sind fast alle idle (Stichproben: 1.300–1.700 idle gegenüber 60–115 aktiven Samples). Pool und DB setzen die Grenze nicht.'
+   ],
+   files:'backend/scripts/loadtest/nginx-lb.conf, docker-compose.loadtest.yml (BACKEND_REPLICAS, BACKEND_HEAVY_REPLICAS, GATE_*), src/common/route-class/route-class.gate.ts',
+   reuse:'Kurzfristig mehr fast-Replikas statt heavy (heavy hat Luft), dazu ein Load-Shedding für den fast-Pool (Gate-Klasse <code>fast</code> mit 503 + Retry-After), damit Überlast als schnelles 503 endet und nicht als 504 nach 5 s. Mittelfristig den CPU-Aufwand pro Request profilieren (siehe nächster Fund).'},
 
-let sortKey = null, sortAsc = true;
-let confFilter = 'alle';
+  {name:'Chat-Race: read_at vor sent_at', level:'hoch',
+   tagline:'Neu im Nutzer-Mix gefunden. Der häufigste Chat-Aufruf wirft unter Last 500, und genau diese Läufe brechen zusammen.',
+   how:[
+     '<code>ChatService.getMessages()</code> (chat.service.ts:358f.) und <code>ChatGateway</code> (chat.gateway.ts:252f.) setzen <code>read_at: new Date()</code>, also die Uhrzeit des Node-Prozesses zum Zeitpunkt, an dem das Update gebaut wird.',
+     '<code>sent_at</code> setzt Postgres per <code>DEFAULT now()</code>, also beim Start der Insert-Transaktion. Wird eine Nachricht nach dem <code>new Date()</code> des Lesers eingefügt, aber vor seinem <code>UPDATE … WHERE read_at IS NULL</code> committet, ist <code>read_at &lt; sent_at</code> und <code>chk_message_read_after_sent</code> schlägt fehl.',
+     'Das Fenster wächst mit der Last (Wartezeit im Event-Loop und im Pool). Im Log stehen 558 dieser <code>QueryFailedError</code> in 10 Minuten. Jeder Fehler loggt einen Stack, was die Instanzen zusätzlich bremst.',
+     'Im Nutzer-Mix: 156 × 500 bei 800 req/s, 401 bei 1.000 und 533 bei 1.200. Durchgänge ohne Race blieben auf diesen Stufen ohne 5xx.'
+   ],
+   files:'backend/src/modules/core/chat/chat.service.ts:358-359, chat.gateway.ts:252-253, migrations/001_baseline.sql:1245',
+   reuse:'<code>read_at</code> in SQL setzen: <code>{ read_at: () =&gt; \'clock_timestamp()\' }</code>. Das ist der Zeitpunkt der Zeilenänderung und liegt immer nach dem Commit jeder sichtbaren Nachricht. Danach den Nutzer-Mix bis 1.200 req/s wiederholen.'},
 
-function matchesSearch(f, q){
-  if(!q) return true;
-  const hay = (f.category+' '+f.path+' '+f.baseline+' '+f.cluster+' '+f.evidence+' '+f.confidence).toLowerCase();
-  return hay.includes(q);
-}
+  {name:'Behoben: GET /admin/media/pending lud die ganze Queue', level:'niedrig',
+   tagline:'Schon im Audit vom 13.09. kritisch. Am 27.10. gemessen, gefixt und nachgemessen.',
+   how:[
+     '<code>AdminService.getMediaPending()</code> (admin.service.ts:191–199) lädt alle offenen <code>media_uploads</code> inkl. JOIN auf <code>profiles</code> und <code>ORDER BY</code>, ohne <code>LIMIT</code>.',
+     'Test: 150.000 markierte Testzeilen eingefügt und nach der Messung wieder gelöscht. Ein einzelner Aufruf brauchte 1,9 s für 33,8 MB JSON. Bei 2 r/s scheiterten 23 %, bei 5 r/s 75 % (503 durch <code>statement_timeout</code>, 504 durch nginx).',
+     'Kollateralschaden: <code>coin/balance</code> lief parallel mit 300 r/s, also weit unter seiner Grenze von ~1.200 r/s. Bei 5 r/s <code>media/pending</code> bekam er 15,4 % 504 und p95 5 s. JSON-Serialisierung von 34 MB blockiert den Event-Loop der ganzen Instanz.',
+     'Die Route hat kein <code>@RouteClass(\'heavy\')</code> und fehlt im heavy-Regex von nginx. Sie umgeht damit beide Schutzmechanismen, die seit dem letzten Audit dazugekommen sind.'
+   ],
+   files:'backend/src/modules/core/admin/admin.service.ts:191-199, admin.controller.ts:31-34, scripts/loadtest/nginx-lb.conf:81',
+   reuse:'<b>Umgesetzt:</b> Keyset-Seite (<code>limit</code> 50, max 100, Cursor <code>after</code> über <code>(uploaded_at, id)</code>), Teilindex <code>idx_media_uploads_pending_queue</code> (Migration 013). Das Antwortformat bleibt ein Array. Nachgemessen mit 150k offenen Medien: 8 ms / 11 KB, 50 r/s ohne Fehler, der Nachbar <code>coin/balance</code> bleibt unbeeinflusst. Offen: <code>TicketsTab</code> zählt über <code>data.length</code> und zeigt höchstens 50.'},
 
-function renderTable(){
+  {name:'App-Overhead pro DB-Query', level:'mittel',
+   tagline:'Die Eingrenzung zeigt: Was teuer ist, ist die App-Seite jedes DB-Zugriffs, nicht die Auth und nicht Postgres.',
+   how:[
+     '<code>/auth/me</code> (JWT + <code>userStatusCached</code> aus Redis) hält 1.500 r/s bei p95 6 ms.',
+     '<code>coin/balance</code> fügt nur <code>ensureBalance()</code> (findOne) und noch ein <code>findOne</code> auf denselben PK hinzu. Er knickt bei 1.200 r/s ein, dabei liegen die Node-Instanzen bei ~97 % CPU und Postgres bei 73 %.',
+     'Der zweite Lookup ist überflüssig: <code>ensureBalance()</code> hat die Zeile bereits gelesen.'
+   ],
+   files:'backend/src/modules/hidden/coin/coin.service.ts:52-77',
+   reuse:'Ein CPU-Profil (<code>node --cpu-prof</code>) unter 400 req/s Mix aufnehmen, bevor optimiert wird. Kandidaten: doppelte Lookups wie in <code>getBalance()</code>, TypeORM-Entity-Hydration für reine Reads (<code>.getRawOne()</code>/<code>query()</code>), Logging/Interceptors pro Request.'},
+
+  {name:'Login (bcrypt) auf denselben Instanzen wie fast', level:'mittel',
+   tagline:'0,8 % der Requests, aber ein großer Teil der CPU in der Überlast.',
+   how:[
+     'Die nginx-Location für <code>auth/login</code> hat zwar ein eigenes Lese-Timeout (10 s), zeigt aber auf den fast-Upstream. Jeder Login kostet dort bcrypt-CPU im Piscina-Pool derselben Instanz.',
+     'Gegenprobe bei 800 req/s: mit Login 40,1 % Fehler (7.358 × 5xx), ohne Login 11,6 % (1.933 × 504 + 839 × 503).',
+     'Die auth-p95 lag bei 400 req/s bei 800 ms, bei 500 req/s bei 1.836 ms (über Budget) und ab 600 req/s beim Timeout von 10 s.'
+   ],
+   files:'backend/scripts/loadtest/nginx-lb.conf:88-91, src/common/bcrypt/bcrypt-pool.helper.ts',
+   reuse:'Auth-Routen auf einen eigenen Upstream legen (z. B. den heavy-Pool, der Luft hat) oder die bcrypt-Threads pro Instanz begrenzen, damit sie dem Event-Loop keine Kerne wegnehmen.'},
+
+  {name:'Race in POST /chat/requests: 500 statt 409', level:'mittel',
+   tagline:'Ein Fund aus dem letzten Audit, der weiter echte Serverfehler erzeugt. Jetzt ist er im Log sauber diagnostizierbar.',
+   how:[
+     '<code>ChatService.sendContactRequest()</code> prüft zuerst auf eine offene Anfrage (<code>ConflictException</code> bei Treffer) und fügt dann ein. Zwischen beiden Schritten gibt es keinen Lock.',
+     'Unter Last kollidieren parallele Anfragen auf <code>uq_contact_request_active</code>. Das ist ein <b>EXCLUDE</b>-Constraint, Postgres meldet ihn als SQLSTATE <b>23P01</b> und nicht als 23505.',
+     '<code>PG_STATUS</code> im <code>HttpExceptionFilter</code> kennt nur 23505, 23503 und 57014, deshalb endet 23P01 als 500. Heute waren es 17 × 500 in den Stufen 600–1.200 req/s (Log: <code>QueryFailedError: conflicting key value violates exclusion constraint "uq_contact_request_active"</code>). Bei 400 req/s gab es keinen.',
+     'Dieselbe Race kann auch ohne Last durch Doppel-Klick oder Client-Retry entstehen.'
+   ],
+   files:'backend/src/common/filters/http-exception.filter.ts:7-11, src/modules/core/chat/chat.service.ts (sendContactRequest)',
+   reuse:'Schnell: <code>\'23P01\'</code> in <code>PG_STATUS</code> auf 409 abbilden. Sauber: Check und Insert in einer Transaktion mit <code>pg_advisory_xact_lock</code> auf das User-Paar, oder den Constraint-Fehler gezielt abfangen und als „Anfrage bereits gesendet“ beantworten.'},
+
+  {name:'Foreign Keys ohne Index', level:'mittel',
+   tagline:'39 von 71 FK-Constraints haben keinen Index auf der referenzierenden Spalte.',
+   how:[
+     'Beispiele: <code>messages.media_id</code>, <code>organizations.logo_id</code>, <code>profiles.audio_id</code>, <code>profiles.photo_id</code>, alle auf <code>media_uploads</code>.',
+     'Folge: Jedes <code>DELETE</code> bzw. jede Purge-Löschung in der referenzierten Tabelle prüft die abhängigen Tabellen per Seq-Scan. 150k <code>media_uploads</code> löschen dauerte über 2 Minuten, bei 64 übrigen Zeilen in der Tabelle.',
+     'Unter Last nicht direkt gemessen. Relevant für Purge-Jobs im Worker und für <code>ON DELETE</code>-Kaskaden.'
+   ],
+   files:'backend/migrations',
+   reuse:'Abfrage aus diesem Audit (<code>pg_constraint</code> ohne passenden <code>pg_index</code>) als Liste nehmen und Indexe für die Spalten anlegen, über die gelöscht oder gejoint wird.'},
+
+  {name:'Stand der Funde vom 13.09.', level:'niedrig',
+   tagline:'Was seit dem letzten Audit erledigt ist und was noch offen ist.',
+   how:[
+     '<b>Behoben:</b> <code>HttpExceptionFilter</code> loggt bei ≥ 500 den Stack. 23505/23503 → 409, 57014 → 503 mit <code>Retry-After</code>. Erwartbare 4xx werden nur noch auf debug geloggt.',
+     '<b>Behoben:</b> Single-Node-Engpass. Statt eines Prozesses laufen 6 fast- und 2 heavy-Instanzen hinter nginx, mit Routen-Klassen-Gate (heavy/auth/upload).',
+     '<b>Entschärft:</b> Race in <code>ConversationsService.getOrCreate()</code> (Check-then-Insert auf <code>uq_conversation_users</code>, ein UNIQUE-Constraint). Im Code unverändert, der Konflikt endet über den Filter aber als 409 statt 500.',
+     '<b>Offen:</b> Race in <code>ChatService.sendContactRequest()</code>. Sie liefert weiter 500, weil ihr EXCLUDE-Constraint den Code 23P01 wirft (siehe eigener Fund).',
+     '<b>Behoben (27.10.):</b> <code>GET /admin/media/pending</code> ohne Pagination (siehe oben).',
+     '<b>Hinfällig:</b> Token-TTL-Kontamination und O(n²)-Aggregation im alten Bash-Werkzeug. Loadtest-Tokens laufen 12 h, der C++-Generator aggregiert selbst.'
+   ],
+   files:'backend/src/common/filters/http-exception.filter.ts, src/modules/core/chat/conversations.service.ts:18-48',
+   reuse:'—'},
+];
+
+const meth = [
+  {name:'Aufbau und Grenzen dieser Messung', tagline:'Wichtig für die Einordnung der Zahlen.', how:[
+    '<b>Last und App auf demselben Host.</b> Ab 500 req/s stieg die Load Average auf 28–44 bei 16 Kernen (Postgres, 8 Node-Instanzen, nginx, loadgen, dazu Desktop/Browser). Die absoluten Grenzwerte gelten für diesen Rechner. Auf getrennter Hardware mit eigenen Kernen für die App liegen sie höher. Die <i>Reihenfolge</i> der Engpässe (fast-Pool vor DB vor heavy) ist davon unabhängig, denn <code>/health</code> mit 2.000 r/s und <code>/auth/me</code> mit 1.500 r/s liefen unter denselben Bedingungen sauber.',
+    '<b>Endpunkt-Mix ist gleichverteilt</b> (jeder Katalog-Eintrag gleich oft), also kein realistisches Nutzerprofil. Admin- und Dashboard-Routen sind dadurch überrepräsentiert.',
+    '<b>Seed-Reset beim Neustart.</b> Das Neu-Hochfahren läuft durch <code>docker-entrypoint.sh</code> und setzt die Seed-User zurück. Die alten Loadtest-Tokens bestehen <code>/auth/me</code> danach weiter (JWT + Cache), gehören aber zu gelöschten Profilen. Ein erster 3-Minuten-Lauf maß deshalb 2.322 × 404 und 8.129 × 409 und wurde verworfen. <code>./lt yourbrand check</code> prüft nur <code>/auth/me</code> und erkennt diesen Zustand nicht. Besser wäre ein Probe-Request auf <code>/profile/me</code>.',
+    '<b>Nicht abgedeckte Endpunkte:</b> Nach dem Reset fehlten Testdaten für 12 Platzhalter (u. a. <code>beefId</code>, <code>boardId</code>, <code>orgId</code>, <code>productId</code>, <code>reportId</code>, <code>mediaId</code>). Die zugehörigen Detail-Routen wurden übersprungen, Uploads sind nicht im Katalog-Mix.',
+    '<b>Stufen à 30 s</b> zeigen den Knick zuverlässig, aber keine Effekte, die sich langsam aufbauen (Speicher, Connection-Churn, Autovacuum). Dafür steht der 180-s-Lauf bei 400 req/s: bestanden, 72.000 Requests.',
+    '<b>Testdaten-Hygiene:</b> Die 150k Zeilen für den <code>media/pending</code>-Test waren mit <code>file_url LIKE \'audit-backlog/%\'</code> markiert und wurden danach vollständig gelöscht. Der Bestand ist wieder bei 64 Medien und 0 offenen.'
+  ], files:'~/dev/loadtest: engine/cpp/loadgen, engine/cpp/check.js, targets/yourbrand/{target.sh,endpoints.tsv,vars.tsv}', reuse:'Wiederholen: <code>for r in 400 500 600 800; do CHECK_RATE=$r CHECK_DURATION=30 ./lt yourbrand check; done</code>. Für belastbare Absolutwerte loadgen auf einem zweiten Rechner laufen lassen (<code>--host</code>).'},
+];
+
+const fmtMs = (v, budget) => v == null ? '—' : `<span class="${budget && v > budget ? 'bad' : ''}">${v.toLocaleString('de-DE')} ms</span>`;
+const fmtPct = (v) => v == null ? '—' : `<span class="${v >= 5 ? 'bad' : v > 0 ? 'warn' : 'ok'}">${v.toLocaleString('de-DE')} %</span>`;
+const levelBadge = (l) => `<span class="badge b-${l}">${{hoch:'hoch', mittel:'mittel', niedrig:'Status'}[l]}</span>`;
+
+document.getElementById('ramp-body').innerHTML = ramp.map(r => `<tr>
+  <td class="n"><b>${r[0]}</b></td><td class="n">${r[1].toLocaleString('de-DE')}</td><td class="n">${fmtPct(r[2])}</td>
+  <td class="n">${r[3].toLocaleString('de-DE')}</td><td class="n">${r[4].toLocaleString('de-DE')}</td>
+  <td class="n">${fmtMs(r[5], fastBudget)}</td><td class="n">${fmtMs(r[6], heavyBudget)}</td><td class="n">${fmtMs(r[7], authBudget)}</td>
+  <td class="n">${r[8]}</td><td class="n">${r[9]}</td><td class="n">${r[10]}</td><td class="n">${r[11]}</td>
+  <td>${r[12] ? '<span class="badge b-niedrig">bestanden</span>' : '<span class="badge b-hoch">nicht bestanden</span>'}</td></tr>`).join('');
+
+document.getElementById('wramp-body').innerHTML = wramp.map(r => `<tr>
+  <td class="n"><b>${r[0].toLocaleString('de-DE')}</b></td><td>${r[1]}.</td>
+  <td class="n"><span class="${r[2] ? 'bad' : 'ok'}">${r[2].toLocaleString('de-DE')}</span></td><td class="n">${r[3].toLocaleString('de-DE')}</td>
+  <td class="n">${fmtMs(r[4], fastBudget)}</td><td class="n">${fmtMs(r[5], heavyBudget)}</td><td class="n">${fmtMs(r[6], authBudget)}</td>
+  <td class="dim">${r[7]}</td>
+  <td>${r[8] ? '<span class="badge b-niedrig">bestanden</span>' : '<span class="badge b-hoch">nicht bestanden</span>'}</td></tr>`).join('');
+
+document.getElementById('iso-body').innerHTML = iso.map(r => `<tr>
+  <td class="path">${r[0]}</td><td class="n">${r[1].toLocaleString('de-DE')} r/s</td>
+  <td class="n"><span class="${r[7]}">${r[2]}</span></td>
+  <td class="n">${typeof r[3] === 'number' ? r[3].toLocaleString('de-DE') + ' ms' : r[3]}</td>
+  <td class="n">${typeof r[4] === 'number' ? r[4].toLocaleString('de-DE') + ' ms' : r[4]}</td>
+  <td class="n">${typeof r[5] === 'number' ? r[5].toLocaleString('de-DE') + ' ms' : r[5]}</td>
+  <td class="dim">${r[6]}</td></tr>`).join('');
+
+const renderCards = (list) => list.map(p => `<div class="card">
+  <h3>${p.name} ${p.level ? levelBadge(p.level) : ''}</h3><div class="tagline">${p.tagline}</div>
+  <ul>${p.how.map(h => `<li>${h}</li>`).join('')}</ul>
+  <div class="kv"><b>Dateien:</b> <span class="path">${p.files}</span></div>
+  <div class="kv"><b>Empfehlung:</b> ${p.reuse}</div></div>`).join('');
+document.getElementById('cards').innerHTML = renderCards(cards);
+document.getElementById('meth').innerHTML = renderCards(meth);
+
+let sortIdx = 4, sortAsc = false, clsFilter = 'alle';
+const budgetOf = { fast: fastBudget, heavy: heavyBudget, auth: authBudget };
+function renderEndpoints() {
   const q = document.getElementById('search').value.trim().toLowerCase();
-  let rows = findings.filter(f => matchesSearch(f, q) && (confFilter === 'alle' || f.confidence === confFilter));
-
-  if(sortKey){
-    rows = rows.slice().sort((a,b) => {
-      const av = (a[sortKey]||'').toString().toLowerCase();
-      const bv = (b[sortKey]||'').toString().toLowerCase();
-      if(av < bv) return sortAsc ? -1 : 1;
-      if(av > bv) return sortAsc ? 1 : -1;
-      return 0;
+  const rows = endpoints
+    .filter(e => (clsFilter === 'alle' || e[1] === clsFilter) && (!q || e[0].toLowerCase().includes(q)))
+    .sort((a, b) => {
+      const av = a[sortIdx] ?? -1, bv = b[sortIdx] ?? -1;
+      const c = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+      return sortAsc ? c : -c;
     });
-  }
-
-  const body = document.getElementById('findings-body');
-  const noRows = document.getElementById('no-rows');
-  if(rows.length === 0){
-    body.innerHTML = '';
-    noRows.style.display = 'block';
-    return;
-  }
-  noRows.style.display = 'none';
-
-  body.innerHTML = rows.map(f => `
-    <tr>
-      <td><span class="cat-tag">${f.category}</span></td>
-      <td class="path">${f.path}</td>
-      <td class="evidence">${f.baseline}</td>
-      <td class="evidence">${f.cluster}</td>
-      <td class="evidence">${f.evidence}</td>
-      <td>${badge('conf', f.confidence)}</td>
-    </tr>
-  `).join('');
+  document.getElementById('ep-body').innerHTML = rows.map(e => `<tr>
+    <td class="path">${e[0]}</td><td><span class="cat-tag">${e[1]}</span></td>
+    <td class="n">${fmtMs(e[3])}</td><td class="n">${fmtMs(e[4], budgetOf[e[1]])}</td><td class="n">${fmtMs(e[5], budgetOf[e[1]])}</td>
+    <td class="n">${fmtPct(e[6])}</td><td class="n">${fmtPct(e[7])}</td><td class="n">${fmtPct(e[8])}</td></tr>`).join('')
+    || '<tr><td colspan="8" class="dim">Keine Endpunkte für diesen Filter.</td></tr>';
 }
-
-function renderPatterns(){
-  document.getElementById('patterns').innerHTML = patterns.map(p => `
-    <div class="pattern-card">
-      <h3>${p.name}</h3>
-      <div class="tagline">${p.tagline}</div>
-      <ul>${p.how.map(h => `<li>${h}</li>`).join('')}</ul>
-      <div class="kv"><b>Key files:</b> <span class="path">${p.files}</span></div>
-      <div class="kv"><b>Empfehlung:</b> ${p.reuse}</div>
-    </div>
-  `).join('');
-}
-
-document.querySelectorAll('thead th').forEach(th => {
-  th.addEventListener('click', () => {
-    const key = th.dataset.key;
-    if(sortKey === key){ sortAsc = !sortAsc; } else { sortKey = key; sortAsc = true; }
-    document.querySelectorAll('thead th').forEach(h => h.classList.remove('sorted','sorted-asc'));
-    th.classList.add(sortAsc ? 'sorted-asc' : 'sorted');
-    renderTable();
-  });
-});
-
-document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    confFilter = btn.dataset.conf;
-    renderTable();
-  });
-});
-
-document.getElementById('search').addEventListener('input', renderTable);
-
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const tab = btn.dataset.tab;
-    document.getElementById('panel-a').style.display = tab === 'a' ? 'block' : 'none';
-    document.getElementById('panel-b').style.display = tab === 'b' ? 'block' : 'none';
-    document.querySelector('.controls').style.display = tab === 'a' ? 'flex' : 'none';
-  });
-});
-
-renderSummary();
-renderTable();
-renderPatterns();
+document.querySelectorAll('#ep-table th.sortable').forEach(th => th.addEventListener('click', () => {
+  const i = Number(th.dataset.i);
+  if (sortIdx === i) sortAsc = !sortAsc; else { sortIdx = i; sortAsc = i <= 1; }
+  document.querySelectorAll('#ep-table th').forEach(h => h.classList.remove('sorted', 'sorted-asc'));
+  th.classList.add(sortAsc ? 'sorted-asc' : 'sorted');
+  renderEndpoints();
+}));
+document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active'); clsFilter = btn.dataset.cls; renderEndpoints();
+}));
+document.getElementById('search').addEventListener('input', renderEndpoints);
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + btn.dataset.tab));
+}));
+renderEndpoints();
 </script>
 </body>
 </html>

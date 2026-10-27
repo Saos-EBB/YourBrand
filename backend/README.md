@@ -390,7 +390,7 @@ All admin routes require JWT with `role: admin`.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/admin/media/pending` | List all `media_uploads` with `moderation_status = 'pending'`. Returns `id`, `file_url`, `uploaded_at`, `uploaded_by`, `nickname`. |
+| GET | `/admin/media/pending` | One page of the moderation queue (`moderation_status = 'pending'`), oldest first. `?limit=` (default 50, max 100), `?after=<id of the last item>` for the next page. Returns an array of `id`, `file_url`, `file_type`, `uploaded_at`, `uploaded_by`, `nickname`. |
 | PATCH | `/admin/media/:id/approve` | Approve a photo: sets `moderation_status = approved`, `needs_review = false`, records reviewer + timestamp, deletes open `admin_ticket`, sends owner notification. Returns 204. |
 | PATCH | `/admin/media/:id/reject` | Reject a photo. Body: `{ reason: string }`. Records reviewer, timestamp, and reason; deletes open `admin_ticket`; nulls `profile.photo_id`; sends owner notification. Returns 204. |
 
@@ -800,9 +800,43 @@ Shared building blocks:
 
 The dashboard (`dashboard/`, plain Node `http`, zero dependencies, no build step) gives all three modes a live SSE view (status bar, health bar, per-endpoint breakdown table, sortable by any column), a History tab merging every past run across all three modes, and start/stop control — see [`scripts/loadtest/README.md`](scripts/loadtest/README.md) for the full breakdown.
 
+### Resilience audit (2026-10-27)
+
+Measured with the fixed-rate C++ generator from the separate loadtest repo (`./lt yourbrand check`) against this stack:
+6 fast instances, 2 heavy, Postgres `max_connections=300`, generator and app on the **same** 16-core machine, so the
+absolute numbers are a lower bound for this box. Full report: [`docs/audit.html`](docs/audit.html).
+
+| Mix | Holds every budget | Breaks |
+|---|---|---|
+| uniform (every catalog endpoint equally often, admin/dashboard = 20 % of traffic) | ~400 req/s | 500 req/s over budget, from 600 req/s a 504 cascade (28–40 % errors) |
+| weighted user mix (chat 33 %, discover 19 %, profile 17 %, admin < 1 %) | 500 req/s | 600–1,200 req/s unstable: without the chat race below just above budget, with it a cascade |
+
+Budgets: p95 fast ≤ 100 ms, heavy ≤ 500 ms, auth ≤ 1.5 s, 503 ≤ 1 %, no 5xx except gate 503s. At ~0.15–0.2 req/s per
+active user, 500 req/s are roughly 2,500–3,300 concurrent users (estimate, not measured).
+
+Findings:
+- **Fixed:** `GET /admin/media/pending` loaded the whole queue. With 150k pending media one call took 1.9 s for 34 MB
+  JSON; at 5 req/s 75 % failed and a neighbouring route on the same instance (`coin/balance` at 300 req/s) got 15 %
+  504s. Now a keyset page (migration 013): 8 ms / 11 KB, 50 req/s without errors, the neighbour untouched.
+- **Open:** `GET /chat/conversations/:id/messages` answers 500 under load. `read_at` is set from Node's clock
+  (`new Date()`), `sent_at` by Postgres (`DEFAULT now()`); a message inserted between the two violates
+  `chk_message_read_after_sent`. Seen 156–533 times per 30 s step from 800 req/s, and every collapsed run had it.
+  Fix: set `read_at` in SQL (`clock_timestamp()`), in `chat.service.ts` and `chat.gateway.ts`.
+- **Open:** `POST /chat/requests` still races (check-then-insert) and answers 500, because `uq_contact_request_active`
+  is an EXCLUDE constraint (SQLSTATE `23P01`), which `HttpExceptionFilter` doesn't map to 409.
+- **Open:** the fast pool saturates on CPU first (120–140 % per instance) while the heavy instances idle at 30–40 %
+  and Postgres uses 2–3 of 16 cores; login (bcrypt) shares the fast pool. `/health` holds 2,000 req/s at p95 1 ms and
+  `/auth/me` 1,500 req/s at 6 ms, so the cost is per-request app work around DB queries.
+- **Open:** 39 of 71 foreign keys have no index on the referencing column (e.g. `messages.media_id`,
+  `profiles.photo_id`); deleting 150k `media_uploads` took over 2 minutes.
+
 ---
 
 ## Changelog
+
+### 2026-10-27 — Resilience Audit, Paginated Media Queue
+- fix(admin): `GET /admin/media/pending` returns one page (`limit` default 50, max 100, cursor `after`) instead of the whole queue; partial index `idx_media_uploads_pending_queue` (migration 013)
+- docs: resilience audit (`docs/audit.html`, section above) — capacity ramp, endpoint latencies, isolation tests, open findings
 
 ### 2026-10-24 – 10-26 — Load Test Audit: Scaling Fixes
 - feat(loadtest): nginx load balancer with backend replicas and separate instances for heavy routes; `@RouteClass` gate per instance (503 + `Retry-After` when full)

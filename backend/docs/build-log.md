@@ -1,3 +1,14 @@
+## 2026-10-27 — fix(admin): Moderations-Warteschlange seitenweise
+**Was:** Belastbarkeits-Audit (`docs/audit.html`). `GET /admin/media/pending` lud die ganze Warteschlange ohne `LIMIT`:
+mit 150.000 offenen Medien 1,9 s und 34 MB JSON pro Aufruf, bei 5 r/s 75 % Fehler, und ein Nachbar auf derselben
+Instanz (`coin/balance` mit 300 r/s) bekam 15 % 504. Jetzt eine Seite: `limit` (Standard 50, max 100), Cursor `after`
+= id des letzten Eintrags, Sortierung `uploaded_at, id`. Antwort bleibt ein Array, `MediaTab` und `TicketsTab` laufen
+unverändert. Migration `013_media_uploads_pending_queue_index.sql` (Teilindex auf `(uploaded_at, id)` für pending und
+nicht gelöscht), im DB-Image und in der Loadtest-DB angewandt. Gemessen mit 150k Testzeilen (danach gelöscht):
+8 ms / 11 KB, Index-Scan 0,4 ms, 50 r/s ohne Fehler, Nachbar unverändert bei p95 7 ms.
+**Nicht gebaut:** `TicketsTab` zählt offene Medien über `data.length`, zeigt also höchstens 50. Kein Blättern im
+Frontend: nach Freigabe oder Ablehnung lädt die Liste die nächsten nach. In `XXX_db` nicht angewandt.
+
 ## 2026-10-26 — fix(media): Proxy liefert nicht freigegebene Medien nur an Besitzer und Admins
 **Was:** Audit B6 (`need to fix.txt` Punkt 1). `GET /media/file/*` sucht die Zeile zur Datei
 (`MediaService.fileAccess`, Migration `012_media_uploads_file_url_index.sql`, im DB-Image, Loadtest-DB und `XXX_db`

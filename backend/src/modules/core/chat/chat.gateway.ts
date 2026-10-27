@@ -250,7 +250,7 @@ for (const conv of conversations) {
 
         await this.messageRepo.update(
             { conversation_id: conversationId, sender_id: Not(userId), read_at: IsNull() },
-            { read_at: new Date() },
+            { read_at: () => 'clock_timestamp()' },
         );
 
         this.server.to(conversationId).emit('messages_read', { userId, conversationId });

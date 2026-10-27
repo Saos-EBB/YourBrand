@@ -29,8 +29,14 @@ export class AdminController {
     // ── Media moderation ───────────────────────────────────────────────────────
 
     @Get('media/pending')
-    getMediaPending() {
-        return this.adminService.getMediaPending();
+    getMediaPending(
+        @Query('limit') limit = '50',
+        @Query('after', new ParseUUIDPipe({ optional: true })) after?: string,
+    ) {
+        return this.adminService.getMediaPending({
+            limit: Math.min(100, Math.max(1, parseInt(limit, 10) || 50)),
+            after,
+        });
     }
 
     @Patch('media/:id/approve')

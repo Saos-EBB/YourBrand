@@ -7,6 +7,7 @@ import { QueryFailedError } from 'typeorm';
 const PG_STATUS: Record<string, { status: HttpStatus; message: string }> = {
     '23505': { status: HttpStatus.CONFLICT, message: 'Konflikt: Eintrag existiert bereits' },
     '23503': { status: HttpStatus.CONFLICT, message: 'Konflikt: verknuepfter Eintrag fehlt oder wird noch verwendet' },
+    '23P01': { status: HttpStatus.CONFLICT, message: 'Konflikt: Anfrage laeuft bereits' },
     '57014': { status: HttpStatus.SERVICE_UNAVAILABLE, message: 'Zeitlimit ueberschritten, bitte erneut versuchen' },
 };
 

@@ -188,14 +188,20 @@ export class AdminService {
 
     // ── Media moderation ───────────────────────────────────────────────────────
 
-    async getMediaPending(): Promise<{ id: string; file_url: string; file_type: string; uploaded_at: Date; uploaded_by: string; nickname: string | null }[]> {
+    // Eine Seite der Warteschlange, älteste zuerst. Ohne LIMIT lud jeder Aufruf die ganze Queue (Belastbarkeits-Audit
+    // 2026-10-27: 150k offene Medien = 34 MB JSON, legte bei 5 r/s die ganze Instanz lahm). after = id des letzten
+    // Eintrags der vorigen Seite; Index idx_media_uploads_pending_queue (Migration 013).
+    async getMediaPending(opts: { limit: number; after?: string }): Promise<{ id: string; file_url: string; file_type: string; uploaded_at: Date; uploaded_by: string; nickname: string | null }[]> {
         return this.dataSource.query(
             `SELECT m.id, m.file_url, m.file_type, m.uploaded_at, m.uploaded_by, p.nickname
              FROM   media_uploads m
              LEFT JOIN profiles p ON p.user_id = m.uploaded_by
              WHERE  m.moderation_status = 'pending'
                AND  m.deleted_at IS NULL
-             ORDER  BY m.uploaded_at ASC`,
+               AND  ($2::uuid IS NULL OR (m.uploaded_at, m.id) > (SELECT uploaded_at, id FROM media_uploads WHERE id = $2))
+             ORDER  BY m.uploaded_at ASC, m.id ASC
+             LIMIT  $1`,
+            [opts.limit, opts.after ?? null],
         );
     }
 
