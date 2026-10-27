@@ -75,7 +75,6 @@ export class ChatController {
         return this.chatService.getMessages(req.user.sub, id, before);
     }
 
-    @RouteClass('heavy')
     @Post('conversations/:id/messages')
     sendMessage(
         @Request() req: any,
