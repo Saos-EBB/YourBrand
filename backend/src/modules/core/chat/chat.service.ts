@@ -236,19 +236,25 @@ export class ChatService {
         const partnerUserIds = [...new Set(conversations.map(c => c.user_a_id === userId ? c.user_b_id : c.user_a_id))];
 
         const [latestMessages, partnerProfiles] = await Promise.all([
-            this.messageRepository
-                .createQueryBuilder('msg')
-                .where('msg.conversation_id IN (:...ids)', { ids })
-                .andWhere(qb => {
-                    const sub = qb
-                        .subQuery()
-                        .select('MAX(m2.sent_at)')
-                        .from(Message, 'm2')
-                        .where('m2.conversation_id = msg.conversation_id')
-                        .getQuery();
-                    return `msg.sent_at = (${sub})`;
-                })
-                .getMany(),
+            // LATERAL JOIN: idx_msg_conversation (conversation_id, sent_at DESC) + LIMIT 1
+            // avoids a correlated MAX subquery that scanned every row per conversation
+            this.conversationRepository.manager.query<{
+                id: string; conversation_id: string; sender_id: string;
+                content: string | null; sent_at: Date; read_at: Date | null; is_deleted: boolean;
+            }[]>(
+                `SELECT lm.id, lm.conversation_id, lm.sender_id, lm.content,
+                        lm.sent_at, lm.read_at, lm.is_deleted
+                 FROM   unnest($1::uuid[]) AS cid
+                 JOIN LATERAL (
+                     SELECT m.id, m.conversation_id, m.sender_id, m.content,
+                            m.sent_at, m.read_at, m.is_deleted
+                     FROM   messages m
+                     WHERE  m.conversation_id = cid
+                     ORDER  BY m.sent_at DESC, m.id DESC
+                     LIMIT  1
+                 ) lm ON true`,
+                [ids],
+            ),
             this.profileRepository
                 .createQueryBuilder('p')
                 .select(['p.user_id', 'p.last_active_at', 'p.status_visible', 'p.status_message'])
