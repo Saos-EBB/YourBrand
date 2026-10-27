@@ -17,6 +17,7 @@ import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { SendContactRequestDto } from './dto/send-contact-request.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { RequiresModule } from '../../../common/tenant/requires-module.decorator';
+import { RouteClass } from '../../../common/route-class/route-class.decorator';
 
 @RequiresModule('chat')
 @Controller('chat')
@@ -24,6 +25,7 @@ import { RequiresModule } from '../../../common/tenant/requires-module.decorator
 export class ChatController {
     constructor(private readonly chatService: ChatService) { }
 
+    @RouteClass('heavy')
     @Post('requests')
     sendContactRequest(@Request() req: any, @Body() dto: SendContactRequestDto) {
         return this.chatService.sendContactRequest(req.user.sub, dto);
@@ -73,6 +75,7 @@ export class ChatController {
         return this.chatService.getMessages(req.user.sub, id, before);
     }
 
+    @RouteClass('heavy')
     @Post('conversations/:id/messages')
     sendMessage(
         @Request() req: any,

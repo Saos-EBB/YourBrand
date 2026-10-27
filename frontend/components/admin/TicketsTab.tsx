@@ -65,10 +65,14 @@ export function TicketsTab({ showToast }: Props) {
   async function loadPendingMedia() {
     setMediaLoading(true)
     try {
-      const data = await fetchApi<PendingMedia[]>('/admin/media/pending')
-      setPendingMedia(data)
-      setAdminMediaCount(data.length)
-      if (data.length > 0) setMediaExpanded(true)
+      // Fetch one extra to detect overflow without a separate COUNT query
+      const data = await fetchApi<PendingMedia[]>('/admin/media/pending?limit=51')
+      const hasMore = data.length > 50
+      const items = hasMore ? data.slice(0, 50) : data
+      setPendingMedia(items)
+      // Store 51 when there are more so the badge can show "50+"
+      setAdminMediaCount(hasMore ? 51 : items.length)
+      if (items.length > 0) setMediaExpanded(true)
     } catch (err) {
       showToast(err instanceof Error ? err.message : t.admin.loadError, false)
     } finally {
@@ -257,7 +261,7 @@ export function TicketsTab({ showToast }: Props) {
             </p>
             {adminMediaCount > 0 && (
               <span className="h-4 min-w-4 px-1 rounded-full bg-error text-on-error text-[9px] font-bold flex items-center justify-center">
-                {adminMediaCount > 99 ? '99+' : adminMediaCount}
+                {adminMediaCount > 50 ? '50+' : adminMediaCount}
               </span>
             )}
           </div>
