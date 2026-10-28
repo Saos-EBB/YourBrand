@@ -114,23 +114,25 @@ export class SwipeService {
     }
 
     private async enforceSwipeLimit(userId: string): Promise<void> {
-        const isPremium = await this.subscriptionRepo.findOne({
-            where: [
-                { user_id: userId, status: 'active', expires_at: IsNull() },
-                { user_id: userId, status: 'active', expires_at: MoreThan(new Date()) },
-            ],
-            select: { id: true },
-        });
+        // Both queries run in parallel: subscription check and 24h swipe count.
+        const [isPremium, countResult] = await Promise.all([
+            this.subscriptionRepo.findOne({
+                where: [
+                    { user_id: userId, status: 'active', expires_at: IsNull() },
+                    { user_id: userId, status: 'active', expires_at: MoreThan(new Date()) },
+                ],
+                select: { id: true },
+            }),
+            this.dataSource.query<{ count: string }[]>(
+                `SELECT COUNT(*)::int AS count
+                 FROM swipes
+                 WHERE swiper_id = $1
+                   AND swiped_at > NOW() - INTERVAL '24 hours'`,
+                [userId],
+            ),
+        ]);
         if (isPremium) return;
-
-        const result = await this.dataSource.query<{ count: string }[]>(
-            `SELECT COUNT(*)::int AS count
-             FROM swipes
-             WHERE swiper_id = $1
-               AND swiped_at > NOW() - INTERVAL '24 hours'`,
-            [userId],
-        );
-        if (Number(result[0].count) >= FREE_SWIPE_LIMIT) {
+        if (Number(countResult[0].count) >= FREE_SWIPE_LIMIT) {
             throw new ForbiddenException(
                 `Swipe-Limit erreicht (${FREE_SWIPE_LIMIT} pro 24 Stunden). Upgrade auf Premium für unlimitierte Swipes.`,
             );

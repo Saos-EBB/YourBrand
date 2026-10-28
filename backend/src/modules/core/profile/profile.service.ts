@@ -80,80 +80,71 @@ export class ProfileService {
     }
 
     async getOwnProfileWithPhoto(userId: string): Promise<ProfileView> {
-        const profile = await this.getOwnProfile(userId);
+        // Single JOIN replaces 5 sequential queries (profile + photo + audio + sub + user).
+        const rows = await this.dataSource.query<any[]>(`
+            SELECT p.*,
+                   pm.file_url            AS photo_url,
+                   pm.needs_review        AS photo_needs_review,
+                   am.file_url            AS audio_url,
+                   am.moderation_status   AS audio_moderation_status,
+                   s.plan                 AS sub_plan,
+                   s.status               AS sub_status,
+                   s.expires_at           AS sub_expires_at,
+                   u.is_banned,
+                   u.public_id
+            FROM profiles p
+            JOIN users u ON u.id = p.user_id AND u.deleted_at IS NULL
+            LEFT JOIN media_uploads pm ON pm.id = p.photo_id
+            LEFT JOIN media_uploads am ON am.id = p.audio_id
+            LEFT JOIN LATERAL (
+                SELECT plan, status, expires_at
+                FROM subscriptions
+                WHERE user_id = p.user_id AND status = 'active'
+                ORDER BY started_at DESC LIMIT 1
+            ) s ON true
+            WHERE p.user_id = $1
+        `, [userId]);
 
-        let photoUrl: string | null = null;
-        let photoNeedsReview = false;
-        if (profile.photo_id) {
-            const rows = await this.profileRepo.manager.query<{ file_url: string; needs_review: boolean }[]>(
-                'SELECT file_url, needs_review FROM media_uploads WHERE id = $1',
-                [profile.photo_id],
-            );
-            photoUrl = rows[0]?.file_url ?? null;
-            photoNeedsReview = rows[0]?.needs_review ?? false;
-        }
-
-        let audioUrl: string | null = null;
-        let audioModerationStatus: string | null = null;
-        if (profile.audio_id) {
-            const rows = await this.profileRepo.manager.query<{ file_url: string; moderation_status: string }[]>(
-                'SELECT file_url, moderation_status FROM media_uploads WHERE id = $1',
-                [profile.audio_id],
-            );
-            audioUrl = rows[0]?.file_url ?? null;
-            audioModerationStatus = rows[0]?.moderation_status ?? null;
-        }
-
-        const subRows = await this.profileRepo.manager.query<{ plan: string; status: string; expires_at: Date | null }[]>(
-            `SELECT plan, status, expires_at FROM subscriptions
-             WHERE user_id = $1 AND status IN ('active')
-             ORDER BY started_at DESC LIMIT 1`,
-            [userId],
-        );
-        const sub = subRows[0] ?? null;
-
-        const userRows = await this.profileRepo.manager.query<{ is_banned: boolean; public_id: string | null }[]>(
-            'SELECT is_banned, public_id FROM users WHERE id = $1',
-            [userId],
-        );
+        if (!rows.length) throw new NotFoundException('Profil nicht gefunden');
+        const r = rows[0];
 
         return {
-            id: profile.id,
-            userId: profile.user_id,
-            nickname: profile.nickname,
-            bio: profile.bio,
-            city: profile.city,
-            birthdate: profile.birthdate,
-            gender: profile.gender,
-            lookingFor: profile.looking_for,
-            isPublished: profile.is_published,
-            onboardingCompleted: profile.onboarding_completed,
-            langSimple: profile.lang_simple,
-            fontSize: profile.font_size,
-            highContrast: profile.high_contrast,
-            searchRadiusKm: profile.search_radius_km,
-            profanityFilter: profile.profanity_filter,
-            statusVisible: profile.status_visible,
-            statusMessage: profile.status_message,
-            showBio: profile.show_bio,
-            showCity: profile.show_city,
-            showAge: profile.show_age,
-            showGender: profile.show_gender,
-            showInterests: profile.show_interests,
-            showAudio: profile.show_audio,
-            lastActiveAt: profile.last_active_at,
-            updatedAt: profile.updated_at,
-            photoUrl,
-            photoNeedsReview,
-            nicknameChangedAt: profile.nickname_changed_at ? new Date(profile.nickname_changed_at).toISOString() : null,
-            genderChangedAt: profile.gender_changed_at ? new Date(profile.gender_changed_at).toISOString() : null,
-            audioUrl,
-            audioModerationStatus,
-            subscriptionPlan: sub?.plan ?? null,
-            subscriptionStatus: sub?.status ?? null,
-            subscriptionCurrentPeriodEnd: sub?.expires_at ? new Date(sub.expires_at).toISOString() : null,
-            isBanned: userRows[0]?.is_banned ?? false,
-            publicId: userRows[0]?.public_id ?? null,
+            id: r.id,
+            userId: r.user_id,
+            nickname: r.nickname,
+            bio: r.bio,
+            city: r.city,
+            birthdate: r.birthdate,
+            gender: r.gender,
+            lookingFor: r.looking_for,
+            isPublished: r.is_published,
+            onboardingCompleted: r.onboarding_completed,
+            langSimple: r.lang_simple,
+            fontSize: r.font_size,
+            highContrast: r.high_contrast,
+            searchRadiusKm: r.search_radius_km,
+            profanityFilter: r.profanity_filter,
+            statusVisible: r.status_visible,
+            statusMessage: r.status_message,
+            showBio: r.show_bio,
+            showCity: r.show_city,
+            showAge: r.show_age,
+            showGender: r.show_gender,
+            showInterests: r.show_interests,
+            showAudio: r.show_audio,
+            lastActiveAt: r.last_active_at,
+            updatedAt: r.updated_at,
+            photoUrl: r.photo_url ?? null,
+            photoNeedsReview: r.photo_needs_review ?? false,
+            nicknameChangedAt: r.nickname_changed_at ? new Date(r.nickname_changed_at).toISOString() : null,
+            genderChangedAt: r.gender_changed_at ? new Date(r.gender_changed_at).toISOString() : null,
+            audioUrl: r.audio_url ?? null,
+            audioModerationStatus: r.audio_moderation_status ?? null,
+            subscriptionPlan: r.sub_plan ?? null,
+            subscriptionStatus: r.sub_status ?? null,
+            subscriptionCurrentPeriodEnd: r.sub_expires_at ? new Date(r.sub_expires_at).toISOString() : null,
+            isBanned: r.is_banned ?? false,
+            publicId: r.public_id ?? null,
         };
     }
 

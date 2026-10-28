@@ -336,8 +336,6 @@ export class ChatService {
     // Postgres (sent_at::text), damit Nachrichten in derselben Millisekunde weder doppelt noch verloren sind;
     // sortiert wird auf der rohen Spalte, damit der Index (conversation_id, sent_at DESC) greift.
     async getMessages(userId: string, conversationId: string, before?: string) {
-        await this.verifyConversationAccess(userId, conversationId);
-
         const qb = this.messageRepository
             .createQueryBuilder('msg')
             .addSelect('msg.sent_at::text', 'cursor_ts')
@@ -350,7 +348,13 @@ export class ChatService {
             });
         }
         qb.orderBy('msg.sent_at', 'DESC').addOrderBy('msg.id', 'DESC').limit(MESSAGES_PAGE + 1);
-        const { entities, raw } = await qb.getRawAndEntities<{ cursor_ts: string }>();
+
+        // Access check and messages fetch run in parallel. verifyConversationAccess
+        // throws NotFoundException if the user has no access — messages are then discarded.
+        const [, { entities, raw }] = await Promise.all([
+            this.verifyConversationAccess(userId, conversationId),
+            qb.getRawAndEntities<{ cursor_ts: string }>(),
+        ]);
 
         const newestFirst = entities.slice(0, MESSAGES_PAGE);
         const oldest = newestFirst.length - 1;
