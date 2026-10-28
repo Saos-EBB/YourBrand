@@ -194,7 +194,7 @@ async function main() {
         // --- User anlegen ---
         const emailHash    = hashEmail(u.email);
         const emailCrypt   = encryptField(u.email);
-        const passwordHash = await bcrypt.hash(u.password, 12);
+        const passwordHash = await bcrypt.hash(u.password, 10);
 
         const userResult = await ds.query(
             `INSERT INTO users (

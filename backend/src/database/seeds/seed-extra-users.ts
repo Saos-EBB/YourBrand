@@ -96,7 +96,7 @@ async function main() {
         return;
     }
 
-    const passwordHash = await bcrypt.hash('SeedUser1234!', 12);
+    const passwordHash = await bcrypt.hash('SeedUser1234!', 10);
 
     const userRows: unknown[][] = [];
     const profileRows: unknown[][] = [];

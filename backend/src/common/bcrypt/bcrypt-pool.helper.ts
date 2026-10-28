@@ -28,6 +28,15 @@ function getPool(): Piscina {
     return pool;
 }
 
+// 10 statt 12: ein Viertel der CPU pro Login (Loadtest: auth-Pool belegte ~1,6 Kerne fuer 0,5 % der Requests).
+// OWASP-Minimum fuer bcrypt ist 10. Alte 12er-Hashes werden beim naechsten Login umgehasht (needsRehash).
+export const BCRYPT_ROUNDS = 10;
+
+export function needsRehash(hash: string): boolean {
+    const rounds = Number(/^\$2[aby]\$(\d{2})\$/.exec(hash)?.[1]);
+    return rounds !== BCRYPT_ROUNDS;
+}
+
 export function hashPassword(password: string, rounds: number): Promise<string> {
     return getPool().run({ password, rounds }, { name: 'hash' });
 }

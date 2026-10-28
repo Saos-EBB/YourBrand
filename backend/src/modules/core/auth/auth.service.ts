@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, MoreThan, ILike } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
-import { hashPassword, comparePassword } from '../../../common/bcrypt/bcrypt-pool.helper';
+import { hashPassword, comparePassword, needsRehash, BCRYPT_ROUNDS } from '../../../common/bcrypt/bcrypt-pool.helper';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConsentItemDto } from './dto/consent.dto';
@@ -76,7 +76,7 @@ export class AuthService {
         });
         if (exists) throw new ConflictException('Email bereits registriert');
 
-        const passwordHash = await hashPassword(dto.password, 12);
+        const passwordHash = await hashPassword(dto.password, BCRYPT_ROUNDS);
 
         const user = this.userRepository.create({
             email_search_hash: emailHash,
@@ -136,6 +136,11 @@ export class AuthService {
 
         const passwordValid = await comparePassword(dto.password, user.password_hash ?? '');
         if (!passwordValid) throw new UnauthorizedException('Ungültige Zugangsdaten');
+
+        // Gespeichert wird unten mit user.last_login.
+        if (needsRehash(user.password_hash ?? '')) {
+            user.password_hash = await hashPassword(dto.password, BCRYPT_ROUNDS);
+        }
 
         if (user.deleted_at) {
             user.deleted_at = null;
@@ -307,7 +312,7 @@ export class AuthService {
 
         if (!user) throw new NotFoundException('Token ungültig oder abgelaufen');
 
-        user.password_hash = await hashPassword(newPassword, 12);
+        user.password_hash = await hashPassword(newPassword, BCRYPT_ROUNDS);
         user.password_reset_token = null;
         user.password_reset_expires_at = null;
         await this.userRepository.save(user);
@@ -342,7 +347,7 @@ export class AuthService {
         const same = await comparePassword(newPassword, user.password_hash ?? '');
         if (same) throw new BadRequestException('Neues Passwort muss sich vom aktuellen unterscheiden');
 
-        user.password_hash = await hashPassword(newPassword, 12);
+        user.password_hash = await hashPassword(newPassword, BCRYPT_ROUNDS);
         await this.userRepository.save(user);
 
         return { message: 'Passwort erfolgreich geändert' };

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { hashPassword } from '../../../common/bcrypt/bcrypt-pool.helper';
+import { hashPassword, BCRYPT_ROUNDS } from '../../../common/bcrypt/bcrypt-pool.helper';
 import * as crypto from 'crypto';
 import { User, UserRole } from '../auth/entities/user.entity';
 import { Profile } from '../profile/entities/profile.entity';
@@ -33,7 +33,7 @@ export class SetupService {
         if (setupComplete) throw new ForbiddenException('Setup bereits abgeschlossen');
 
         const emailHash = this.hashEmail(dto.email);
-        const passwordHash = await hashPassword(dto.password, 12);
+        const passwordHash = await hashPassword(dto.password, BCRYPT_ROUNDS);
         const publicId = await this.generatePublicId();
 
         const user = this.userRepo.create({
