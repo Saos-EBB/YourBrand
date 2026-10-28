@@ -117,6 +117,10 @@ services:
       DB_STATEMENT_TIMEOUT_MS: 2000
       # bcrypt-Threads pro Instanz: alle Backend-Instanzen teilen sich die Kerne eines Rechners.
       BCRYPT_MAX_THREADS: 2
+      # Lastabwurf (load-shed.middleware.ts): ueber 48 gleichzeitige Requests je Instanz oder nach 1,5 s
+      # Wartezeit seit nginx sofort 503 statt Stau bis zum 504 nach 5 s.
+      GATE_INFLIGHT: 48
+      REQUEST_DEADLINE_MS: 1500
       REDIS_HOST:  XXX_redis_load
       REDIS_PORT:  6379
       S3_ENDPOINT: http://minio-load:9000
@@ -203,6 +207,8 @@ services:
     image: xxx_backend_load:local
     restart: unless-stopped
     command: ["node", "dist/main"]
+    # Halbe CPU-Prioritaet (Default 1024): unter Volllast gewinnen die schnellen Routen. Ohne Konkurrenz kein Effekt.
+    cpu_shares: 512
     deploy:
       replicas: ${BACKEND_HEAVY_REPLICAS:-2}
     environment:
@@ -230,6 +236,9 @@ services:
     image: xxx_backend_load:local
     restart: unless-stopped
     command: ["node", "dist/main"]
+    # bcrypt darf den schnellen Routen unter Volllast keine Kerne wegnehmen: niedrige Prioritaet. Bewusst ohne
+    # harte Grenze (cpus) — die hielt Login-p95 bei Ueberlast ueber dem 1500-ms-Budget (Ramp 15).
+    cpu_shares: 256
     deploy:
       replicas: ${BACKEND_AUTH_REPLICAS:-2}
     environment:

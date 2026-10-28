@@ -10,6 +10,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { getCorsOrigins } from './common/config/cors-origins.helper';
 import { describeTenantInfra } from './common/tenant/tenant-infra.helper';
 import { RedisIoAdapter } from './common/realtime/redis-io.adapter';
+import { loadShed } from './common/load-shed/load-shed.middleware';
 
 async function bootstrap() {
   if (!process.env.CORS_ORIGIN) throw new Error('CORS_ORIGIN env var is not set');
@@ -30,6 +31,8 @@ async function bootstrap() {
     res.setHeader('X-Request-Id', id);
     next();
   });
+
+  app.use(loadShed());
 
   app.use(cookieParser());
 
