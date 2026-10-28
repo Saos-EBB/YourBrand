@@ -40,6 +40,7 @@ import { ConversationsService } from '../chat/conversations.service';
 import { BanListService } from '../../../common/redis/ban-list.service';
 
 const OWNER_PAGE = 200;
+const DASHBOARD_CACHE_MS = 30_000;
 
 @Injectable()
 export class AdminService {
@@ -686,14 +687,30 @@ export class AdminService {
 
     // ── Dashboard stats (owner only) ───────────────────────────────────────────
 
+    // Ein Dashboard muss nicht sekundengenau sein, die Queries scannen aber ganze Tabellen (messages,
+    // notifications, ...). Im Lasttest lag rund ein Zwölftel der DB-Zeit hier. Gecacht wird das Promise,
+    // damit gleichzeitige Aufrufe nicht parallel rechnen; ein Fehler wird nicht gecacht.
+    private readonly dashboardCache = new Map<string, { at: number; value: Promise<unknown> }>();
+
+    private cachedDashboard<T>(key: string, load: () => Promise<T>): Promise<T> {
+        const hit = this.dashboardCache.get(key);
+        if (hit && Date.now() - hit.at < DASHBOARD_CACHE_MS) return hit.value as Promise<T>;
+        const value = load();
+        this.dashboardCache.set(key, { at: Date.now(), value });
+        value.catch(() => this.dashboardCache.delete(key));
+        return value;
+    }
+
     getDashboardStats(): Promise<AdminDashboardStatsDto> {
-        return collectDashboardStats((sql) => this.dataSource.query(sql));
+        return this.cachedDashboard('stats', () => collectDashboardStats((sql) => this.dataSource.query(sql)));
     }
 
     getDashboardAnalytics(days: AnalyticsRange): Promise<DashboardAnalytics> {
-        return collectDashboardAnalytics((sql, params) => this.dataSource.query(sql, params), days, {
-            coins: isModuleEnabled('hidden'),
-        });
+        return this.cachedDashboard(`analytics:${days}`, () =>
+            collectDashboardAnalytics((sql, params) => this.dataSource.query(sql, params), days, {
+                coins: isModuleEnabled('hidden'),
+            }),
+        );
     }
 
     // ── User dashboard stats (any authenticated user) ──────────────────────────
