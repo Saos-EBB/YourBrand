@@ -26,9 +26,7 @@ export class OptionalJwtGuard {
         if (!token) return true;
 
         try {
-            const payload = this.jwtService.verify(token, {
-                secret: process.env.JWT_SECRET,
-            });
+            const payload = this.jwtService.verify(token);
 
             const status = await userStatusCached(payload.sub, this.redis, this.dataSource);
             if (status !== 'ok') return true;

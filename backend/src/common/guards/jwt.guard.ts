@@ -27,9 +27,7 @@ export class JwtGuard {
 
         let payload: any;
         try {
-            payload = this.jwtService.verify(token, {
-                secret: process.env.JWT_SECRET,
-            });
+            payload = this.jwtService.verify(token);
         } catch {
             throw new UnauthorizedException('Token ungültig oder abgelaufen');
         }
