@@ -39,7 +39,14 @@ services:
     restart: unless-stopped
     # Default max_connections=100 reicht nicht fuer mehrere Backend-Instanzen
     # (je DB_POOL_MAX=20) + Worker + pgAdmin/Seeds.
-    command: postgres -c max_connections=300
+    # Rest: Postgres-Defaults sind fuer Kleinstrechner. Unter Last wartete ~1/3 der aktiven Queries auf den
+    # WAL-Flush ihres COMMIT (Lasttest 28.10.2026). commit_delay laesst gleichzeitige Commits einen Flush teilen,
+    # ohne Daten zu riskieren (anders als synchronous_commit=off). random_page_cost 1.1 fuer SSD.
+    command: >-
+      postgres -c max_connections=300
+      -c shared_buffers=512MB -c effective_cache_size=4GB -c work_mem=8MB
+      -c wal_buffers=16MB -c commit_delay=200 -c commit_siblings=5
+      -c max_wal_size=2GB -c checkpoint_timeout=15min -c random_page_cost=1.1
     environment:
       POSTGRES_DB:       ${DB_NAME}
       POSTGRES_USER:     ${DB_USER}
@@ -180,7 +187,12 @@ services:
   # Crons planen alle Instanzen, pro Termin laeuft jeder Job in einer
   # (Redis-Sperre, CronLockService).
   XXX_backend_load_replica:
-    image: xxx_backend_load:local
+    # prod-Ziel (NODE_ENV=production, nur Laufzeit-Abhaengigkeiten) statt dev: im Lasttest 28.10.2026 bei
+    # 1000-1100 req/s halbe p95 und ~20 % weniger CPU je Instanz. dist/ kommt weiter aus dem Bind-Mount.
+    build:
+      context: ./backend
+      target: prod
+    image: xxx_backend_load:prod
     restart: unless-stopped
     command: ["node", "dist/main"]
     deploy:
@@ -204,7 +216,10 @@ services:
   # Eigene Instanzen fuer die schweren Routen (Suche, Deck, Admin-Listen, siehe nginx-lb.conf), damit sie den
   # Event-Loop der schnellen Routen nicht blockieren. Gleiches Image und dist/ wie die Replikas.
   XXX_backend_load_heavy:
-    image: xxx_backend_load:local
+    build:
+      context: ./backend
+      target: prod
+    image: xxx_backend_load:prod
     restart: unless-stopped
     command: ["node", "dist/main"]
     # Halbe CPU-Prioritaet (Default 1024): unter Volllast gewinnen die schnellen Routen. Ohne Konkurrenz kein Effekt.
@@ -215,6 +230,9 @@ services:
       <<: *backend_load_env
       SEED_USERS: 0
       DB_STATEMENT_TIMEOUT_MS: 10000
+      # Default 4 gleichzeitige heavy-Requests je Instanz: ab 1100 req/s kamen die meisten 503 von hier,
+      # bei heavy p95 um 100 ms (Budget 500 ms).
+      GATE_HEAVY: 8
     healthcheck:
       <<: *backend_load_healthcheck
       start_period: 120s
@@ -233,7 +251,10 @@ services:
   # isolieren den bcrypt-CPU-Druck von Chat-/Profil-Reads. DB_STATEMENT_TIMEOUT_MS hoeher als fast (Auth-Ops
   # brauchen kein hartes 2-s-Limit), aber niedriger als heavy (keine langen Suchen erwartet).
   XXX_backend_load_auth:
-    image: xxx_backend_load:local
+    build:
+      context: ./backend
+      target: prod
+    image: xxx_backend_load:prod
     restart: unless-stopped
     command: ["node", "dist/main"]
     # bcrypt darf den schnellen Routen unter Volllast keine Kerne wegnehmen: niedrige Prioritaet. Bewusst ohne
