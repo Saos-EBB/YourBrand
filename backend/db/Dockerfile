@@ -32,3 +32,4 @@ COPY migrations/011_user_interests_drop_duplicate_unique.sql  /docker-entrypoint
 COPY migrations/012_media_uploads_file_url_index.sql      /docker-entrypoint-initdb.d/012_media_uploads_file_url_index.sql
 COPY migrations/013_media_uploads_pending_queue_index.sql   /docker-entrypoint-initdb.d/013_media_uploads_pending_queue_index.sql
 COPY migrations/014_fk_missing_indexes.sql                  /docker-entrypoint-initdb.d/014_fk_missing_indexes.sql
+COPY migrations/015_notifications_feed_index.sql            /docker-entrypoint-initdb.d/015_notifications_feed_index.sql
