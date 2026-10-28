@@ -1,12 +1,16 @@
 import {
     BadRequestException,
     ForbiddenException,
+    Inject,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, IsNull, MoreThan, Repository } from 'typeorm';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../../common/redis/redis.constants';
+import { dropDeck } from './deck-cache';
 import { Swipe, SwipeAction } from './entities/swipe.entity';
 import { Match } from './entities/match.entity';
 import { ConversationsService } from '../chat/conversations.service';
@@ -30,6 +34,8 @@ export class SwipeService {
         private readonly subscriptionRepo: Repository<Subscription>,
         @InjectDataSource()
         private readonly dataSource: DataSource,
+        @Inject(REDIS_CLIENT)
+        private readonly redis: Redis,
     ) {}
 
     async swipe(
@@ -111,6 +117,7 @@ export class SwipeService {
             `DELETE FROM swipes WHERE swiper_id = $1`,
             [userId],
         );
+        await dropDeck(this.redis, userId);
     }
 
     private async enforceSwipeLimit(userId: string): Promise<void> {

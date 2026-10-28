@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../../common/redis/redis.constants';
+import { redisOr } from '../../../common/redis/redis-fail-open';
+import { DECK_CACHE_S, DECK_POOL, deckKey } from './deck-cache';
 
 export interface MatchListItem {
     match_id: string;
@@ -26,16 +30,65 @@ export interface DeckCandidate {
     interests: { name_de: string; name_en: string | null; is_green: boolean }[];
 }
 
+const DECK_SIZE = 6;
+
 @Injectable()
 export class MatchingService {
     constructor(
         @InjectDataSource()
         private readonly dataSource: DataSource,
+        @Inject(REDIS_CLIENT)
+        private readonly redis: Redis,
     ) {}
 
     // Deck-Groesse bewusst klein (6, nicht 20): das Discover-Grid rendert alle
     // Kandidaten gleichzeitig, jeder mit eigenem Foto-Request.
     async buildDeck(viewerUserId: string): Promise<DeckCandidate[]> {
+        const cached = await redisOr(() => this.redis.get(deckKey(viewerUserId)), null);
+        if (cached) {
+            const pool: any[] = JSON.parse(cached);
+            const deck = await this.stillEligible(pool, viewerUserId);
+            // Rangliste aufgebraucht: neu rechnen. War sie kuerzer als DECK_POOL, gab es nicht mehr Kandidaten.
+            if (deck.length >= DECK_SIZE || pool.length < DECK_POOL) {
+                return this.attachInterests(deck.slice(0, DECK_SIZE), viewerUserId);
+            }
+        }
+
+        const ranked = await this.rankCandidates(viewerUserId);
+        await redisOr(() => this.redis.set(deckKey(viewerUserId), JSON.stringify(ranked), 'EX', DECK_CACHE_S), null);
+        return this.attachInterests(ranked.slice(0, DECK_SIZE), viewerUserId);
+    }
+
+    // Die Plaetze der gecachten Rangliste, die noch ins Deck duerfen, in Ranglisten-Reihenfolge.
+    private async stillEligible(pool: any[], viewerUserId: string): Promise<any[]> {
+        if (!pool.length) return [];
+        const ok = await this.dataSource.query<{ user_id: string }[]>(
+            `
+            SELECT p.user_id
+            FROM profiles p
+            JOIN users u ON u.id = p.user_id
+                AND u.is_banned = false
+                AND u.deleted_at IS NULL
+            WHERE p.user_id = ANY($2::uuid[])
+              AND p.is_published = true
+              AND NOT EXISTS (
+                  SELECT 1 FROM swipes s
+                  WHERE s.swiper_id = $1
+                    AND s.swiped_id = p.user_id
+                    AND (
+                        s.action = 'like'
+                        OR (s.action = 'skip' AND s.swiped_at > NOW() - INTERVAL '30 days')
+                    )
+              )
+            `,
+            [viewerUserId, pool.map(r => r.user_id)],
+        );
+        const okIds = new Set(ok.map(r => r.user_id));
+        return pool.filter(r => okIds.has(r.user_id));
+    }
+
+    // Die besten DECK_POOL Kandidaten nach match_score.
+    private async rankCandidates(viewerUserId: string): Promise<any[]> {
         // Fetch viewer's location and search radius in a single query.
         // location is select:false in the entity, so we use raw SQL.
         const viewerRows = await this.dataSource.query<
@@ -47,12 +100,12 @@ export class MatchingService {
 
         if (!viewerRows.length || !viewerRows[0].location) {
             // No location set — return unscored deck without distance filter
-            return this.buildDeckWithoutLocation(viewerUserId);
+            return this.rankCandidatesWithoutLocation(viewerUserId);
         }
 
         const radiusMeters = viewerRows[0].search_radius_km * 1000;
 
-        const rows = await this.dataSource.query<any[]>(
+        return this.dataSource.query<any[]>(
             `
             WITH my_interests AS (
                 SELECT interest_id, is_green
@@ -132,12 +185,10 @@ export class MatchingService {
             FROM candidates c
             LEFT JOIN interest_scores iss ON iss.user_id = c.user_id
             ORDER BY match_score DESC
-            LIMIT 6
+            LIMIT $3
             `,
-            [viewerUserId, radiusMeters],
+            [viewerUserId, radiusMeters, DECK_POOL],
         );
-
-        return this.attachInterests(rows, viewerUserId);
     }
 
     async getMatches(userId: string): Promise<MatchListItem[]> {
@@ -181,8 +232,8 @@ export class MatchingService {
         }));
     }
 
-    private async buildDeckWithoutLocation(viewerUserId: string): Promise<DeckCandidate[]> {
-        const rows = await this.dataSource.query<any[]>(
+    private async rankCandidatesWithoutLocation(viewerUserId: string): Promise<any[]> {
+        return this.dataSource.query<any[]>(
             `
             WITH my_interests AS (
                 SELECT interest_id, is_green
@@ -237,12 +288,10 @@ export class MatchingService {
             FROM candidates c
             LEFT JOIN interest_scores iss ON iss.user_id = c.user_id
             ORDER BY match_score DESC
-            LIMIT 6
+            LIMIT $2
             `,
-            [viewerUserId],
+            [viewerUserId, DECK_POOL],
         );
-
-        return this.attachInterests(rows, viewerUserId);
     }
 
     private async attachInterests(rows: any[], viewerUserId: string): Promise<DeckCandidate[]> {

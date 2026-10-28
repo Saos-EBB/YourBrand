@@ -2,9 +2,14 @@ import {
     BadRequestException,
     ConflictException,
     ForbiddenException,
+    Inject,
     Injectable,
     NotFoundException,
+    Optional,
 } from '@nestjs/common';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../../common/redis/redis.constants';
+import { dropDeck } from '../matching/deck-cache';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -65,6 +70,9 @@ export class ProfileService {
         private readonly profanityService: ProfanityService,
         @InjectDataSource()
         private readonly dataSource: DataSource,
+        // Optional, damit Tests ohne Redis den Service bauen koennen.
+        @Optional() @Inject(REDIS_CLIENT)
+        private readonly redis?: Redis,
     ) { }
 
     async getOwnProfile(userId: string): Promise<Profile> {
@@ -228,6 +236,7 @@ export class ProfileService {
         }
 
         await this.checkAndCompleteOnboarding(userId);
+        await dropDeck(this.redis, userId);
         return saved;
     }
 
@@ -293,6 +302,7 @@ export class ProfileService {
             .execute();
 
         await this.checkAndCompleteOnboarding(userId);
+        await dropDeck(this.redis, userId);
         return this.getUserInterests(userId);
     }
 
@@ -301,11 +311,13 @@ export class ProfileService {
             { user_id: userId, interest_id: interestId },
             { is_green: isGreen },
         );
+        await dropDeck(this.redis, userId);
         return this.getUserInterests(userId);
     }
 
     async removeInterest(userId: string, interestId: string): Promise<UserInterest[]> {
         await this.userInterestRepo.delete({ user_id: userId, interest_id: interestId });
+        await dropDeck(this.redis, userId);
         return this.getUserInterests(userId);
     }
 
