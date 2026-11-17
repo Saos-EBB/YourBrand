@@ -85,7 +85,9 @@ cmd_up() {
   for slug in $slugs; do
     echo "== Mandant $slug"
     ensure_env "$slug"
-    compose "$slug" up -d --build
+    # -V: anonyme /app/node_modules-Volumes neu anlegen, sonst verdeckt der alte
+    # Stand die Pakete aus dem frisch gebauten Image (neue Dependencies fehlen)
+    compose "$slug" up -d --build --renew-anon-volumes
   done
   cmd_ls
 }

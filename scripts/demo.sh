@@ -145,7 +145,7 @@ cmd_up() {
   ensure_backend_env
   ensure_frontend_env
   echo "== YourBrand (default) + geteilte Infra"
-  docker compose up -d --build
+  docker compose up -d --build --renew-anon-volumes
   echo "== Mandanten"
   scripts/tenant.sh up all
   echo "== Mandanten-Console"
