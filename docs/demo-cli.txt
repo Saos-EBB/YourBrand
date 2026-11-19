@@ -20,7 +20,7 @@ Ziele (kombinierbar, Gross-/Kleinschreibung egal, -x und --x gehen beide):
 
 Beispiele:
 
-  ./demo -up                     alles, inkl. Console
+  ./demo -up                     alles neu starten, inkl. Console
   ./demo -up -kiez -underground  nur diese zwei Mandanten (+ Infra)
   ./demo -down -kiez             nur kiez stoppen, Rest laeuft weiter
   ./demo -down                   alles stoppen, inkl. Infra
@@ -28,6 +28,10 @@ Beispiele:
 
 Regeln:
 
+  - -up stoppt seine Ziele zuerst und startet sie dann neu. So spielt jeder
+    Start die Demo-Daten frisch ein (Demo-User, Beefs mit Votes/Kommentaren
+    usw.); was Besucher geaendert haben, ist danach weg. Postgres/MinIO-Daten
+    bleiben sonst erhalten (keine leere Datenbank).
   - Die geteilte Infra (Postgres, Redis, MinIO) startet bei jedem -up mit —
     ohne sie laeuft kein Mandant. -up -kiez startet also Infra + kiez, aber
     nicht YourBrand.

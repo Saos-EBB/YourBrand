@@ -224,6 +224,11 @@ cmd_up() {
   ensure_root_env
   ensure_backend_env
   ensure_frontend_env
+  # Erst stoppen, damit jeder Start frische Container bekommt und deren
+  # Entrypoint die Demo-Seeds neu einspielt (sonst laeuft ein unveraenderter
+  # Container einfach weiter). Infra bleibt an, Fehler hier brechen nicht ab.
+  echo "== Laufende Ziele stoppen (frischer Start)"
+  stop_targets || echo "  (Stoppen teilweise fehlgeschlagen, starte trotzdem)"
   echo "== Geteilte Infra"
   docker compose up -d --wait XXX_db redis minio
   # minio-init ist ein Einmal-Container (exit 0 = Erfolg), darum ohne --wait
@@ -250,6 +255,19 @@ cmd_up() {
   return $rc
 }
 
+# Stoppt die Ziele aus TARGETS, nie die Infra.
+stop_targets() {
+  local t tenants=()
+  for t in "${TARGETS[@]}"; do
+    case $t in
+      yourbrand) echo "== YourBrand (default) stoppen"; docker compose rm -sfv "${YB_SERVICES[@]}" ;;
+      console)   stop_console ;;
+      *)         tenants+=("$t") ;;
+    esac
+  done
+  if (( ${#tenants[@]} )); then scripts/tenant.sh down "${tenants[@]}"; fi
+}
+
 cmd_down() {
   if (( ALL )); then
     stop_console
@@ -257,15 +275,7 @@ cmd_down() {
     docker compose down
     return
   fi
-  local t tenants=()
-  for t in "${TARGETS[@]}"; do
-    case $t in
-      yourbrand) echo "== YourBrand (default)"; docker compose rm -sfv "${YB_SERVICES[@]}" ;;
-      console)   stop_console ;;
-      *)         tenants+=("$t") ;;
-    esac
-  done
-  if (( ${#tenants[@]} )); then scripts/tenant.sh down "${tenants[@]}"; fi
+  stop_targets
   echo "Infra (Postgres/Redis/MinIO) laeuft weiter — alles stoppen: ./demo -down"
 }
 

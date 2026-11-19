@@ -9,7 +9,8 @@
  *   - beefs             (5 Beefs mit verschiedenen Status)
  *   - blocks            (Makima blockt 3 User)
  *
- * Idempotent: bereits vorhandene Eintraege werden uebersprungen.
+ * Idempotent: bereits vorhandene Eintraege werden uebersprungen — ausser
+ * Beefs, die bei jedem Lauf frisch angelegt werden (siehe seedBeefs).
  * Voraussetzung: demo-seed.ts wurde bereits ausgefuehrt (User + Profile vorhanden).
  */
 
@@ -330,38 +331,27 @@ async function seedConversations(
 async function seedBeefs(beefs: Beef[]): Promise<void> {
   console.log('\n── Beefs ─────────────────────────────────────────────');
   let created = 0;
-  let skipped = 0;
   let reset = 0;
 
   for (const b of beefs) {
     const initiatorId = await getUserId(b.initiator);
     const targetId    = await getUserId(b.target);
 
-    // Idempotenz: pruefen per (initiator_id, target_id, tldr)
-    const existing: { id: string; status: string; expired: boolean }[] = await ds.query(
-      `SELECT id, status, (ends_at IS NOT NULL AND ends_at <= NOW()) AS expired
-       FROM beefs
+    // Jeder Start = kuratierter Ausgangszustand (wie demo-full-reset): ein
+    // vorhandener Demo-Beef (gleiches initiator/target/tldr) wird immer neu
+    // angelegt, damit Laufzeit, Status und Interaktionen frisch sind — sonst
+    // schliesst der Cron ihn nach ends_at und er bliebe fuer immer zu.
+    // Votes/Comments/Games/Badges/Teeth kaskadieren mit und kommen ueber
+    // seedBeefInteractions zurueck.
+    // TypeORM liefert bei DELETE ... RETURNING auf Postgres [rows, rowCount]
+    const [deleted]: [{ status: string }[], number] = await ds.query(
+      `DELETE FROM beefs
        WHERE initiator_id = $1 AND target_id = $2 AND tldr = $3
-       LIMIT 1`,
+       RETURNING status`,
       [initiatorId, targetId, b.tldr],
     );
-
-    if (existing.length) {
-      // Laufende Beefs (active/waiting) altern: nach ends_at schliesst der Cron
-      // sie, und ein reines Skip liesse die Demo danach fuer immer ohne aktive
-      // Beefs. Weicht der Zustand vom Seed ab oder ist die Laufzeit um, wird der
-      // Beef neu angelegt (Votes/Comments/Games/Badges/Teeth kaskadieren mit und
-      // kommen ueber seedBeefInteractions zurueck).
-      const row = existing[0];
-      const running = b.status === 'active' || b.status === 'waiting';
-      const stale = row.status !== b.status || (running && row.expired);
-      if (!stale) {
-        console.log(`  SKIP  Beef "${b.tldr}" (schon vorhanden)`);
-        skipped++;
-        continue;
-      }
-      await ds.query(`DELETE FROM beefs WHERE id = $1`, [row.id]);
-      console.log(`  RESET Beef "${b.tldr}" (war ${row.status}${row.expired ? ', abgelaufen' : ''})`);
+    if (deleted.length) {
+      console.log(`  RESET Beef "${b.tldr}" (war ${deleted[0].status})`);
       reset++;
     }
 
@@ -405,7 +395,7 @@ async function seedBeefs(beefs: Beef[]): Promise<void> {
     created++;
   }
 
-  console.log(`  → ${created} angelegt (davon ${reset} zurueckgesetzt), ${skipped} uebersprungen`);
+  console.log(`  → ${created} angelegt (davon ${reset} zurueckgesetzt)`);
 }
 
 async function seedBeefInteractions(interactions: BeefInteraction[]): Promise<void> {
