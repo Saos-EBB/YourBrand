@@ -14,8 +14,9 @@ npx ts-node -r tsconfig-paths/register src/database/seeds/demo-full-reset.ts
 # data, nothing else has an FK on it), so it stays in sync with the CSV on
 # every restart. backfill-profile-locations only touches profiles with no
 # location set yet, so it's a no-op once everything is backfilled.
-# Demo beefs get ends_at = NOW() + 8h at seed time, so re-running this on a
-# fresh volume always produces currently-active beefs, not stale ones.
+# Demo beefs get ends_at = NOW() + 8h at seed time; a demo beef whose state no
+# longer matches the seed (closed by the cron, or past ends_at) is deleted and
+# re-created on every start, so each restart brings back active beefs.
 # seed-cities must run before backfill-profile-locations, which looks up
 # lat/lng from the cities table to set profiles.location.
 npx ts-node -r tsconfig-paths/register src/database/seeds/demo-seed.ts

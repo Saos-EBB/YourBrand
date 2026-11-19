@@ -331,23 +331,38 @@ async function seedBeefs(beefs: Beef[]): Promise<void> {
   console.log('\n── Beefs ─────────────────────────────────────────────');
   let created = 0;
   let skipped = 0;
+  let reset = 0;
 
   for (const b of beefs) {
     const initiatorId = await getUserId(b.initiator);
     const targetId    = await getUserId(b.target);
 
     // Idempotenz: pruefen per (initiator_id, target_id, tldr)
-    const existing = await ds.query(
-      `SELECT id FROM beefs
+    const existing: { id: string; status: string; expired: boolean }[] = await ds.query(
+      `SELECT id, status, (ends_at IS NOT NULL AND ends_at <= NOW()) AS expired
+       FROM beefs
        WHERE initiator_id = $1 AND target_id = $2 AND tldr = $3
        LIMIT 1`,
       [initiatorId, targetId, b.tldr],
     );
 
     if (existing.length) {
-      console.log(`  SKIP  Beef "${b.tldr}" (schon vorhanden)`);
-      skipped++;
-      continue;
+      // Laufende Beefs (active/waiting) altern: nach ends_at schliesst der Cron
+      // sie, und ein reines Skip liesse die Demo danach fuer immer ohne aktive
+      // Beefs. Weicht der Zustand vom Seed ab oder ist die Laufzeit um, wird der
+      // Beef neu angelegt (Votes/Comments/Games/Badges/Teeth kaskadieren mit und
+      // kommen ueber seedBeefInteractions zurueck).
+      const row = existing[0];
+      const running = b.status === 'active' || b.status === 'waiting';
+      const stale = row.status !== b.status || (running && row.expired);
+      if (!stale) {
+        console.log(`  SKIP  Beef "${b.tldr}" (schon vorhanden)`);
+        skipped++;
+        continue;
+      }
+      await ds.query(`DELETE FROM beefs WHERE id = $1`, [row.id]);
+      console.log(`  RESET Beef "${b.tldr}" (war ${row.status}${row.expired ? ', abgelaufen' : ''})`);
+      reset++;
     }
 
     const winnerId = b.winner ? await getUserId(b.winner) : null;
@@ -390,7 +405,7 @@ async function seedBeefs(beefs: Beef[]): Promise<void> {
     created++;
   }
 
-  console.log(`  → ${created} angelegt, ${skipped} uebersprungen`);
+  console.log(`  → ${created} angelegt (davon ${reset} zurueckgesetzt), ${skipped} uebersprungen`);
 }
 
 async function seedBeefInteractions(interactions: BeefInteraction[]): Promise<void> {
