@@ -8,7 +8,7 @@ cd "$(dirname "$(readlink -f "$0")")"
 
 HELP=docs/demo-cli.txt
 YB_SERVICES=(nestjs worker nextjs pgadmin)
-CHECK_TIMEOUT=180
+CHECK_TIMEOUT=${DEMO_CHECK_TIMEOUT:-180}
 # alte Loadtest-Container im selben Compose-Projekt nicht bei jedem Aufruf melden
 export COMPOSE_IGNORE_ORPHANS=True
 
@@ -182,7 +182,6 @@ expand_targets() {
 wait_backends() {
   local t port deadline failed=0
   deadline=$(( SECONDS + CHECK_TIMEOUT ))
-  echo "== Check: warte auf Backends (max. ${CHECK_TIMEOUT}s)"
   for t in "$@"; do
     port=$(backend_port "$t")
     until [[ "$(curl -s -o /dev/null --max-time 5 -w '%{http_code}' "localhost:$port/api/v1/tenant")" == 200 ]]; do
@@ -198,6 +197,19 @@ wait_backends() {
     fi
   done
   return $failed
+}
+
+wait_console() {
+  local deadline=$(( SECONDS + CHECK_TIMEOUT ))
+  until [[ "$(curl -s -o /dev/null --max-time 5 -w '%{http_code}' localhost:3099/)" == 200 ]]; do
+    if (( SECONDS >= deadline )); then
+      printf '  FEHLER  %-14s antwortet nicht. Letzte Logzeilen:\n' console
+      tail -n 15 "$CONSOLE_LOG" 2>/dev/null | sed 's/^/          /'
+      return 1
+    fi
+    sleep 2
+  done
+  printf '  ok      %-14s http://localhost:3099\n' console
 }
 
 cmd_up() {
@@ -231,7 +243,9 @@ cmd_up() {
     echo "== Mandanten-Console"
     start_console || rc=1
   fi
+  if (( ${#stacks[@]} || console )); then echo "== Check: warte bis alles antwortet (max. ${CHECK_TIMEOUT}s)"; fi
   if (( ${#stacks[@]} )); then wait_backends "${stacks[@]}" || rc=1; fi
+  if (( console && rc == 0 )); then wait_console || rc=1; fi
   (( rc == 0 )) && echo "Fertig." || echo "Es gab Fehler (siehe oben)."
   return $rc
 }

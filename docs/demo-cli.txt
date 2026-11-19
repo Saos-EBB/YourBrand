@@ -40,8 +40,9 @@ Regeln:
     tenants/<slug>/.env) mit eigenen Secrets angelegt. Bestehende Dateien
     bleiben unangetastet.
   - Nach -up wartet demo bis zu 3 Minuten, bis jedes gestartete Backend auf
-    /api/v1/tenant antwortet. Was nicht hochkommt, wird mit seinen letzten
-    Logzeilen gemeldet (Exit-Code 1).
+    /api/v1/tenant antwortet (und die Console, falls mitgestartet). Was nicht
+    hochkommt, wird mit seinen letzten Logzeilen gemeldet (Exit-Code 1).
+    Wartezeit aendern: DEMO_CHECK_TIMEOUT=60 ./demo -up
   - Tippfehler im Ziel brechen ab und listen die gueltigen Ziele auf.
 
 Ports:
