@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Mandanten-Stacks lokal per Docker starten/stoppen (docs/multitenant.md, Schritt 5).
 #
-#   scripts/tenant.sh up   <slug>|all   Infra sicherstellen, Mandant(en) bauen + starten
-#   scripts/tenant.sh down <slug>|all   Mandant(en) stoppen (Daten bleiben in Postgres/MinIO)
+#   scripts/tenant.sh up   <slug>…|all  Infra sicherstellen, Mandant(en) bauen + starten
+#   scripts/tenant.sh down <slug>…|all  Mandant(en) stoppen (Daten bleiben in Postgres/MinIO)
 #   scripts/tenant.sh ls                Mandanten mit URLs auflisten
 #   scripts/tenant.sh logs <slug>       Logs eines Mandanten folgen
 #   scripts/tenant.sh smoke <slug>|all  laufende Mandanten von aussen pruefen
@@ -25,12 +25,16 @@ tenant_slugs() {
   done
 }
 
+# Ein oder mehrere Slugs bzw. "all" -> Slugs, einer pro Zeile.
 resolve() {
   [[ $# -ge 1 ]] || die "Slug oder 'all' angeben"
-  if [[ "$1" == all ]]; then tenant_slugs; return; fi
-  [[ "$1" != default ]] || die "'default' ist der Haupt-Stack: docker compose up"
-  [[ -f "tenants/$1/tenant.json" ]] || die "tenants/$1/tenant.json fehlt"
-  echo "$1"
+  local s
+  for s in "$@"; do
+    if [[ "$s" == all ]]; then tenant_slugs; continue; fi
+    [[ "$s" != default ]] || die "'default' ist der Haupt-Stack: docker compose up"
+    [[ -f "tenants/$s/tenant.json" ]] || die "tenants/$s/tenant.json fehlt"
+    echo "$s"
+  done
 }
 
 env_value() { grep -E "^$2=" "$1" | cut -d= -f2-; }

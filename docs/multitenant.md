@@ -100,7 +100,8 @@ Miteinander connect **ohne** Payments.
    Compose-Projekt aus `docker-compose.tenant.yml` + `tenants/<slug>/.env`, Init-Container fuer DB,
    Schema und Bucket, `scripts/tenant.sh up|down|ls|logs` (2026-10-06); `scripts/demo.sh up|down|ls`
    startet zusaetzlich den default-Stack (YourBrand) mit und generiert beim ersten Lauf
-   `.env`/`backend/.env`/`frontend/.env` (2026-10-06)
+   `.env`/`backend/.env`/`frontend/.env` (2026-10-06); seit 2026-11-19 ersetzt durch
+   `./demo -up|-down|-ls|-logs [-all|-yourbrand|-<slug>|-console]` (`docs/demo-cli.txt`)
 6. ✅ **Seeds pro Mandant** — `tenant.json` `"seed"` -> `tenants/<seed>/seed/demo-users.yaml` +
    `demo-relations.yaml`; Datensaetze fuer kiez, campus-match, miteinander, underground (2026-10-06).
    **Update 2026-10-07:** wieder zurueckgebaut — alle vier Showcase-Mandanten nutzen jetzt den

@@ -714,7 +714,7 @@ Tenants other than `default` don't use `backend/.env` — `scripts/tenant.sh` ge
 
 ## Running Locally
 
-Via Docker — see [`../docker-compose.yml`](../docker-compose.yml) and the [root README](../README.md#running-locally). This is the recommended path: `scripts/demo.sh up` starts the default stack, all tenants and the console. The `default` stack runs Postgres+PostGIS, Redis, MinIO (+ a one-shot bucket init), pgAdmin, the API (`XXX_backend`), the worker (`XXX_worker`) and the frontend.
+Via Docker — see [`../docker-compose.yml`](../docker-compose.yml) and the [root README](../README.md#running-locally). This is the recommended path: `./demo -up` starts the default stack, all tenants and the console (flags: [`../docs/demo-cli.txt`](../docs/demo-cli.txt)). The `default` stack runs Postgres+PostGIS, Redis, MinIO (+ a one-shot bucket init), pgAdmin, the API (`XXX_backend`), the worker (`XXX_worker`) and the frontend.
 
 On every container start `docker-entrypoint.sh` runs, in order:
 
@@ -753,7 +753,7 @@ Migrations are plain SQL files in `migrations/`, starting from `001_baseline.sql
 
 ```bash
 cd backend && npm ci && npm run console   # http://localhost:3099
-# or: scripts/demo.sh up — starts it in the background (PID/log in .console/)
+# or: ./demo -up -console — starts it in the background (PID/log in .console/)
 ```
 
 - Overview of every tenant with status, ports and stats snapshots (totals + history)

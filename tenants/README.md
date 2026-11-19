@@ -142,8 +142,8 @@ Ohne `seedAgeDays` und im Lasttest (`LOADTEST_MODE`) passiert nichts.
 
 Der Mandant `default` ist der Haupt-Stack (`docker compose up`, Ports 3000/3001). Alle anderen
 laufen als eigene Compose-Projekte (`docker-compose.tenant.yml`, Container `yb-<slug>-*`) auf der
-geteilten Infra. Am einfachsten startet `scripts/demo.sh up` alles auf einmal (Default + alle
-Mandanten + Console). Einzeln:
+geteilten Infra. Am einfachsten startet `./demo -up` alles auf einmal (Default + alle
+Mandanten + Console), `./demo -up -<slug>` nur einen Mandanten (siehe `docs/demo-cli.txt`). Einzeln:
 
 ```bash
 scripts/tenant.sh up <slug>|all    # Infra sicherstellen, Mandant(en) bauen + starten
@@ -173,7 +173,7 @@ Plan: [`docs/multitenant.md`](../docs/multitenant.md).
 ## Mandanten-Console
 
 Lokales Dashboard ueber allen Mandanten auf http://localhost:3099 (nur `127.0.0.1`). Startet mit
-`scripts/demo.sh up` automatisch im Hintergrund (PID/Log in `.console/`), von Hand:
+`./demo -up` automatisch im Hintergrund (PID/Log in `.console/`), von Hand:
 `cd backend && npm ci && npm run console`. Laeuft auf dem Host, nicht im Container (braucht git und
 docker) und liest die Stats direkt aus `XXX_db`.
 

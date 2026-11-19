@@ -1,0 +1,312 @@
+#!/usr/bin/env bash
+# Demo-CLI: YourBrand (Mandant "default", Haupt-Stack aus docker-compose.yml),
+# alle Mandanten aus tenants/ (ueber scripts/tenant.sh) und die Mandanten-
+# Console, auf derselben geteilten Infra (Postgres/Redis/MinIO).
+# Bedienung und Regeln: docs/demo-cli.txt (wird auch als Hilfe ausgegeben).
+set -euo pipefail
+cd "$(dirname "$(readlink -f "$0")")"
+
+HELP=docs/demo-cli.txt
+YB_SERVICES=(nestjs worker nextjs pgadmin)
+CHECK_TIMEOUT=180
+# alte Loadtest-Container im selben Compose-Projekt nicht bei jedem Aufruf melden
+export COMPOSE_IGNORE_ORPHANS=True
+
+env_value() { grep -E "^$2=" "$1" | cut -d= -f2-; }
+
+# DB_NAME/DB_USER/DB_PASSWORD/JWT_SECRET/MINIO_ROOT_* muessen mit backend/.env
+# uebereinstimmen (siehe .env.example-Kommentar) — hier einmal generiert, dort
+# zurueckgelesen.
+ensure_root_env() {
+  [[ -f .env ]] && return
+  cat > .env <<EOF
+DB_NAME=yourbrand
+DB_USER=yourbrand
+DB_PASSWORD=$(openssl rand -hex 16)
+PGADMIN_EMAIL=admin@example.com
+PGADMIN_PASSWORD=$(openssl rand -hex 16)
+JWT_SECRET=$(openssl rand -hex 32)
+CORS_ORIGIN=http://localhost:3001
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)
+BACKEND_URL=http://localhost:3000
+TENANT=default
+EOF
+  echo ".env angelegt (DB/MinIO/pgAdmin-Zugangsdaten + JWT_SECRET generiert)"
+}
+
+# EMAIL_SALT/APP_ENCRYPTION_KEY werden nur hier generiert (nicht in .env) —
+# docker-compose.yml setzt sie nicht per environment:, das Backend liest sie
+# nur aus dieser Datei (ueber den ./backend:/app-Bind-Mount). Stripe/Resend
+# bleiben Demo-Platzhalter: die Seeds rufen keine echten APIs auf.
+ensure_backend_env() {
+  [[ -f backend/.env ]] && return
+  [[ -f .env ]] || die ".env fehlt (ensure_root_env zuerst)"
+  local db_name db_user db_password jwt_secret minio_user minio_password pgadmin_password
+  db_name=$(env_value .env DB_NAME)
+  db_user=$(env_value .env DB_USER)
+  db_password=$(env_value .env DB_PASSWORD)
+  jwt_secret=$(env_value .env JWT_SECRET)
+  minio_user=$(env_value .env MINIO_ROOT_USER)
+  minio_password=$(env_value .env MINIO_ROOT_PASSWORD)
+  pgadmin_password=$(env_value .env PGADMIN_PASSWORD)
+  cat > backend/.env <<EOF
+DB_NAME=$db_name
+DB_USER=$db_user
+DB_PASSWORD=$db_password
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+MINIO_ROOT_USER=$minio_user
+MINIO_ROOT_PASSWORD=$minio_password
+S3_ENDPOINT=http://localhost:9000
+S3_REGION=auto
+S3_ACCESS_KEY_ID=$minio_user
+S3_SECRET_ACCESS_KEY=$minio_password
+S3_BUCKET=yourbrand-media
+S3_PUBLIC_URL_BASE=http://localhost:3000/api/v1/media/file
+
+PGADMIN_EMAIL=admin@example.com
+PGADMIN_PASSWORD=$pgadmin_password
+
+JWT_SECRET=$jwt_secret
+EMAIL_SALT=$(openssl rand -hex 16)
+
+RESEND_API_KEY=re_demo_not_used
+
+APP_URL=http://localhost:3001
+BACKEND_URL=http://localhost:3000
+CORS_ORIGIN=http://localhost:3001
+
+APP_ENCRYPTION_KEY=$(openssl rand -hex 32)
+
+STRIPE_PUBLISHABLE_KEY=pk_test_demo_not_used
+STRIPE_SECRET_KEY=sk_test_demo_not_used
+STRIPE_WEBHOOK_SECRET=whsec_demo_not_used
+STRIPE_SUCCESS_URL=http://localhost:3001/payment/success
+STRIPE_CANCEL_URL=http://localhost:3001/payment/cancel
+
+LOADTEST_MODE=false
+SEED_RESET=true
+
+COOKIE_SAMESITE=lax
+NODE_ENV=development
+DEMO_MEDIA_PATH=
+TENANT=default
+EOF
+  echo "backend/.env angelegt (DB/JWT/MinIO wie .env, eigenes EMAIL_SALT/APP_ENCRYPTION_KEY generiert)"
+}
+
+ensure_frontend_env() {
+  [[ -f frontend/.env ]] && return
+  cp frontend/.env.example frontend/.env
+  echo "frontend/.env angelegt (Defaults aus frontend/.env.example)"
+}
+
+die() { echo "Fehler: $*" >&2; exit 1; }
+
+# --- Console (laeuft auf dem Host, braucht git und docker) -----------------
+CONSOLE_PID=.console/console.pid
+CONSOLE_LOG=.console/console.log
+
+console_running() { [[ -f $CONSOLE_PID ]] && kill -0 "$(cat "$CONSOLE_PID")" 2>/dev/null; }
+
+start_console() {
+  if console_running; then
+    echo "Console laeuft bereits: http://localhost:3099"
+    return
+  fi
+  if [[ ! -x backend/node_modules/.bin/ts-node ]]; then
+    echo "Console nicht gestartet: backend/node_modules fehlt auf dem Host (einmalig: cd backend && npm ci)" >&2
+    return 1
+  fi
+  mkdir -p .console
+  (cd backend && exec setsid nohup npm run console >"../$CONSOLE_LOG" 2>&1) &
+  echo $! >"$CONSOLE_PID"
+  echo "Console gestartet: http://localhost:3099 (Log: $CONSOLE_LOG)"
+}
+
+stop_console() {
+  if console_running; then
+    # setsid -> eigene Prozessgruppe, so wird npm samt ts-node beendet
+    kill -- -"$(cat "$CONSOLE_PID")" 2>/dev/null || kill "$(cat "$CONSOLE_PID")"
+    echo "Console gestoppt"
+  fi
+  rm -f "$CONSOLE_PID"
+}
+
+# --- Ziele -------------------------------------------------------------------
+tenant_slugs() {
+  local f slug
+  for f in tenants/*/tenant.json; do
+    slug=$(basename "$(dirname "$f")")
+    [[ "$slug" == _* || "$slug" == default ]] && continue
+    echo "$slug"
+  done
+}
+
+valid_targets() { echo all yourbrand $(tenant_slugs) console; }
+
+is_tenant() { [[ "$1" != _* && "$1" != default && -f "tenants/$1/tenant.json" ]]; }
+
+backend_container() { [[ "$1" == yourbrand ]] && echo XXX_backend || echo "yb-$1-backend"; }
+
+backend_port() {
+  if [[ "$1" == yourbrand ]]; then echo 3000; else env_value "tenants/$1/.env" BACKEND_PORT; fi
+}
+
+frontend_port() {
+  if [[ "$1" == yourbrand ]]; then echo 3001; else env_value "tenants/$1/.env" FRONTEND_PORT; fi
+}
+
+running() { [[ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" == true ]]; }
+
+# -all oder keine Ziele -> alles; Ergebnis in TARGETS (Reihenfolge: yourbrand,
+# Mandanten, console), ALL=1 wenn alles gemeint ist.
+TARGETS=()
+ALL=0
+expand_targets() {
+  local t want=" $* "
+  if [[ $# -eq 0 || "$want" == *" all "* ]]; then
+    ALL=1
+    TARGETS=(yourbrand $(tenant_slugs) console)
+    return
+  fi
+  for t in yourbrand $(tenant_slugs) console; do
+    if [[ "$want" == *" $t "* ]]; then TARGETS+=("$t"); fi
+  done
+}
+
+# --- Befehle -----------------------------------------------------------------
+wait_backends() {
+  local t port deadline failed=0
+  deadline=$(( SECONDS + CHECK_TIMEOUT ))
+  echo "== Check: warte auf Backends (max. ${CHECK_TIMEOUT}s)"
+  for t in "$@"; do
+    port=$(backend_port "$t")
+    until [[ "$(curl -s -o /dev/null --max-time 5 -w '%{http_code}' "localhost:$port/api/v1/tenant")" == 200 ]]; do
+      if (( SECONDS >= deadline )); then break; fi
+      sleep 3
+    done
+    if [[ "$(curl -s -o /dev/null --max-time 5 -w '%{http_code}' "localhost:$port/api/v1/tenant")" == 200 ]]; then
+      printf '  ok      %-14s http://localhost:%s\n' "$t" "$(frontend_port "$t")"
+    else
+      printf '  FEHLER  %-14s Backend :%s antwortet nicht. Letzte Logzeilen:\n' "$t" "$port"
+      docker logs --tail 15 "$(backend_container "$t")" 2>&1 | sed 's/^/          /'
+      failed=1
+    fi
+  done
+  return $failed
+}
+
+cmd_up() {
+  local t tenants=() stacks=() console=0
+  for t in "${TARGETS[@]}"; do
+    case $t in
+      yourbrand) stacks+=(yourbrand) ;;
+      console)   console=1 ;;
+      *)         tenants+=("$t"); stacks+=("$t") ;;
+    esac
+  done
+  ensure_root_env
+  ensure_backend_env
+  ensure_frontend_env
+  echo "== Geteilte Infra"
+  docker compose up -d --wait XXX_db redis minio
+  # minio-init ist ein Einmal-Container (exit 0 = Erfolg), darum ohne --wait
+  docker compose up -d minio-init
+  if [[ " ${stacks[*]} " == *" yourbrand "* ]]; then
+    echo "== YourBrand (default)"
+    # -V: anonyme /app/node_modules-Volumes neu anlegen, sonst verdeckt der
+    # alte Stand die Pakete aus dem frisch gebauten Image
+    docker compose up -d --build --renew-anon-volumes "${YB_SERVICES[@]}"
+  fi
+  if (( ${#tenants[@]} )); then
+    echo "== Mandanten: ${tenants[*]}"
+    scripts/tenant.sh up "${tenants[@]}" >/dev/null
+  fi
+  local rc=0
+  if (( console )); then
+    echo "== Mandanten-Console"
+    start_console || rc=1
+  fi
+  if (( ${#stacks[@]} )); then wait_backends "${stacks[@]}" || rc=1; fi
+  (( rc == 0 )) && echo "Fertig." || echo "Es gab Fehler (siehe oben)."
+  return $rc
+}
+
+cmd_down() {
+  if (( ALL )); then
+    stop_console
+    scripts/tenant.sh down all
+    docker compose down
+    return
+  fi
+  local t tenants=()
+  for t in "${TARGETS[@]}"; do
+    case $t in
+      yourbrand) echo "== YourBrand (default)"; docker compose rm -sfv "${YB_SERVICES[@]}" ;;
+      console)   stop_console ;;
+      *)         tenants+=("$t") ;;
+    esac
+  done
+  if (( ${#tenants[@]} )); then scripts/tenant.sh down "${tenants[@]}"; fi
+  echo "Infra (Postgres/Redis/MinIO) laeuft weiter — alles stoppen: ./demo -down"
+}
+
+cmd_ls() {
+  local t state
+  printf '%-14s %-6s %-24s %s\n' ZIEL STATUS FRONTEND BACKEND
+  for t in yourbrand $(tenant_slugs); do
+    if [[ "$t" != yourbrand && ! -f "tenants/$t/.env" ]]; then
+      printf '%-14s %-6s %-24s %s\n' "$t" aus - -
+      continue
+    fi
+    running "$(backend_container "$t")" && state=an || state=aus
+    printf '%-14s %-6s %-24s %s\n' "$t" "$state" "http://localhost:$(frontend_port "$t")" "http://localhost:$(backend_port "$t")"
+  done
+  console_running && state=an || state=aus
+  printf '%-14s %-6s %s\n' console "$state" http://localhost:3099
+  running XXX_db && state=an || state=aus
+  printf '%-14s %-6s %s\n' infra "$state" "Postgres/Redis/MinIO"
+}
+
+cmd_logs() {
+  [[ ${#TARGETS[@]} -eq 1 && $ALL == 0 ]] || die "-logs braucht genau ein Ziel, z.B. ./demo -logs -kiez"
+  case ${TARGETS[0]} in
+    yourbrand) docker compose logs -f nestjs worker nextjs ;;
+    console)   [[ -f $CONSOLE_LOG ]] || die "$CONSOLE_LOG fehlt (Console noch nie gestartet)"
+               tail -f "$CONSOLE_LOG" ;;
+    *)         scripts/tenant.sh logs "${TARGETS[0]}" ;;
+  esac
+}
+
+# --- Argumente -----------------------------------------------------------------
+help() { cat "$HELP"; }
+
+action=""
+names=()
+for arg in "$@"; do
+  a=${arg#-}; a=${a#-}; a=${a,,}
+  case $a in
+    up|down|ls|logs)
+      [[ -z "$action" ]] || die "nur ein Befehl auf einmal (-up, -down, -ls, -logs)"
+      action=$a ;;
+    help|h) help; exit 0 ;;
+    all|yourbrand|console) names+=("$a") ;;
+    *)
+      is_tenant "$a" || die "unbekanntes Ziel '$arg' — gueltig: $(valid_targets | sed 's/\([^ ]*\)/-\1/g')"
+      names+=("$a") ;;
+  esac
+done
+
+[[ -n "$action" ]] || { help; exit 1; }
+expand_targets "${names[@]}"
+
+case $action in
+  up)   cmd_up ;;
+  down) cmd_down ;;
+  ls)   (( ${#names[@]} == 0 )) || die "-ls nimmt keine Ziele"; cmd_ls ;;
+  logs) (( ${#names[@]} )) || die "-logs braucht genau ein Ziel, z.B. ./demo -logs -kiez"; cmd_logs ;;
+esac

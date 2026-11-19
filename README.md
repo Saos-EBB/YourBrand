@@ -68,7 +68,8 @@ Monorepo combining frontend and backend in subfolders, with the full commit hist
 ├── frontend/   # Next.js application
 ├── backend/    # NestJS API + WebSocket gateway (+ tenant console in src/console/)
 ├── tenants/    # one tenant.json (+ logo/favicon) per branded tenant
-├── scripts/    # demo.sh / tenant.sh / shop_demo.sh / shop_test.sh
+├── demo        # demo CLI (see docs/demo-cli.txt)
+├── scripts/    # tenant.sh / shop_demo.sh / shop_test.sh
 ├── showcase/   # Playwright screenshots + videos of every tenant
 └── docs/       # design notes, findings, handoffs
 ```
@@ -85,21 +86,23 @@ For environment variables and architecture details, see:
 ### One-command demo (YourBrand + every tenant)
 
 ```bash
-scripts/demo.sh up    # generates .env/backend/.env/frontend/.env (first run only), then
-                       # starts the shared infra + YourBrand (default) + all four tenants
-                       # + the tenant console on http://localhost:3099
-scripts/demo.sh ls     # every running stack with its URL (default + tenants + console)
-scripts/demo.sh down   # stop everything incl. the console, data stays in Postgres/MinIO
+./demo -up            # generates .env/backend/.env/frontend/.env (first run only), then
+                      # starts the shared infra + YourBrand (default) + all four tenants
+                      # + the tenant console on http://localhost:3099, then waits until
+                      # every backend answers
+./demo -up -kiez      # only kiez (+ shared infra); any tenants/ folder is a flag
+./demo -ls            # what is running, with URLs
+./demo -down          # stop everything incl. the console, data stays in Postgres/MinIO
 ```
 
 First run generates `.env`, `backend/.env` and `frontend/.env` with real random secrets
 (`JWT_SECRET`, `EMAIL_SALT`, `APP_ENCRYPTION_KEY`, DB/MinIO/pgAdmin credentials) — no manual
 editing needed to get a working demo. Stripe/Resend keys stay as inert placeholders (the seeds
-never call those APIs). Re-running `up` is idempotent — existing env files and running stacks are
-left alone. Internally this is `docker compose up -d --build` (shared infra + the default/YourBrand
-stack) followed by `scripts/tenant.sh up all` (the four tenants, see below) — reach for those
-directly only if you want one of the two without the other. The console runs on the host, not in a
-container, and needs `npm ci` in `backend/` once; without it `up` skips the console with a hint.
+never call those APIs). Re-running `-up` is idempotent — existing env files are
+left alone. All flags and rules (targets, what `-down -<target>` leaves running, ports) are in
+[`docs/demo-cli.txt`](docs/demo-cli.txt), which `./demo` also prints as its help. Tenants go
+through `scripts/tenant.sh` internally. The console runs on the host, not in a
+container, and needs `npm ci` in `backend/` once; without it `-up` skips the console with a hint.
 
 ### Just YourBrand (default), by hand
 

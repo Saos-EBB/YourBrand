@@ -3,10 +3,10 @@
 ## Starten
 
 ```bash
-scripts/demo.sh up                 # startet alles und die Console im Hintergrund → http://localhost:3099
+./demo -up                         # startet alles und die Console im Hintergrund → http://localhost:3099
 ```
 
-`demo.sh down` stoppt die Console mit, `demo.sh ls` zeigt ihren Status. Log: `.console/console.log`.
+`./demo -down` stoppt die Console mit, `./demo -ls` zeigt ihren Status, `./demo -up -console` startet nur sie. Log: `.console/console.log`.
 Nur die Console, ohne Mandanten-Stacks:
 
 ```bash

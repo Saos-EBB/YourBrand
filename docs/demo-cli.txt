@@ -1,0 +1,59 @@
+demo — Demo-Stacks lokal per Docker starten/stoppen
+=====================================================
+
+Aufruf (im Repo-Root):
+
+  ./demo -up   [Ziele]     bauen + starten, danach Check ob alles antwortet
+  ./demo -down [Ziele]     stoppen (Daten bleiben in Postgres/MinIO)
+  ./demo -ls               was laeuft, mit URLs
+  ./demo -logs <Ziel>      Logs eines Ziels folgen (genau ein Ziel)
+  ./demo                   diese Hilfe
+
+Ziele (kombinierbar, Gross-/Kleinschreibung egal, -x und --x gehen beide):
+
+  -all            alles (Standard, wenn kein Ziel angegeben ist)
+  -yourbrand      Haupt-Stack (intern Mandant "default", Ports 3000/3001, pgAdmin)
+  -<mandant>      jeder Ordner in tenants/ (ausser default und _template):
+                  -campus-match  -kiez  -miteinander  -underground
+                  neue Mandanten haben automatisch ihr Flag
+  -console        Mandanten-Console (http://localhost:3099)
+
+Beispiele:
+
+  ./demo -up                     alles, inkl. Console
+  ./demo -up -kiez -underground  nur diese zwei Mandanten (+ Infra)
+  ./demo -down -kiez             nur kiez stoppen, Rest laeuft weiter
+  ./demo -down                   alles stoppen, inkl. Infra
+  ./demo -logs -kiez             Logs von kiez folgen
+
+Regeln:
+
+  - Die geteilte Infra (Postgres, Redis, MinIO) startet bei jedem -up mit —
+    ohne sie laeuft kein Mandant. -up -kiez startet also Infra + kiez, aber
+    nicht YourBrand.
+  - Die Infra stoppt nur bei -down ohne Ziel bzw. -down -all. -down -yourbrand
+    stoppt nur Backend/Worker/Frontend/pgAdmin, laufende Mandanten behalten
+    ihre Datenbank.
+  - Die Console laeuft bei -all mit, sonst nur mit -console. Sie laeuft auf
+    dem Host (braucht einmalig: cd backend && npm ci). PID/Log in .console/.
+  - Beim ersten -up werden .env, backend/.env, frontend/.env (und pro Mandant
+    tenants/<slug>/.env) mit eigenen Secrets angelegt. Bestehende Dateien
+    bleiben unangetastet.
+  - Nach -up wartet demo bis zu 3 Minuten, bis jedes gestartete Backend auf
+    /api/v1/tenant antwortet. Was nicht hochkommt, wird mit seinen letzten
+    Logzeilen gemeldet (Exit-Code 1).
+  - Tippfehler im Ziel brechen ab und listen die gueltigen Ziele auf.
+
+Ports:
+
+  yourbrand       Frontend 3001, Backend 3000
+  campus-match    Frontend 3011, Backend 3010
+  kiez            Frontend 3021, Backend 3020
+  miteinander     Frontend 3031, Backend 3030
+  underground     Frontend 3041, Backend 3040
+  console         3099
+  (Mandanten-Ports stehen in tenants/<slug>/.env, neue bekommen das naechste
+  freie Paar)
+
+Intern: ./demo ruft fuer Mandanten scripts/tenant.sh auf (dort zusaetzlich
+"smoke <slug>|all" fuer einen ausfuehrlichen Check von aussen).
